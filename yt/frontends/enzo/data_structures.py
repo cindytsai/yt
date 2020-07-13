@@ -52,6 +52,7 @@ from yt.utilities.logger import ytLogger as mylog
 from .fields import \
     EnzoFieldInfo
 
+import inspect
 
 class EnzoGrid(AMRGridPatch):
     """
