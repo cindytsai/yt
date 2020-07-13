@@ -30,7 +30,7 @@ from yt.utilities.lib.grid_traversal cimport \
     sampler_function, walk_volume
 from yt.utilities.lib.bitarray cimport ba_get_value, ba_set_value
 
-from yt.utilities.logger import ytLogger as mylog
+from libc.stdio cimport printf
 
 cdef extern from "math.h":
     double exp(double x) nogil
@@ -149,8 +149,8 @@ cdef class SelectorObject:
                      np.ndarray[np.float64_t, ndim=2] right_edges,
                      np.ndarray[np.int32_t, ndim=2] levels):
 
-        mylog.debug("#FLAG#")
-        mylog.debug("geometry/selection_routines.pyx (cdef class SelectorObject, def select_grids)")
+        printf("#FLAG#\n")
+        printf("geometry/selection_routines.pyx (cdef class SelectorObject, def select_grids)\n")
 
         cdef int i, n
         cdef int ng = left_edges.shape[0]
@@ -168,10 +168,10 @@ cdef class SelectorObject:
                     RE[i] = right_edges[n, i]
                 gridi[n] = self.select_grid(LE, RE, levels[n, 0])
         
-                mylog.debug("n = %d", n)
-                mylog.debug("gridi[n] = %d", gridi[n])
+                printf("n = %d\n", n)
+                printf("gridi[n] = %d\n", gridi[n])
         
-        mylog.debug("######")
+        printf("######\n")
 
         return gridi.astype("bool")
 
@@ -339,20 +339,20 @@ cdef class SelectorObject:
                                np.float64_t right_edge[3],
                                np.int32_t level, Oct *o = NULL) nogil:
         
-        mylog.debug("#FLAG#")
-        mylog.debug("geometry/selection_routines.pyx (cdef class SelectorObject, cdef int select_grid)")
-        mylog.debug("level = %d", level)
-        mylog.debug("self.min_level = %d", self.min_level)
-        mylog.debug("self.max_level = %d", self.max_level)
+        printf("#FLAG#\n")
+        printf("geometry/selection_routines.pyx (cdef class SelectorObject, cdef int select_grid)\n")
+        printf("level = %d\n", level)
+        printf("self.min_level = %d\n", self.min_level)
+        printf("self.max_level = %d\n", self.max_level)
 
         if level < self.min_level or level > self.max_level:
             
-            mylog.debug("Inside if, in select_grid")
-            mylog.debug("######")
+            printf("Inside if, in select_grid\n")
+            printf("######\n")
 
             return 0
 
-        mylog.debug("######")
+        printf("######\n")
 
         return self.select_bbox(left_edge, right_edge)
 
@@ -1311,20 +1311,20 @@ cdef class SliceSelector(SelectorObject):
     cdef int select_bbox(self, np.float64_t left_edge[3],
                                np.float64_t right_edge[3]) nogil:
         
-        mylog.debug("#FLAG#")
-        mylog.debug("geometry/selection_routines.pyx (cdef class SliceSelector(SelectorObject), cdef int select_bbox)")
-        mylog.debug("self.axis = %d", self.axis)
-        mylog.debug("self.coord = %f", self.coord)
-        mylog.debug("grid_eps = %f", grid_eps)
+        printf("#FLAG#\n")
+        printf("geometry/selection_routines.pyx (cdef class SliceSelector(SelectorObject), cdef int select_bbox)\n")
+        printf("self.axis = %d\n", self.axis)
+        printf("self.coord = %f\n", self.coord)
+        printf("grid_eps = %f\n", grid_eps)
 
         if left_edge[self.axis] - grid_eps <= self.coord < right_edge[self.axis]:
             
-            mylog.debug("Inside if, in select_bbox")
-            mylog.debug("######")
+            printf("Inside if, in select_bbox\n")
+            printf("######\n")
 
             return 1
 
-        mylog.debug("######")
+        printf("######\n")
         
         return 0
 
