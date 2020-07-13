@@ -1685,6 +1685,11 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
 
     @contextmanager
     def _ds_hold(self, new_ds):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("data_objects/data_containers.py (class YTSelectionContainer, def _ds_hold)")
+        mylog.debug("######")
+        
         """
         This contextmanager is used to take a data object and preserve its
         attributes but allow the dataset that underlies it to be swapped out.
@@ -1712,11 +1717,21 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
 
     @contextmanager
     def _chunked_read(self, chunk):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("data_objects/data_containers.py (class YTSelectionContainer, def _chunked_read)")
+        
         # There are several items that need to be swapped out
         # field_data, size, shape
         obj_field_data = []
         if hasattr(chunk, 'objs'):
+
+            mylog.debug("chunk.objs = %s", chunk.objs)
+
             for obj in chunk.objs:
+
+                mylog.debug("for obj in chunk.objs: obj = %s", obj)
+
                 obj_field_data.append(obj.field_data)
                 obj.field_data = YTFieldData()
         old_field_data, self.field_data = self.field_data, YTFieldData()
@@ -1729,6 +1744,11 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
         if hasattr(chunk, 'objs'):
             for obj in chunk.objs:
                 obj.field_data = obj_field_data.pop(0)
+
+        mylog.debug("chunk.objs = %s", chunk.objs)
+        for obj in chunk.objs:
+            mylog.debug("obj = %s", obj)
+        mylog.debug("######")
 
     @contextmanager
     def _activate_cache(self):
@@ -1781,6 +1801,11 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
 
     @property
     def max_level(self):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("data_objects/data_containers.py (class YTSelectionContainer, def max_level())")
+        mylog.debug("######")
+
         if self._max_level is None:
             try:
                 return self.ds.max_level
@@ -1801,6 +1826,11 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
 
     @property
     def min_level(self):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("data_objects/data_containers.py (class YTSelectionContainer, def min_level())")
+        mylog.debug("######")
+        
         if self._min_level is None:
             try:
                 return 0

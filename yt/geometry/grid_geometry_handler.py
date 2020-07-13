@@ -282,18 +282,44 @@ class GridIndex(Index):
         return self.dataset.conversion_factors[unit]
 
     def _identify_base_chunk(self, dobj):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("geometry/grid_geometry_handler.py (class GridIndex, def _identify_base_chunk)")
+        mylog.debug("dobj._type_name = %s", dobj._type_name)
+        mylog.debug("dobj._grids = %s", dobj._grids)
+
         fast_index = None
         if dobj._type_name == "grid":
             dobj._chunk_info = np.empty(1, dtype='object')
             dobj._chunk_info[0] = weakref.proxy(dobj)
         elif getattr(dobj, "_grids", None) is None:
+
+            mylog.debug("dobj.selector type = %s", type(dobj.selector))
+            mylog.debug("self.grid_left_edge = %s", self.grid_left_edge)
+            mylog.debug("self.grid_right_edge = %s", self.grid_right_edge)
+            mylog.debug("self.grid_levels = %s", self.grid_levels)
+
             gi = dobj.selector.select_grids(self.grid_left_edge,
                                             self.grid_right_edge,
                                             self.grid_levels)
+            
+            mylog.debug("self.grids type = %s", type(self.grids))
+            mylog.debug("self.grids = %s", self.grids)
+            mylog.debug("gi = %s", gi)
+
+            for g in self.grids[gi]:
+                mylog.debug("self.grids[g] = %s", g)
+
             if any([g.filename is not None for g in self.grids[gi]]):
                 _gsort = _grid_sort_mixed
+
+                mylog.debug("Inside if, _gsort = %s", _gsort)
+
             else:
                 _gsort = _grid_sort_id
+                
+                mylog.debug("Inside else, _gsort = %s", _gsort)
+
             grids = list(sorted(self.grids[gi], key = _gsort))
             dobj._chunk_info = np.empty(len(grids), dtype='object')
             for i, g in enumerate(grids):
@@ -307,6 +333,8 @@ class GridIndex(Index):
             dobj.shape = (dobj.size,)
         dobj._current_chunk = list(self._chunk_all(dobj, cache = False,
                                    fast_index = fast_index))[0]
+
+        mylog.debug("######")
 
     def _count_selection(self, dobj, grids = None, fast_index = None):
         if fast_index is not None:

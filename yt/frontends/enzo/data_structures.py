@@ -587,6 +587,11 @@ class EnzoHierarchyInMemory(EnzoHierarchy):
         self.grid_procs = np.zeros((self.num_grids,1),'int32')
 
     def _copy_index_structure(self):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("frontends/enzo/data_structures.py (class EnzoHierarchyInMemory, def _copy_index_structure())")
+        mylog.debug("######")
+
         # Dimensions are important!
         self.grid_dimensions[:] = self.enzo.hierarchy_information["GridEndIndices"][:]
         self.grid_dimensions -= self.enzo.hierarchy_information["GridStartIndices"][:]
@@ -615,10 +620,32 @@ class EnzoHierarchyInMemory(EnzoHierarchy):
         return my_grids[(random_sample,)]
 
     def _chunk_io(self, dobj, cache = True, local_only = False):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("frontends/enzo/data_structures.py (class EnzoHierarchyInMemory, def _chunk_io())")
+
         gfiles = defaultdict(list)
+
+        mylog.debug("dobj._current_chunk = %s", dobj._current_chunk)
+        mylog.debug("dobj._chunk_info = %s", dobj._chunk_info)
+        mylog.debug("dobj type = %s", type(dobj))
+        mylog.debug("dobj._current_chunk type = %s", type(dobj._current_chunk))
+        mylog.debug("dobj._chunk_info type = %s", type(dobj._chunk_info))
+        
+        mylog.debug("dobj._current_chunk attributes: ")
+        mylog.debug("%s", inspect.getmembers(dobj._current_chunk, lambda a:not(inspect.isroutine(a))))
+
         gobjs = getattr(dobj._current_chunk, "objs", dobj._chunk_info)
+        
+        mylog.debug("gobjs = %s", gobjs)
+        mylog.debug("gobjs type = %s", type(gobjs))
+
         for g in gobjs:
             gfiles[g.filename].append(g)
+
+        mylog.debug("gfiles = %s", gfiles)
+        mylog.debug("######")
+        
         for fn in sorted(gfiles):
             if local_only:
                 gobjs = [g for g in gfiles[fn] if g.proc_num == self.comm.rank]
