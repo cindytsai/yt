@@ -763,6 +763,12 @@ class Dataset(object):
         """
         mylog.debug("Searching for maximum value of %s", field)
         source = self.all_data()
+
+        mylog.debug("#FLAG#")
+        mylog.debug("data_objects/static_output.py (class Dataset, def find_max)")
+        mylog.debug("source = self.all_data(), type = %s", type(source))
+        mylog.debug("######")
+
         max_val, mx, my, mz = \
             source.quantities.max_location(field)
         center = self.arr([mx, my, mz], dtype="float64").to('code_length')
@@ -832,6 +838,12 @@ class Dataset(object):
         all_data is a wrapper to the Region object for creating a region
         which covers the entire simulation domain.
         """
+        
+        mylog.debug("#FLAG#")
+        mylog.debug("data_objects/static_output.py (class Dataset, def all_data)")
+        mylog.debug("find_max = %s", find_max)
+        mylog.debug("######")
+
         if find_max: c = self.find_max("density")[1]
         else: c = (self.domain_right_edge + self.domain_left_edge)/2.0
         return self.region(c,
