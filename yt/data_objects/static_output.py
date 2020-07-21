@@ -762,10 +762,12 @@ class Dataset(object):
         Returns (value, location) of the maximum of a given field.
         """
         mylog.debug("Searching for maximum value of %s", field)
-        source = self.all_data()
 
         mylog.debug("#FLAG#")
         mylog.debug("data_objects/static_output.py (class Dataset, def find_max)")
+ 
+        source = self.all_data()
+
         mylog.debug("source = self.all_data(), type = %s", type(source))
         mylog.debug("######")
 
