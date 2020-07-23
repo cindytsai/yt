@@ -35,6 +35,11 @@ from yt.funcs import mylog
 derived_quantity_registry = {}
 
 def get_position_fields(field, data):
+    
+    mylog.debug("#FLAG#")
+    mylog.debug("yt/data_objects/derived_quantities.py (def get_position_fields(field, data))")
+    mylog.debug("######")
+
     axis_names = [data.ds.coordinates.axis_name[num] for num in [0, 1, 2]]
     if field[0] in data.ds.particle_types:
         position_fields = [(field[0], 'particle_position_%s' % d)
@@ -644,10 +649,14 @@ class MaxLocation(SampleAtMaxFieldValues):
 
         mylog.debug("#FLAG#")
         mylog.debug("yt/data_objects/derived_quantities.py (class MaxLocation, def __call__(self, field))")
-        mylog.debug("######")
+
 
         # Make sure we have an index
         self.data_source.index
+
+        mylog.debug("self.data_source.index, type = %s", type(self.data_source.index))
+        mylog.debug("######")
+
         sample_fields = get_position_fields(field, self.data_source)
         rv = super(MaxLocation, self).__call__(field, sample_fields)
         if len(rv) == 1: rv = rv[0]
