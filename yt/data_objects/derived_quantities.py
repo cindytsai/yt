@@ -30,6 +30,8 @@ from yt.extern.six import add_metaclass
 from yt.utilities.exceptions import \
     YTParticleTypeNotFound
 
+from yt.funcs import mylog
+
 derived_quantity_registry = {}
 
 def get_position_fields(field, data):
