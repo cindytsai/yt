@@ -59,6 +59,11 @@ class DerivedQuantity(ParallelAnalysisInterface):
         return
 
     def __call__(self, *args, **kwargs):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/derived_quantities.py (class DerivedQuantity, def __call__(self, *args, **kwargs))")
+        mylog.debug("######")
+
         """Calculate results for the derived quantity"""
         # create the index if it doesn't exist yet
         self.data_source.ds.index
@@ -588,6 +593,11 @@ class SampleAtMaxFieldValues(DerivedQuantity):
         self.num_vals = 1 + len(sample_fields)
 
     def __call__(self, field, sample_fields):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/derived_quantities.py (class SampleAtMaxFieldValues, def __call__(self, field, sample_fields))")
+        mylog.debug("######")
+        
         rv = super(SampleAtMaxFieldValues, self).__call__(field, sample_fields)
         if len(rv) == 1: rv = rv[0]
         return rv
@@ -629,6 +639,11 @@ class MaxLocation(SampleAtMaxFieldValues):
 
     """
     def __call__(self, field):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/derived_quantities.py (class MaxLocation, def __call__(self, field))")
+        mylog.debug("######")
+
         # Make sure we have an index
         self.data_source.index
         sample_fields = get_position_fields(field, self.data_source)
