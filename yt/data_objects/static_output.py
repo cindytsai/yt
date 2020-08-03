@@ -767,9 +767,9 @@ class Dataset(object):
         
         mylog.debug("Searching for maximum value of %s", field)
 
-        mylog.debug("source = self.all_data(), type = %s", type(source))
-        
         source = self.all_data()
+
+        mylog.debug("source = self.all_data(), type = %s", type(source))
         
         max_val, mx, my, mz = \
             source.quantities.max_location(field)
