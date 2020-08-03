@@ -351,12 +351,25 @@ class ParallelProgressBar(object):
     # This is just a simple progress bar
     # that prints on start/stop
     def __init__(self, title, maxval):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/funcs.py (class ParallelProgressBar, def __init__)")
+
         self.title = title
         mylog.info("Starting '%s'", title)
+
+        mylog.debug("######")
+
     def update(self, *args, **kwargs):
         return
     def finish(self):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/funcs.py (class ParallelProgressBar, def finish)")
+
         mylog.info("Finishing '%s'", self.title)
+
+        mylog.debug("######")
 
 class GUIProgressBar(object):
     def __init__(self, title, maxval):

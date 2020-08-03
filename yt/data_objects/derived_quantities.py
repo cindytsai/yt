@@ -38,14 +38,15 @@ def get_position_fields(field, data):
     
     mylog.debug("#FLAG#")
     mylog.debug("yt/data_objects/derived_quantities.py (def get_position_fields(field, data))")
-    mylog.debug("######")
-
+    
     axis_names = [data.ds.coordinates.axis_name[num] for num in [0, 1, 2]]
     if field[0] in data.ds.particle_types:
         position_fields = [(field[0], 'particle_position_%s' % d)
                            for d in axis_names]
     else:
         position_fields = axis_names
+    
+    mylog.debug("######")
 
     return position_fields
 
@@ -69,8 +70,7 @@ class DerivedQuantity(ParallelAnalysisInterface):
 
         mylog.debug("#FLAG#")
         mylog.debug("yt/data_objects/derived_quantities.py (class DerivedQuantity, def __call__(self, *args, **kwargs))")
-        mylog.debug("######")
-
+        
         """Calculate results for the derived quantity"""
         # create the index if it doesn't exist yet
         self.data_source.ds.index
@@ -89,6 +89,9 @@ class DerivedQuantity(ParallelAnalysisInterface):
         # These will be YTArrays
         values = [self.data_source.ds.arr(values[i]) for i in range(self.num_vals)]
         values = self.reduce_intermediate(values)
+        
+        mylog.debug("######")
+
         return values
 
     def process_chunk(self, data, *args, **kwargs):
@@ -603,10 +606,12 @@ class SampleAtMaxFieldValues(DerivedQuantity):
 
         mylog.debug("#FLAG#")
         mylog.debug("yt/data_objects/derived_quantities.py (class SampleAtMaxFieldValues, def __call__(self, field, sample_fields))")
-        mylog.debug("######")
         
         rv = super(SampleAtMaxFieldValues, self).__call__(field, sample_fields)
         if len(rv) == 1: rv = rv[0]
+
+        mylog.debug("######")
+        
         return rv
 
     def process_chunk(self, data, field, sample_fields):
@@ -649,17 +654,18 @@ class MaxLocation(SampleAtMaxFieldValues):
 
         mylog.debug("#FLAG#")
         mylog.debug("yt/data_objects/derived_quantities.py (class MaxLocation, def __call__(self, field))")
-
+        mylog.debug("self.data_source.index, type = %s", type(self.data_source.index))
+        mylog.debug("self.data_source, type = %s", type(self.data_source))
 
         # Make sure we have an index
         self.data_source.index
 
-        mylog.debug("self.data_source.index, type = %s", type(self.data_source.index))
-        mylog.debug("######")
-
         sample_fields = get_position_fields(field, self.data_source)
         rv = super(MaxLocation, self).__call__(field, sample_fields)
         if len(rv) == 1: rv = rv[0]
+
+        mylog.debug("######")
+        
         return rv
 
 class SampleAtMinFieldValues(SampleAtMaxFieldValues):

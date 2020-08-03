@@ -43,6 +43,10 @@ class GridIndex(Index):
                          "grid_dimensions")
 
     def _setup_geometry(self):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/geometry/grid_geometry_handler.py (class GridIndex, def _setup_geometry)")
+
         mylog.debug("Counting grids.")
         self._count_grids()
 
@@ -57,6 +61,8 @@ class GridIndex(Index):
 
         mylog.debug("Re-examining index")
         self._initialize_level_stats()
+
+        mylog.debug("######")
 
     def __del__(self):
         del self.grid_dimensions
@@ -98,6 +104,10 @@ class GridIndex(Index):
             yield self.select_grids(level)
 
     def _initialize_grid_arrays(self):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/geometry/grid_geometry_handler.py (class GridIndex, def _initialize_grid_arrays)")       
+
         mylog.debug("Allocating arrays for %s grids", self.num_grids)
         self.grid_dimensions = np.ones((self.num_grids,3), 'int32')
         self.grid_left_edge = self.ds.arr(np.zeros((self.num_grids,3),
@@ -106,6 +116,8 @@ class GridIndex(Index):
                                     self.float_type), 'code_length')
         self.grid_levels = np.zeros((self.num_grids,1), 'int32')
         self.grid_particle_count = np.zeros((self.num_grids,1), 'int32')
+
+        mylog.debug("######")
 
     def clear_all_data(self):
         """
@@ -125,6 +137,10 @@ class GridIndex(Index):
         return {self.ds.particle_types_raw[0]: self.grid_particle_count.sum()}
 
     def _initialize_level_stats(self):
+        
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/geometry/grid_geometry_handler.py (class GridIndex, def _initialize_level_stats)")
+
         # Now some statistics:
         #   0 = number of grids
         #   1 = number of cells
@@ -139,6 +155,8 @@ class GridIndex(Index):
             self.level_stats[level]['numgrids'] = np.sum(self.grid_levels == level)
             li = (self.grid_levels[:,0] == level)
             self.level_stats[level]['numcells'] = self.grid_dimensions[li,:].prod(axis=1).sum()
+
+        mylog.debug("######")
 
     @property
     def grid_corners(self):

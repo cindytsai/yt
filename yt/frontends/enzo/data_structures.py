@@ -175,6 +175,9 @@ class EnzoHierarchy(GridIndex):
 
     def __init__(self, ds, dataset_type):
 
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/enzo/data_structures.py (class EnzoHierarchy, def __init__)")
+
         self.dataset_type = dataset_type
         if ds.file_style is not None:
             self._bn = ds.file_style
@@ -197,7 +200,13 @@ class EnzoHierarchy(GridIndex):
         # sync it back
         self.dataset.dataset_type = self.dataset_type
 
+        mylog.debug("######")
+
     def _count_grids(self):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/enzo/data_structures.py (class EnzoHierarchy, def _count_grids)")
+
         self.num_grids = None
         test_grid = test_grid_id = None
         self.num_stars = 0
@@ -216,7 +225,13 @@ class EnzoHierarchy(GridIndex):
                     break
         self._guess_dataset_type(self.ds.dimensionality, test_grid, test_grid_id)
 
+        mylog.debug("######")
+
     def _guess_dataset_type(self, rank, test_grid, test_grid_id):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/enzo/data_structures.py (class EnzoHierarchy, def _guess_dataset_type)")
+
         if test_grid[0] != os.path.sep:
             test_grid = os.path.join(self.directory, test_grid)
         if not os.path.exists(test_grid):
@@ -241,8 +256,14 @@ class EnzoHierarchy(GridIndex):
         else:
             raise NotImplementedError
 
+        mylog.debug("######")
+
     # Sets are sorted, so that won't work!
     def _parse_index(self):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/enzo/data_structures.py (class EnzoHierarchy, def _parse_index)")
+
         def _next_token_line(token, f):
             for line in f:
                 if line.startswith(token):
@@ -305,13 +326,21 @@ class EnzoHierarchy(GridIndex):
         self.grids = temp_grids
         self.filenames = fn
 
+        mylog.debug("######")
+
     def _initialize_grid_arrays(self):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/enzo/data_structures.py (class EnzoHierarchy, def _initialize_grid_arrays)")
+
         super(EnzoHierarchy, self)._initialize_grid_arrays()
         if "AppendActiveParticleType" in self.parameters.keys() and \
                 len(self.parameters["AppendActiveParticleType"]):
             gac = dict((ptype, np.zeros(self.num_grids, dtype='i4')) \
                        for ptype in self.parameters["AppendActiveParticleType"])
             self.grid_active_particle_count = gac
+        
+        mylog.debug("######")
 
     def _fill_arrays(self, ei, si, LE, RE, npart, nap):
         self.grid_dimensions.flat[:] = ei
@@ -364,12 +393,18 @@ class EnzoHierarchy(GridIndex):
         mylog.info("Finished rebuilding")
 
     def _populate_grid_objects(self):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/enzo/data_structures.py (class EnzoHierarchy, def _populate_grid_objects)")
+
         for g,f in izip(self.grids, self.filenames):
             g._prepare_grid()
             g._setup_dx()
             g.set_filename(f[0])
         del self.filenames # No longer needed.
         self.max_level = self.grid_levels.max()
+
+        mylog.debug("######")
 
     def _detect_active_particle_fields(self):
         ap_list = self.dataset["AppendActiveParticleType"]
@@ -412,6 +447,10 @@ class EnzoHierarchy(GridIndex):
                 self.ds.field_info.add_field((apt, fname), sampling_type="cell", **dd)
 
     def _detect_output_fields(self):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/enzo/data_structures.py (class EnzoHierarchy, def _detect_output_fields)")
+
         self.field_list = []
         # Do this only on the root processor to save disk work.
         if self.comm.rank in (0, None):
@@ -448,6 +487,8 @@ class EnzoHierarchy(GridIndex):
         self.field_list = list(self.comm.mpi_bcast(field_list))
         self.dataset.particle_types = list(self.comm.mpi_bcast(ptypes))
         self.dataset.particle_types_raw = list(self.comm.mpi_bcast(ptypes_raw))
+
+        mylog.debug("######")
 
 
     def _generate_random_grids(self):

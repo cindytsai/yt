@@ -113,6 +113,10 @@ class YTDataContainer(object):
         sets its initial set of fields, and the remainder of the arguments
         are passed as field_parameters.
         """
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/data_containers.py (class YTDataContainer, def __init__)")
+
         # ds is typically set in the new object type created in Dataset._add_object_class
         # but it can also be passed as a parameter to the constructor, in which case it will
         # override the default. This code ensures it is never not set.
@@ -137,6 +141,8 @@ class YTDataContainer(object):
         self._set_default_field_parameters()
         for key, val in field_parameters.items():
             self.set_field_parameter(key, val)
+
+        mylog.debug("######")
 
     @property
     def pf(self):

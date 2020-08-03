@@ -761,21 +761,24 @@ class Dataset(object):
         """
         Returns (value, location) of the maximum of a given field.
         """
-        mylog.debug("Searching for maximum value of %s", field)
 
         mylog.debug("#FLAG#")
         mylog.debug("data_objects/static_output.py (class Dataset, def find_max)")
- 
-        source = self.all_data()
+        
+        mylog.debug("Searching for maximum value of %s", field)
 
         mylog.debug("source = self.all_data(), type = %s", type(source))
-        mylog.debug("######")
-
+        
+        source = self.all_data()
+        
         max_val, mx, my, mz = \
             source.quantities.max_location(field)
         center = self.arr([mx, my, mz], dtype="float64").to('code_length')
         mylog.info("Max Value is %0.5e at %0.16f %0.16f %0.16f",
               max_val, center[0], center[1], center[2])
+
+        mylog.debug("######")
+
         return max_val, center
 
     def find_min(self, field):
@@ -844,10 +847,12 @@ class Dataset(object):
         mylog.debug("#FLAG#")
         mylog.debug("data_objects/static_output.py (class Dataset, def all_data)")
         mylog.debug("find_max = %s", find_max)
-        mylog.debug("######")
-
+        
         if find_max: c = self.find_max("density")[1]
         else: c = (self.domain_right_edge + self.domain_left_edge)/2.0
+
+        mylog.debug("######")
+
         return self.region(c,
             self.domain_left_edge, self.domain_right_edge, **kwargs)
 

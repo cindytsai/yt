@@ -37,6 +37,10 @@ class Index(ParallelAnalysisInterface):
     _index_properties = ()
 
     def __init__(self, ds, dataset_type):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/geometry/geometry_handler.py (class Index, def __init__)")
+
         ParallelAnalysisInterface.__init__(self)
         self.dataset = weakref.proxy(ds)
         self.ds = self.dataset
@@ -57,13 +61,25 @@ class Index(ParallelAnalysisInterface):
         mylog.debug("Detecting fields.")
         self._detect_output_fields()
 
+        mylog.debug("######")
+
     def _initialize_state_variables(self):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/geometry/geometry_handler.py (class Index, def _initialize_state_variables)")
+
         self._parallel_locking = False
         self._data_file = None
         self._data_mode = None
         self.num_grids = None
 
+        mylog.debug("######")
+
     def _initialize_data_storage(self):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/geometry/geometry_handler.py (class Index, def _initialize_data_storage)")
+
         if not ytcfg.getboolean('yt','serialize'): return
         fn = self.ds.storage_filename
         if fn is None:
@@ -103,6 +119,8 @@ class Index(ParallelAnalysisInterface):
         self.__data_filename = fn
         self._data_file = h5py.File(fn, self._data_mode)
 
+        mylog.debug("######")
+
     def __create_data_file(self, fn):
         # Note that this used to be parallel_root_only; it no longer is,
         # because we have better logic to decide who owns the file.
@@ -110,8 +128,14 @@ class Index(ParallelAnalysisInterface):
         f.close()
 
     def _setup_data_io(self):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/geometry/geometry_handler.py (class Index, def _setup_data_io)")
+
         if getattr(self, "io", None) is not None: return
         self.io = io_registry[self.dataset_type](self.dataset)
+
+        mylog.debug("######")
 
     @parallel_root_only
     def save_data(self, array, node, name, set_attr=None, force=False, passthrough = False):
