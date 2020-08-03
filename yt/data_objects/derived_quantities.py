@@ -89,7 +89,8 @@ class DerivedQuantity(ParallelAnalysisInterface):
         # These will be YTArrays
         values = [self.data_source.ds.arr(values[i]) for i in range(self.num_vals)]
         values = self.reduce_intermediate(values)
-        
+
+        mylog.debug("values = %s", values)
         mylog.debug("######")
 
         return values
@@ -610,6 +611,7 @@ class SampleAtMaxFieldValues(DerivedQuantity):
         rv = super(SampleAtMaxFieldValues, self).__call__(field, sample_fields)
         if len(rv) == 1: rv = rv[0]
 
+        mylog.debug("rv = %s", rv)
         mylog.debug("######")
         
         return rv
@@ -663,7 +665,8 @@ class MaxLocation(SampleAtMaxFieldValues):
         sample_fields = get_position_fields(field, self.data_source)
         rv = super(MaxLocation, self).__call__(field, sample_fields)
         if len(rv) == 1: rv = rv[0]
-
+        
+        mylog.debug("rv = %s", rv)
         mylog.debug("######")
         
         return rv
