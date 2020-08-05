@@ -64,6 +64,11 @@ class DerivedQuantity(ParallelAnalysisInterface):
         self.data_source = data_source
 
     def count_values(self, *args, **kwargs):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/derived_quantities.py (class DerivedQuantity, def count_values)")
+        mylog.debug("######")
+
         return
 
     def __call__(self, *args, **kwargs):
@@ -72,6 +77,11 @@ class DerivedQuantity(ParallelAnalysisInterface):
         mylog.debug("yt/data_objects/derived_quantities.py (class DerivedQuantity, def __call__(self, *args, **kwargs))")
         
         """Calculate results for the derived quantity"""
+
+        mylog.debug("self.data_source, type = %s", type(self.data_source))
+        mylog.debug("self.data_source.ds, type = %s", type(self.data_source.ds))
+        mylog.debug("self.data_source.ds.index, type = %s", type(self.data_source.ds.index))
+
         # create the index if it doesn't exist yet
         self.data_source.ds.index
         self.count_values(*args, **kwargs)

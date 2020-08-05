@@ -1466,6 +1466,10 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
         return self._selector
 
     def chunks(self, fields, chunking_style, **kwargs):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/data_containers.py (class YTSelectionContainer, def chunks)")
+
         # This is an iterator that will yield the necessary chunks.
         self.get_data() # Ensure we have built ourselves
         if fields is None: fields = []
@@ -1483,6 +1487,8 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
                 self.get_data(fields)
                 # NOTE: we yield before releasing the context
                 yield self
+
+        mylog.debug("######")
 
     def _identify_dependencies(self, fields_to_get, spatial = False):
         inspected = 0
