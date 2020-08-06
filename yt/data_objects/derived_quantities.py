@@ -610,8 +610,14 @@ class SampleAtMaxFieldValues(DerivedQuantity):
 
     """
     def count_values(self, field, sample_fields):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/derived_quantities.py (class SampleAtMaxFieldValues, def count_values)")
+
         # field itself, then index, then the number of sample fields
         self.num_vals = 1 + len(sample_fields)
+
+        mylog.debug("######")
 
     def __call__(self, field, sample_fields):
 
@@ -627,6 +633,10 @@ class SampleAtMaxFieldValues(DerivedQuantity):
         return rv
 
     def process_chunk(self, data, field, sample_fields):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/derived_quantities.py (class SampleAtMaxFieldValues, def process_chunk)")
+
         field = data._determine_fields(field)[0]
         ma = array_like_field(data, self._sign*HUGE, field)
         vals = [array_like_field(data, -1, sf) for sf in sample_fields]
@@ -635,10 +645,20 @@ class SampleAtMaxFieldValues(DerivedQuantity):
             maxi = self._func(data[field])
             ma = data[field][maxi]
             vals = [data[sf][maxi] for sf in sample_fields]
+
+        mylog.debug("######")
+
         return (ma,) + tuple(vals)
 
     def reduce_intermediate(self, values):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/derived_quantities.py (class SampleAtMaxFieldValues, def reduce_intermediate)")
+
         i = self._func(values[0]) # ma is values[0]
+        
+        mylog.debug("######")
+
         return [val[i] for val in values]
 
     def _func(self, arr):
