@@ -1515,6 +1515,10 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
         return sorted(fields_to_get)
 
     def get_data(self, fields=None):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/data_containers.py (class YTSelectionContainer, def get_data)")
+
         if self._current_chunk is None:
             self.index._identify_base_chunk(self)
         if fields is None: return
@@ -1596,6 +1600,8 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
         for field in list(self.field_data.keys()):
             if field not in ofields:
                 self.field_data.pop(field)
+
+        mylog.debug("######")
 
     def _generate_fields(self, fields_to_generate):
         index = 0
