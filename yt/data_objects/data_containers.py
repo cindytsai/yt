@@ -1477,10 +1477,18 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
         # scalar, that'll be the only chunk that gets returned; if it's a list,
         # those are the ones that will be.
         chunk_ind = kwargs.pop("chunk_ind", None)
+
+        mylog.debug("chunk_ind = %s", chunk_ind)
+        mylog.debug("chunking_style = %s", chunking_style)
+
         if chunk_ind is not None:
             chunk_ind = ensure_list(chunk_ind)
         for ci, chunk in enumerate(self.index._chunk(self, chunking_style,
                                    **kwargs)):
+
+            mylog.debug("ci = %s", ci)
+            mylog.debug("chunk = %s", chunk)
+
             if chunk_ind is not None and ci not in chunk_ind:
                 continue
             with self._chunked_read(chunk):
@@ -1521,7 +1529,11 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
 
         if self._current_chunk is None:
             self.index._identify_base_chunk(self)
-        if fields is None: return
+        if fields is None: 
+            
+            mylog.debug("######")
+
+            return
         nfields = []
         apply_fields = defaultdict(list)
         for field in self._determine_fields(fields):

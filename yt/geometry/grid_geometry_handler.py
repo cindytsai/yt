@@ -394,6 +394,10 @@ class GridIndex(Index):
     _grid_chunksize = 1000
     def _chunk_io(self, dobj, cache=True, local_only=False,
                   preload_fields=None, chunk_sizing="auto"):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/geometry/grid_geometry_handler.py (class GridIndex, def _chunk_io)")
+
         # local_only is only useful for inline datasets and requires
         # implementation by subclasses.
         if preload_fields is None:
@@ -434,6 +438,8 @@ class GridIndex(Index):
                 with self.io.preload(dc, preload_fields, 
                             4.0 * size):
                     yield dc
+
+        mylog.debug("######")
 
     def _add_mesh_sampling_particle_field(self, deposit_field, ftype, ptype):
         units = self.ds.field_info[ftype, deposit_field].units

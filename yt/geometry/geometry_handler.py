@@ -269,6 +269,12 @@ class Index(ParallelAnalysisInterface):
         return fields_to_return, fields_to_generate
 
     def _chunk(self, dobj, chunking_style, ngz = 0, **kwargs):
+        
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/geometry/geometry_handler.py (class Index, def _chunk)")
+        mylog.debug("chunking_style = %s", chunking_style)
+        mylog.debug("ngz = %s", ngz)
+
         # A chunk is either None or (grids, size)
         if dobj._current_chunk is None:
             self._identify_base_chunk(dobj)
@@ -282,6 +288,8 @@ class Index(ParallelAnalysisInterface):
             return self._chunk_io(dobj, **kwargs)
         else:
             raise NotImplementedError
+
+        mylog.debug("######")
 
 def cached_property(func):
     n = '_%s' % func.__name__

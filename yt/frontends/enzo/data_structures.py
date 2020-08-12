@@ -584,6 +584,10 @@ class EnzoHierarchyInMemory(EnzoHierarchy):
         return self._enzo
 
     def __init__(self, ds, dataset_type = None):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/enzo/data_structures.py (class EnzoHierarchyInMemory def __init__)")
+
         self.dataset_type = dataset_type
         self.float_type = 'float64'
         self.dataset = weakref.proxy(ds) # for _obtain_enzo
@@ -591,13 +595,30 @@ class EnzoHierarchyInMemory(EnzoHierarchy):
         self.directory = os.getcwd()
         GridIndex.__init__(self, ds, dataset_type)
 
+        mylog.debug("######")
+
     def _initialize_data_storage(self):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/enzo/data_structures.py (class EnzoHierarchyInMemory def _initialize_data_storage)")
+        mylog.debug("######")
+
         pass
 
     def _count_grids(self):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/enzo/data_structures.py (class EnzoHierarchyInMemory def _count_grids)")
+
         self.num_grids = self.enzo.hierarchy_information["GridDimensions"].shape[0]
 
+        mylog.debug("######")
+
     def _parse_index(self):
+        
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/enzo/data_structures.py (class EnzoHierarchyInMemory def _parse_index)")
+
         self._copy_index_structure()
         mylog.debug("Copying reverse tree")
         reverse_tree = self.enzo.hierarchy_information["GridParentIDs"].ravel().tolist()
@@ -624,15 +645,22 @@ class EnzoHierarchyInMemory(EnzoHierarchy):
             self.grids[i] = grid
         mylog.debug("Prepared")
 
+        mylog.debug("######")
+
     def _initialize_grid_arrays(self):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/enzo/data_structures.py (class EnzoHierarchyInMemory def _initialize_grid_arrays")
+
         EnzoHierarchy._initialize_grid_arrays(self)
         self.grid_procs = np.zeros((self.num_grids,1),'int32')
+
+        mylog.debug("######")
 
     def _copy_index_structure(self):
 
         mylog.debug("#FLAG#")
         mylog.debug("frontends/enzo/data_structures.py (class EnzoHierarchyInMemory, def _copy_index_structure())")
-        mylog.debug("######")
 
         # Dimensions are important!
         self.grid_dimensions[:] = self.enzo.hierarchy_information["GridEndIndices"][:]
@@ -643,6 +671,8 @@ class EnzoHierarchyInMemory(EnzoHierarchy):
         self.grid_levels[:] = self.enzo.hierarchy_information["GridLevels"][:]
         self.grid_procs = self.enzo.hierarchy_information["GridProcs"].copy()
         self.grid_particle_count[:] = self.enzo.hierarchy_information["GridNumberOfParticles"][:]
+
+        mylog.debug("######")
 
     def save_data(self, *args, **kwargs):
         pass
