@@ -1487,7 +1487,7 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
                                    **kwargs)):
 
             mylog.debug("ci = %s", ci)
-            mylog.debug("chunk = %s", chunk)
+            mylog.debug("chunk.objs = %s", chunk.objs)
 
             if chunk_ind is not None and ci not in chunk_ind:
                 continue

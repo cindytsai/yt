@@ -187,9 +187,15 @@ class ParticleIndex(Index):
             yield YTDataChunk(dobj, "spatial", [g])
 
     def _chunk_io(self, dobj, cache = True, local_only = False):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/geometry/particle_geometry_handler.py (class ParticleIndex, def _chunk_io)")
+
         oobjs = getattr(dobj._current_chunk, "objs", dobj._chunk_info)
         for subset in oobjs:
             yield YTDataChunk(dobj, "io", [subset], None, cache = cache)
+
+        mylog.debug("######")
 
 class ParticleDataChunk(YTDataChunk):
     def __init__(self, oct_handler, regions, *args, **kwargs):

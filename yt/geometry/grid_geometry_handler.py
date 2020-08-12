@@ -406,9 +406,17 @@ class GridIndex(Index):
         gfiles = defaultdict(list)
         gobjs = getattr(dobj._current_chunk, "objs", dobj._chunk_info)
         fast_index = dobj._current_chunk._fast_index
+        
+        mylog.debug("gobjs = %s", gobjs)
+        mylog.debug("dobj._current_chunk = %s", dobj._current_chunk)
+        mylog.debug("dobj._chunk_info = %s", dobj._chunk_info)
+
         for g in gobjs:
             # Force to be a string because sometimes g.filename is None.
             gfiles[str(g.filename)].append(g)
+
+        mylog.debug("gfiles = %s", gfiles)
+
         # We can apply a heuristic here to make sure we aren't loading too
         # many grids all at once.
         if chunk_sizing == "auto":
@@ -417,7 +425,16 @@ class GridIndex(Index):
                 nproc = np.float(ytcfg.getint("yt", "__global_parallel_size"))
                 chunking_factor = np.ceil(self._grid_chunksize*nproc/chunk_ngrids).astype("int")
                 size = max(self._grid_chunksize//chunking_factor, 1)
+
+                mylog.debug("nproc = %s", nproc)
+                mylog.debug("chunking_factor = %s", chunking_factor)
+                mylog.debug("self._grid_chunksize = %s", self._grid_chunksize)
+                mylog.debug("chunk_ngrids = %s", chunk_ngrids)
+
             else:
+
+                mylog.debug("self._grid_chunksize = %s", self._grid_chunksize)
+
                 size = self._grid_chunksize
         elif chunk_sizing == "config_file":
             size = ytcfg.getint("yt", "chunk_size")
@@ -427,8 +444,13 @@ class GridIndex(Index):
             size = self._grid_chunksize
         else:
             raise RuntimeError("%s is an invalid value for the 'chunk_sizing' argument." % chunk_sizing)
+        
         for fn in sorted(gfiles):
             gs = gfiles[fn]
+
+            mylog.debug("fn = %s", fn)
+            mylog.debug("gs = %s", gs)
+
             for grids in (gs[pos:pos + size] for pos
                           in range(0, len(gs), size)):
                 dc = YTDataChunk(dobj, "io", grids,
