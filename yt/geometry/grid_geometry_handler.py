@@ -409,6 +409,7 @@ class GridIndex(Index):
         
         mylog.debug("gobjs = %s", gobjs)
         mylog.debug("dobj._current_chunk = %s", dobj._current_chunk)
+        mylog.debug("hasattr(dobj._current_chunk, 'objs') = %s", hasattr(dobj._current_chunk, "objs"))
         mylog.debug("dobj._chunk_info = %s", dobj._chunk_info)
 
         for g in gobjs:
