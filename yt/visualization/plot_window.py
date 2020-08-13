@@ -181,6 +181,10 @@ class PlotWindow(ImagePlotContainer):
                  periodic=True, origin='center-window', oblique=False, right_handed=True,
                  window_size=8.0, fields=None, fontsize=18, aspect=None,
                  setup=False):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/visualization/plot_window.py (class PlotWindow, def __init__)")
+
         self.center = None
         self._periodic = periodic
         self.oblique = oblique
@@ -227,6 +231,8 @@ class PlotWindow(ImagePlotContainer):
                 self._field_transform[field] = linear_transform
         self.setup_callbacks()
         self._setup_plots()
+
+        mylog.debug("######")
 
     def __iter__(self):
         for ds in self.ts:
@@ -768,12 +774,18 @@ class PWViewerMPL(PlotWindow):
     _data_valid = False
 
     def __init__(self, *args, **kwargs):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/visualization/plot_window.py (class PWViewerMPL, def __init__)")
+
         if self._frb_generator is None:
             self._frb_generator = kwargs.pop("frb_generator")
         if self._plot_type is None:
             self._plot_type = kwargs.pop("plot_type")
         self._splat_color = kwargs.pop("splat_color", None)
         PlotWindow.__init__(self, *args, **kwargs)
+
+        mylog.debug("######")
 
     def _setup_origin(self):
         origin = self.origin
@@ -1259,12 +1271,19 @@ class AxisAlignedSlicePlot(PWViewerMPL):
     def __init__(self, ds, axis, fields, center='c', width=None, axes_unit=None,
                  origin='center-window', right_handed=True, fontsize=18, field_parameters=None,
                  window_size=8.0, aspect=None, data_source=None):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/visualization/plot_window.py (class AxisAlignedSlicePlot, def __init__)")
+
         # this will handle time series data and controllers
         axis = fix_axis(axis, ds)
         (bounds, center, display_center) = \
             get_window_parameters(axis, center, width, ds)
         if field_parameters is None:
             field_parameters = {}
+
+        mylog.debug("ds type = %s", type(ds))
+        mylog.debug("ds.geometry = %s", ds.geometry)
 
         if ds.geometry in ("spherical", "cylindrical", "geographic", "internal_geographic"):
             mylog.info("Setting origin='native' for %s geometry." % ds.geometry)
@@ -1279,6 +1298,9 @@ class AxisAlignedSlicePlot(PWViewerMPL):
         else:
             slc = ds.slice(axis, center[axis], field_parameters=field_parameters,
                            center=center, data_source=data_source)
+            
+            mylog.debug("slc type = %s", type(slc))
+
             slc.get_data(fields)
         validate_mesh_fields(slc, fields)
         PWViewerMPL.__init__(self, slc, bounds, origin=origin,
@@ -1288,6 +1310,8 @@ class AxisAlignedSlicePlot(PWViewerMPL):
         if axes_unit is None:
             axes_unit = get_axes_unit(width, ds)
         self.set_axes_unit(axes_unit)
+
+        mylog.debug("######")
 
 class ProjectionPlot(PWViewerMPL):
     r"""Creates a projection plot from a dataset
@@ -1945,6 +1969,10 @@ def SlicePlot(ds, normal=None, fields=None, axis=None, *args, **kwargs):
     ...                 north_vector=[0.2,-0.3,0.1])
 
     """
+
+    mylog.debug("#FLAG#")
+    mylog.debug("yt/visualization/plot_window.py (def SlicePlot)")
+
     # Make sure we are passed a normal
     # we check the axis keyword for backwards compatibility
     if normal is None: normal = axis
@@ -1974,6 +2002,8 @@ def SlicePlot(ds, normal=None, fields=None, axis=None, *args, **kwargs):
             mylog.warning(msg)
             del kwargs['origin']
 
+        mylog.debug("######")
+
         return OffAxisSlicePlot(ds, normal, fields, *args, **kwargs)
     else:
         # north_vector not used in AxisAlignedSlicePlots; remove it if in kwargs
@@ -1983,6 +2013,8 @@ def SlicePlot(ds, normal=None, fields=None, axis=None, *args, **kwargs):
             mylog.warning(msg)
             del kwargs['north_vector']
 
+        mylog.debug("######")
+        
         return AxisAlignedSlicePlot(ds, normal, fields, *args, **kwargs)
 
 def plot_2d(ds, fields, center='c', width=None, axes_unit=None,

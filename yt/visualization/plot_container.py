@@ -46,6 +46,8 @@ from yt.utilities.exceptions import \
 from yt.visualization.color_maps import \
     yt_colormaps
 
+from yt.funcs import mylog
+
 
 def invalidate_data(f):
     @wraps(f)
@@ -190,6 +192,10 @@ class PlotContainer(object):
     _plot_valid = False
 
     def __init__(self, data_source, figure_size, fontsize):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/visualization/plot_container.py (class PlotContainer, def __init__)")
+
         from matplotlib.font_manager import FontProperties
         self.data_source = data_source
         self.ds = data_source.ds
@@ -205,6 +211,8 @@ class PlotContainer(object):
         self._ylabel = None
         self._minorticks = {}
         self._field_transform = {}
+
+        mylog.debug("######")
 
     @invalidate_plot
     def set_log(self, field, log, linthresh=None):
@@ -798,6 +806,10 @@ class ImagePlotContainer(PlotContainer):
     _colorbar_valid = False
 
     def __init__(self, data_source, figure_size, fontsize):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/visualization/plot_container.py (class ImagePlotContainer, def __init__)")
+
         super(ImagePlotContainer, self).__init__(
             data_source, figure_size, fontsize)
         self.plots = PlotDictionary(data_source)
@@ -809,6 +821,8 @@ class ImagePlotContainer(PlotContainer):
             self.data_source, lambda: 'w')
         self._colorbar_label = PlotDictionary(
             self.data_source, lambda: None)
+
+        mylog.debug("######")
 
     @invalidate_plot
     def set_cmap(self, field, cmap):

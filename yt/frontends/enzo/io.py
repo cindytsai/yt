@@ -265,12 +265,14 @@ class IOHandlerInMemory(BaseIOHandler):
                     ftype, fname = field
 
                     mylog.debug("Keys in self.grids_in_memory = %s", self.grids_in_memory.keys())
-                    mylog.debug("######")
 
                     data_view = self.grids_in_memory[g.id][fname][self.my_slice].swapaxes(0, 2)
                     nd = g.select(selector, data_view, rv[field], ind)
                 ind += nd
         assert(ind == fsize)
+
+        mylog.debug("######")
+
         return rv
 
     def _read_particle_coords(self, chunks, ptf):

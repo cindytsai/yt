@@ -716,7 +716,6 @@ class EnzoHierarchyInMemory(EnzoHierarchy):
             gfiles[g.filename].append(g)
 
         mylog.debug("gfiles = %s", gfiles)
-        mylog.debug("######")
         
         for fn in sorted(gfiles):
             if local_only:
@@ -724,6 +723,9 @@ class EnzoHierarchyInMemory(EnzoHierarchy):
                 gfiles[fn] = gobjs
             gs = gfiles[fn]
             count = self._count_selection(dobj, gs)
+
+            mylog.debug("######")
+
             yield YTDataChunk(dobj, "io", gs, count, cache = cache)
 
 
