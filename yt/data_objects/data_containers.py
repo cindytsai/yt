@@ -1494,9 +1494,11 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
             with self._chunked_read(chunk):
                 self.get_data(fields)
                 # NOTE: we yield before releasing the context
+
+                mylog.debug("######")
+
                 yield self
 
-        mylog.debug("######")
 
     def _identify_dependencies(self, fields_to_get, spatial = False):
         inspected = 0
@@ -1526,6 +1528,7 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
 
         mylog.debug("#FLAG#")
         mylog.debug("yt/data_objects/data_containers.py (class YTSelectionContainer, def get_data)")
+        mylog.debug("fields = %s", fields)
 
         if self._current_chunk is None:
             self.index._identify_base_chunk(self)
@@ -1767,6 +1770,9 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
         old_field_data, self.field_data = self.field_data, YTFieldData()
         old_chunk, self._current_chunk = self._current_chunk, chunk
         old_locked, self._locked = self._locked, False
+
+        mylog.debug("######")
+
         yield
         self.field_data = old_field_data
         self._current_chunk = old_chunk
@@ -1775,9 +1781,9 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
             for obj in chunk.objs:
                 obj.field_data = obj_field_data.pop(0)
 
-        mylog.debug("chunk.objs = %s", chunk.objs)
+        mylog.debug("after yield chunk.objs = %s", chunk.objs)
         for obj in chunk.objs:
-            mylog.debug("obj = %s", obj)
+            mylog.debug("after yield obj = %s", obj)
         mylog.debug("######")
 
     @contextmanager

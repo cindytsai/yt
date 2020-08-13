@@ -459,9 +459,10 @@ class GridIndex(Index):
                 # We allow four full chunks to be included.
                 with self.io.preload(dc, preload_fields, 
                             4.0 * size):
-                    yield dc
+                    
+                    mylog.debug("######")
 
-        mylog.debug("######")
+                    yield dc
 
     def _add_mesh_sampling_particle_field(self, deposit_field, ftype, ptype):
         units = self.ds.field_info[ftype, deposit_field].units

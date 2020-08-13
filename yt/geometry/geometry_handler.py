@@ -281,15 +281,22 @@ class Index(ParallelAnalysisInterface):
         if ngz != 0 and chunking_style != "spatial":
             raise NotImplementedError
         if chunking_style == "all":
+
+            mylog.debug("######")
+
             return self._chunk_all(dobj, **kwargs)
         elif chunking_style == "spatial":
+
+            mylog.debug("######")
+
             return self._chunk_spatial(dobj, ngz, **kwargs)
         elif chunking_style == "io":
+
+            mylog.debug("######")
+
             return self._chunk_io(dobj, **kwargs)
         else:
             raise NotImplementedError
-
-        mylog.debug("######")
 
 def cached_property(func):
     n = '_%s' % func.__name__
