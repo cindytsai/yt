@@ -119,11 +119,18 @@ class IOHandlerPackedHDF5(BaseIOHandler):
                 f.close()
 
     def io_iter(self, chunks, fields):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/enzo/io.py (class IOHandlerPackedHDF5, def io_iter)")
+
         h5_dtype = self._field_dtype
         for chunk in chunks:
             fid = None
             filename = -1
             for obj in chunk.objs:
+
+                mylog.debug("obj = %s", obj)
+
                 if obj.filename is None:
                     continue
                 if obj.filename != filename:
@@ -139,6 +146,9 @@ class IOHandlerPackedHDF5(BaseIOHandler):
                     nodal_flag = self.ds.field_info[field].nodal_flag
                     dims = obj.ActiveDimensions[::-1] + nodal_flag[::-1]
                     data = np.empty(dims, dtype=h5_dtype)
+
+                    mylog.debug("######")
+
                     yield field, obj, self._read_obj_field(
                         obj, field, (fid, data))
         if fid is not None:
@@ -327,6 +337,10 @@ class IOHandlerPacked2D(IOHandlerPackedHDF5):
         pass
 
     def _read_fluid_selection(self, chunks, selector, fields, size):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/enzo/io.py (class IOHandlerPacked2D, def _read_fluid_selection)")
+
         rv = {}
         # Now we have to do something unpleasant
         chunks = list(chunks)
@@ -340,6 +354,9 @@ class IOHandlerPacked2D(IOHandlerPackedHDF5):
                 rv[(ftype, fname)] = np.atleast_3d(
                     gds.get(fname)[()].transpose())
             f.close()
+
+            mylog.debug("######")
+
             return rv
         if size is None:
             size = sum((g.count(selector) for chunk in chunks
@@ -367,6 +384,9 @@ class IOHandlerPacked2D(IOHandlerPackedHDF5):
                     nd = g.select(selector, ds, rv[field], ind)  # caches
                 ind += nd
             f.close()
+
+        mylog.debug("######")
+
         return rv
 
 class IOHandlerPacked1D(IOHandlerPackedHDF5):

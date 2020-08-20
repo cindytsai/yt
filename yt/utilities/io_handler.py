@@ -24,6 +24,8 @@ from yt.utilities.lru_cache import \
     local_lru_cache, _make_key
 from yt.geometry.selection_routines import GridSelector
 
+from yt.funcs import mylog
+
 _axis_ids = {0:2,1:1,2:0}
 
 io_registry = {}
@@ -126,6 +128,13 @@ class BaseIOHandler(object):
         # rewrite a whole bunch of IO handlers all at once, and to allow a
         # better abstraction for grid-based frontends, we're now defining it in
         # the base class.
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/utilities/io_handler.py (class BaseIOHandler, def _read_fluid_selection)")
+        mylog.debug("chunks = %s", chunks)
+        mylog.debug("fields = %s", fields)
+        mylog.debug("size = %s", size)
+
         rv = {}
         nodal_fields = []
         for field in fields:
@@ -146,6 +155,10 @@ class BaseIOHandler(object):
                 rv[field] = data.copy()
             else:
                 ind[field] += obj.select(selector, data, rv[field], ind[field])
+
+        
+        mylog.debug("######")
+
         return rv
 
     def _read_data_slice(self, grid, field, axis, coord):
@@ -172,6 +185,12 @@ class BaseIOHandler(object):
         return dict(psize.items())
 
     def _read_particle_selection(self, chunks, selector, fields):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/utilities/io_handler.py (class BaseIOHandler, def _read_particle_selection)")
+        mylog.debug("chunks = %s", chunks)
+        mylog.debug("fields = %s", fields)
+
         rv = {}
         ind = {}
         # We first need a set of masks for each particle type
@@ -228,6 +247,9 @@ class BaseIOHandler(object):
         # over-estimating.
         for field_f in ind:
             rv[field_f] = rv[field_f][:ind[field_f]]
+
+        mylog.debug("######")
+
         return rv
 
 class IOHandlerExtracted(BaseIOHandler):

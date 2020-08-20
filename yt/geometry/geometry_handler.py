@@ -237,25 +237,58 @@ class Index(ParallelAnalysisInterface):
         return fields_to_read, fields_to_generate
 
     def _read_particle_fields(self, fields, dobj, chunk = None):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/geometry/geometry_handler.py (class Index, def _read_particle_fields)")
+        mylog.debug("fields = %s", fields)
+
         if len(fields) == 0: return {}, []
         fields_to_read, fields_to_generate = self._split_fields(fields)
+
+        mylog.debug("fields_to_read = %s", fields_to_read)
+        mylog.debug("fields_to_generate = %s", fields_to_generate)
+
         if len(fields_to_read) == 0:
+            
+            mylog.debug("######")
+
             return {}, fields_to_generate
         selector = dobj.selector
+
+        mylog.debug("selector = %s", selector)
+
         if chunk is None:
             self._identify_base_chunk(dobj)
         fields_to_return = self.io._read_particle_selection(
             self._chunk_io(dobj, cache = False),
             selector,
             fields_to_read)
+
+        mylog.debug("######")
+
         return fields_to_return, fields_to_generate
 
     def _read_fluid_fields(self, fields, dobj, chunk = None):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/geometry/geometry_handler.py (class Index, def _read_fluid_fields)")
+        mylog.debug("fields = %s", fields)
+        
         if len(fields) == 0: return {}, []
         fields_to_read, fields_to_generate = self._split_fields(fields)
+
+        mylog.debug("fields_to_read = %s", fields_to_read)
+        mylog.debug("fields_to_generate = %s", fields_to_generate)
+
         if len(fields_to_read) == 0:
+            
+            mylog.debug("######")
+            
             return {}, fields_to_generate
         selector = dobj.selector
+
+        mylog.debug("selector = %s", selector)
+
         if chunk is None:
             self._identify_base_chunk(dobj)
             chunk_size = dobj.size
@@ -266,6 +299,9 @@ class Index(ParallelAnalysisInterface):
             selector,
             fields_to_read,
             chunk_size)
+
+        mylog.debug("######")
+
         return fields_to_return, fields_to_generate
 
     def _chunk(self, dobj, chunking_style, ngz = 0, **kwargs):
