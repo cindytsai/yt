@@ -294,6 +294,9 @@ class Index(ParallelAnalysisInterface):
             chunk_size = dobj.size
         else:
             chunk_size = chunk.data_size
+
+            mylog.debug("chunk_size = %s", chunk_size)
+
         fields_to_return = self.io._read_fluid_selection(
             self._chunk_io(dobj),
             selector,

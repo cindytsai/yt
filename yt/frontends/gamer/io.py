@@ -106,6 +106,10 @@ class IOHandlerGAMER(BaseIOHandler):
                     yield (ptype, field), data[mask]
 
     def _read_fluid_selection(self, chunks, selector, fields, size):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/gamer/io.py (class IOHandlerGAMER, def _read_fluid_selection)")
+
         chunks = list(chunks) # generator --> list
 
         if any( (ftype != "gamer" for ftype, fname in fields) ):
@@ -148,6 +152,9 @@ class IOHandlerGAMER(BaseIOHandler):
 
                     for i, g in enumerate(gs):
                         offset += g.select( selector, data[...,i], rv[field], offset )
+
+        mylog.debug("######")
+
         return rv
 
     def _read_chunk_data(self, chunk, fields):

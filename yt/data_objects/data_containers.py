@@ -1600,12 +1600,20 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
         # need to be generated.
         read_fluids, gen_fluids = self.index._read_fluid_fields(
                                         fluids, self, self._current_chunk)
+
+        mylog.debug("read_fluids = %s", read_fluids)
+        mylog.debug("gen_fluids = %s", gen_fluids)
+
         for f, v in read_fluids.items():
             self.field_data[f] = self.ds.arr(v, input_units = finfos[f].units)
             self.field_data[f].convert_to_units(finfos[f].output_units)
 
         read_particles, gen_particles = self.index._read_particle_fields(
                                         particles, self, self._current_chunk)
+
+        mylog.debug("read_particles = %s", read_particles)
+        mylog.debug("gen_particles = %s", gen_particles)
+
         for f, v in read_particles.items():
             self.field_data[f] = self.ds.arr(v, input_units = finfos[f].units)
             self.field_data[f].convert_to_units(finfos[f].output_units)
