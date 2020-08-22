@@ -703,6 +703,10 @@ class Dataset(object):
     _last_freq = (None, None)
     _last_finfo = None
     def _get_field_info(self, ftype, fname = None):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/static_output.py (class Dataset, def _get_field_info)")
+
         self.index
         if fname is None:
             if isinstance(ftype, DerivedField):
@@ -716,10 +720,16 @@ class Dataset(object):
         field = (ftype, fname)
         if field == self._last_freq:
             if field not in self.field_info.field_aliases.values():
+
+                mylog.debug("######")
+
                 return self._last_finfo
         if field in self.field_info:
             self._last_freq = field
             self._last_finfo = self.field_info[(ftype, fname)]
+
+            mylog.debug("######")
+            
             return self._last_finfo
         if fname in self.field_info:
             # Sometimes, if guessing_type == True, this will be switched for
@@ -731,6 +741,9 @@ class Dataset(object):
             elif not fi.particle_type and self._last_freq[0] not in self.fluid_types:
                 field = self.default_fluid_type, field[1]
             self._last_freq = field
+            
+            mylog.debug("######")
+            
             return self._last_finfo
         # We also should check "all" for particles, which can show up if you're
         # mixing deposition/gas fields with particle fields.
@@ -742,6 +755,9 @@ class Dataset(object):
                 if (ftype, fname) in self.field_info:
                     self._last_freq = (ftype, fname)
                     self._last_finfo = self.field_info[(ftype, fname)]
+                    
+                    mylog.debug("######")
+                    
                     return self._last_finfo
         raise YTFieldNotFound((ftype, fname), self)
 

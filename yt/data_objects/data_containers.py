@@ -1356,8 +1356,14 @@ class YTDataContainer(object):
         mylog.debug("yt/data_objects/data_containers.py (class YTDataContainer, def _determine_fields)")
 
         fields = ensure_list(fields)
+
+        mylog.debug("fields = %s", fields)
+
         explicit_fields = []
         for field in fields:
+            
+            mylog.debug("field = %s", field)
+
             if field in self._container_fields:
                 explicit_fields.append(field)
                 continue
