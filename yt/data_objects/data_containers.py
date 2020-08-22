@@ -1351,6 +1351,10 @@ class YTDataContainer(object):
         obj._current_fluid_type = old_fluid_type
 
     def _determine_fields(self, fields):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/data_containers.py (class YTDataContainer, def _determine_fields)")
+
         fields = ensure_list(fields)
         explicit_fields = []
         for field in fields:
@@ -1394,6 +1398,9 @@ class YTDataContainer(object):
             elif not finfo.particle_type and ftype not in self.ds.fluid_types:
                 raise YTFieldTypeNotFound(ftype, ds=self.ds)
             explicit_fields.append((ftype, fname))
+
+        mylog.debug("######")
+
         return explicit_fields
 
     _tree = None

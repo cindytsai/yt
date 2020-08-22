@@ -442,6 +442,10 @@ class Dataset(object):
     _instantiated_index = None
     @property
     def index(self):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/static_output.py (class Dataset, def index)")
+
         if self._instantiated_index is None:
             if self._index_class is None:
                 raise RuntimeError("You should not instantiate Dataset.")
@@ -453,6 +457,9 @@ class Dataset(object):
             np.seterr(all='ignore')
             self.create_field_info()
             np.seterr(**oldsettings)
+
+        mylog.debug("######")
+
         return self._instantiated_index
 
     _index_proxy = None

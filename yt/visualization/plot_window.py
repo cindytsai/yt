@@ -127,10 +127,18 @@ def get_axes_unit(width, ds):
     return axes_unit
 
 def validate_mesh_fields(data_source, fields):
+    
+    mylog.debug("#FLAG#")
+    mylog.debug("yt/visualization/plot_window.py (def validate_mesh_fields)")
+    mylog.debug("data_source type = %s", type(data_source))
+
     # this check doesn't make sense for ytdata plot datasets, which
     # load mesh data as a particle field but nonetheless can still
     # make plots with it
     if isinstance(data_source.ds, YTSpatialPlotDataset):
+        
+        mylog.debug("######")
+
         return
     canonical_fields = data_source._determine_fields(fields)
     invalid_fields = []
@@ -140,6 +148,8 @@ def validate_mesh_fields(data_source, fields):
 
     if len(invalid_fields) > 0:
         raise YTInvalidFieldType(invalid_fields)
+
+    mylog.debug("######")
 
 
 class PlotWindow(ImagePlotContainer):
@@ -1464,6 +1474,10 @@ class ProjectionPlot(PWViewerMPL):
                  right_handed=True, fontsize=18, field_parameters=None, data_source=None,
                  method = "integrate", proj_style = None, window_size=8.0,
                  aspect=None):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/visualization/plot_window.py (class ProjectionPlot, def __init__)")
+
         axis = fix_axis(axis, ds)
         if ds.geometry in ("spherical", "cylindrical", "geographic", "internal_geographic"):
             mylog.info("Setting origin='native' for %s geometry." % ds.geometry)
@@ -1483,6 +1497,8 @@ class ProjectionPlot(PWViewerMPL):
         # plotting classes to avoid an exception
         test_data_source = ds.all_data()
         validate_mesh_fields(test_data_source, fields)
+
+        mylog.debug("ds type = %s", type(ds))
 
         if isinstance(ds, YTSpatialPlotDataset):
             proj = ds.all_data()
