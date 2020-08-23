@@ -447,10 +447,16 @@ class Dataset(object):
         mylog.debug("yt/data_objects/static_output.py (class Dataset, def index)")
 
         if self._instantiated_index is None:
+
+            mylog.debug("self._instantiated_index is None")
+
             if self._index_class is None:
                 raise RuntimeError("You should not instantiate Dataset.")
             self._instantiated_index = self._index_class(
                 self, dataset_type=self.dataset_type)
+
+            mylog.debug("self._instantiated = %s", self._instantiated_index)
+
             # Now we do things that we need an instantiated index for
             # ...first off, we create our field_info now.
             oldsettings = np.geterr()
