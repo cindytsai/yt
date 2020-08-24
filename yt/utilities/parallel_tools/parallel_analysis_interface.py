@@ -1124,12 +1124,18 @@ class ParallelAnalysisInterface(object):
     _distributed = None
 
     def __init__(self, comm = None):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/utilities/parallel_tools/parallel_analysis_interface.py (class ParallelAnalysisInterface, def __init__)")
+
         if comm is None:
             self.comm = communication_system.communicators[-1]
         else:
             self.comm = comm
         self._grids = self.comm._grids
         self._distributed = self.comm._distributed
+
+        mylog.debug("######")
 
     def _get_objs(self, attr, *args, **kwargs):
         if self._distributed:

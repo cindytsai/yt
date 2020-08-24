@@ -225,6 +225,21 @@ class YTQuadTreeProj(YTSelectionContainer2D):
                  center = None, ds = None, data_source = None,
                  style = None, method = "integrate",
                  field_parameters = None, max_level = None):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/construction_data_containers.py (class YTQuadTreeProj, def __init__)")
+        mylog.debug("field = %s", field)
+        mylog.debug("axis = %s", axis)
+        mylog.debug("weight_field = %s", weight_field)
+        mylog.debug("center = %s", center)
+        mylog.debug("ds = %s", ds)
+        mylog.debug("data_source = %s", data_source)
+        mylog.debug("style = %s", style)
+        mylog.debug("method = %s", method)
+        mylog.debug("field_parameters = %s", field_parameters)
+        mylog.debug("max_level = %s", max_level)
+
+
         YTSelectionContainer2D.__init__(self, axis, ds, field_parameters)
         # Style is deprecated, but if it is set, then it trumps method
         # keyword.  TODO: Remove this keyword and this check at some point in
@@ -269,6 +284,8 @@ class YTQuadTreeProj(YTSelectionContainer2D):
         if not self.deserialize(field):
             self.get_data(field)
             self.serialize()
+
+        mylog.debug("######(class YTQuadTreeProj, def __init__)")
 
     @property
     def blocks(self):

@@ -1447,6 +1447,10 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
     _min_level = None
 
     def __init__(self, ds, field_parameters, data_source=None):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/data_containers.py (class YTSelectionContainer, def __init__)")
+
         ParallelAnalysisInterface.__init__(self)
         super(YTSelectionContainer, self).__init__(ds, field_parameters)
         self._data_source = data_source
@@ -1460,6 +1464,8 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
                                     (data_source._dimensionality, self._dimensionality))
             self.field_parameters.update(data_source.field_parameters)
         self.quantities = DerivedQuantityCollection(self)
+
+        mylog.debug("######(class YTSelectionContainer, def __init__)")
 
     @property
     def selector(self):
@@ -1933,11 +1939,17 @@ class YTSelectionContainer2D(YTSelectionContainer):
     """
     _spatial = False
     def __init__(self, axis, ds, field_parameters = None, data_source = None):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/data_containers.py (class YTSelectionContainer2D, def __init__)")
+
         super(YTSelectionContainer2D, self).__init__(
             ds, field_parameters, data_source)
         # We need the ds, which will exist by now, for fix_axis.
         self.axis = fix_axis(axis, self.ds)
         self.set_field_parameter("axis", axis)
+
+        mylog.debug("######(class YTSelectionContainer2D, def __init__)")
 
     def _convert_field_name(self, field):
         return field

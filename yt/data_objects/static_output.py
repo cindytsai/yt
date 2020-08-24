@@ -455,7 +455,7 @@ class Dataset(object):
             self._instantiated_index = self._index_class(
                 self, dataset_type=self.dataset_type)
 
-            mylog.debug("self._instantiated = %s", self._instantiated_index)
+            mylog.debug("self._instantiated_index = %s", self._instantiated_index)
 
             # Now we do things that we need an instantiated index for
             # ...first off, we create our field_info now.
@@ -464,7 +464,7 @@ class Dataset(object):
             self.create_field_info()
             np.seterr(**oldsettings)
 
-        mylog.debug("######")
+        mylog.debug("######(class Dataset, def index)")
 
         return self._instantiated_index
 
@@ -504,6 +504,10 @@ class Dataset(object):
         return self.index.field_list
 
     def create_field_info(self):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/static_output.py (class Dataset, def create_field_info)")
+
         self.field_dependencies = {}
         self.derived_field_list = []
         self.filtered_particle_types = []
@@ -527,6 +531,8 @@ class Dataset(object):
         self.fields = FieldTypeContainer(self)
         self.index.field_list = sorted(self.field_list)
         self._last_freq = (None, None)
+
+        mylog.debug("######(class Dataset, def create_field_info)")
 
     def set_field_label_format(self, format_property, value):
         """
@@ -727,14 +733,14 @@ class Dataset(object):
         if field == self._last_freq:
             if field not in self.field_info.field_aliases.values():
 
-                mylog.debug("######")
+                mylog.debug("######(class Dataset, def _get_field_info)")
 
                 return self._last_finfo
         if field in self.field_info:
             self._last_freq = field
             self._last_finfo = self.field_info[(ftype, fname)]
 
-            mylog.debug("######")
+            mylog.debug("######(class Dataset, def _get_field_info)")
             
             return self._last_finfo
         if fname in self.field_info:

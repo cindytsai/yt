@@ -1499,6 +1499,7 @@ class ProjectionPlot(PWViewerMPL):
         validate_mesh_fields(test_data_source, fields)
 
         mylog.debug("ds type = %s", type(ds))
+        mylog.debug("isinstance(ds, YTSpatialPlotDataset) = %s", isinstance(ds, YTSpatialPlotDataset))
 
         if isinstance(ds, YTSpatialPlotDataset):
             proj = ds.all_data()
@@ -1515,6 +1516,10 @@ class ProjectionPlot(PWViewerMPL):
                            center=center, data_source=data_source,
                            field_parameters=field_parameters, method=method,
                            max_level=max_level)
+            
+            mylog.debug("proj = %s", proj)
+            mylog.debug("proj type = %s", type(proj))
+
         PWViewerMPL.__init__(self, proj, bounds, fields=fields, origin=origin,
                              right_handed=right_handed, fontsize=fontsize, window_size=window_size,
                              aspect=aspect)
