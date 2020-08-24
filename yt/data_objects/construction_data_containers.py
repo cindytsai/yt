@@ -286,6 +286,9 @@ class YTQuadTreeProj(YTSelectionContainer2D):
                 raise RuntimeError("Nodal fields are currently not supported for projections.")
 
         if not self.deserialize(field):
+            
+            mylog.debug("self.deserialize(field) = False")
+
             self.get_data(field)
             self.serialize()
 
@@ -307,7 +310,14 @@ class YTQuadTreeProj(YTSelectionContainer2D):
         self._mrep.upload()
 
     def deserialize(self, fields):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/construction_data_containers.py (class YTQuadTreeProj, def deserialize)")
+
         if not ytcfg.getboolean("yt", "serialize"):
+
+            mylog.debug("######(class YTQuadTreeProj, def deserialize)")
+
             return False
         for field in fields:
             self[field] = None
@@ -323,6 +333,9 @@ class YTQuadTreeProj(YTSelectionContainer2D):
         if not deserialized_successfully:
             for field in fields:
                 del self[field]
+
+        mylog.debug("######(class YTQuadTreeProj, def deserialize)")
+
         return deserialized_successfully
 
     def serialize(self):
