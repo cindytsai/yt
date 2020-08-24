@@ -754,7 +754,7 @@ class Dataset(object):
                 field = self.default_fluid_type, field[1]
             self._last_freq = field
             
-            mylog.debug("######")
+            mylog.debug("######(class Dataset, def _get_field_info)")
             
             return self._last_finfo
         # We also should check "all" for particles, which can show up if you're
@@ -768,7 +768,7 @@ class Dataset(object):
                     self._last_freq = (ftype, fname)
                     self._last_finfo = self.field_info[(ftype, fname)]
                     
-                    mylog.debug("######")
+                    mylog.debug("######(class Dataset, def _get_field_info)")
                     
                     return self._last_finfo
         raise YTFieldNotFound((ftype, fname), self)

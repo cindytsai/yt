@@ -1405,7 +1405,7 @@ class YTDataContainer(object):
                 raise YTFieldTypeNotFound(ftype, ds=self.ds)
             explicit_fields.append((ftype, fname))
 
-        mylog.debug("######")
+        mylog.debug("######(class YTDataContainer, def _determine_fields)")
 
         return explicit_fields
 
