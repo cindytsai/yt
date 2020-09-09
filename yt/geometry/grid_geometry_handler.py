@@ -352,7 +352,7 @@ class GridIndex(Index):
         dobj._current_chunk = list(self._chunk_all(dobj, cache = False,
                                    fast_index = fast_index))[0]
 
-        mylog.debug("######")
+        mylog.debug("######(class GridIndex, def _identify_base_chunk)")
 
     def _count_selection(self, dobj, grids = None, fast_index = None):
         if fast_index is not None:
@@ -461,7 +461,8 @@ class GridIndex(Index):
                 with self.io.preload(dc, preload_fields, 
                             4.0 * size):
                     
-                    mylog.debug("######")
+                    mylog.debug("dc = %s", dc)
+                    mylog.debug("######(class GridIndex, def _chunk_io)")
 
                     yield dc
 

@@ -356,6 +356,11 @@ class YTQuadTreeProj(YTSelectionContainer2D):
                         bounds, method = self.method)
 
     def get_data(self, fields = None):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/construction_data_containers.py (class YTQuadTreeProj, def get_data)")
+        mylog.debug("fields = %s", fields)
+
         fields = fields or []
         fields = self._determine_fields(ensure_list(fields))
         # We need a new tree for every single set of fields we add
@@ -373,8 +378,15 @@ class YTQuadTreeProj(YTSelectionContainer2D):
                 mylog.debug("Adding chunk (%s) to tree (%0.3e GB RAM)",
                             chunk.ires.size, get_memory_usage()/1024.)
                 if _units_initialized is False:
+
+                    mylog.debug("_units_initialized is False")
+
                     self._initialize_projected_units(fields, chunk)
                     _units_initialized = True
+                
+                mylog.debug("fields = %s", fields)
+                mylog.debug("chunk = %s", chunk)
+                
                 self._handle_chunk(chunk, fields, tree)
         # if there's less than nprocs chunks, units won't be initialized
         # on all processors, so sync with _projected_units on rank 0
@@ -431,7 +443,13 @@ class YTQuadTreeProj(YTSelectionContainer2D):
         mylog.info("Projection completed")
         self.tree = tree
 
+        mylog.debug("######(class YTQuadTreeProj, def get_data)")
+
     def _initialize_chunk(self, chunk, tree):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/construction_data_containers.py (class YTQuadTreeProj, def _initialize_chunk)")
+
         icoords = chunk.icoords
         xax = self.ds.coordinates.x_axis[self.axis]
         yax = self.ds.coordinates.y_axis[self.axis]
@@ -440,7 +458,13 @@ class YTQuadTreeProj(YTSelectionContainer2D):
         ilevel = chunk.ires * self.ds.ires_factor
         tree.initialize_chunk(i1, i2, ilevel)
 
+        mylog.debug("######(class YTQuadTreeProj, def _initialize_chunk)")
+
     def _initialize_projected_units(self, fields, chunk):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/construction_data_containers.py (class YTQuadTreeProj, def _initialize_projected_units)")
+
         for field in self.data_source._determine_fields(fields):
             finfo = self.ds._get_field_info(*field)
             if finfo.units is None:
@@ -466,7 +490,13 @@ class YTQuadTreeProj(YTSelectionContainer2D):
             else:
                 self._projected_units[field] = field_unit
 
+        mylog.debug("######(class YTQuadTreeProj, def _initialize_projected_units)")
+
     def _handle_chunk(self, chunk, fields, tree):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/construction_data_containers.py (class YTQuadTreeProj, def _handle_chunk)")
+
         if self.method == "mip" or self._sum_only:
             dl = self.ds.quan(1.0, "")
         else:
@@ -496,6 +526,8 @@ class YTQuadTreeProj(YTSelectionContainer2D):
         i2 = icoords[:,yax]
         ilevel = chunk.ires * self.ds.ires_factor
         tree.add_chunk_to_tree(i1, i2, ilevel, v, w)
+
+        mylog.debug("######(class YTQuadTreeProj, def _handle_chunk)")
 
     def to_pw(self, fields=None, center='c', width=None, origin='center-window'):
         r"""Create a :class:`~yt.visualization.plot_window.PWViewerMPL` from this

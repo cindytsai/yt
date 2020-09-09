@@ -61,7 +61,7 @@ class Index(ParallelAnalysisInterface):
         mylog.debug("Detecting fields.")
         self._detect_output_fields()
 
-        mylog.debug("######")
+        mylog.debug("######(class Index, def __init__)")
 
     def _initialize_state_variables(self):
 
@@ -321,17 +321,17 @@ class Index(ParallelAnalysisInterface):
             raise NotImplementedError
         if chunking_style == "all":
 
-            mylog.debug("######")
+            mylog.debug("###### (class Index, def _chunk)")
 
             return self._chunk_all(dobj, **kwargs)
         elif chunking_style == "spatial":
 
-            mylog.debug("######")
+            mylog.debug("###### (class Index, def _chunk)")
 
             return self._chunk_spatial(dobj, ngz, **kwargs)
         elif chunking_style == "io":
 
-            mylog.debug("######")
+            mylog.debug("###### (class Index, def _chunk)")
 
             return self._chunk_io(dobj, **kwargs)
         else:

@@ -1514,7 +1514,7 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
                 self.get_data(fields)
                 # NOTE: we yield before releasing the context
 
-                mylog.debug("######")
+                mylog.debug("######(class YTSelectionContainer, def chunks)")
 
                 yield self
 
@@ -1553,7 +1553,7 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
             self.index._identify_base_chunk(self)
         if fields is None: 
             
-            mylog.debug("######")
+            mylog.debug("######(class YTSelectionContainer, def get_data)")
 
             return
         nfields = []
@@ -1575,7 +1575,11 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
             with f.apply(self):
                 self.get_data(apply_fields[filter_type])
         fields = nfields
-        if len(fields) == 0: return
+        if len(fields) == 0: 
+            
+            mylog.debug("######(class YTSelectionContainer, def get_data)")
+            
+            return
         # Now we collect all our fields
         # Here is where we need to perform a validation step, so that if we
         # have a field requested that we actually *can't* yet get, we put it
@@ -1643,7 +1647,7 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
             if field not in ofields:
                 self.field_data.pop(field)
 
-        mylog.debug("######")
+        mylog.debug("######(class YTSelectionContainer, def get_data)")
 
     def _generate_fields(self, fields_to_generate):
         index = 0
@@ -1789,16 +1793,13 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
             mylog.debug("chunk.objs = %s", chunk.objs)
 
             for obj in chunk.objs:
-
-                mylog.debug("for obj in chunk.objs: obj = %s", obj)
-
                 obj_field_data.append(obj.field_data)
                 obj.field_data = YTFieldData()
         old_field_data, self.field_data = self.field_data, YTFieldData()
         old_chunk, self._current_chunk = self._current_chunk, chunk
         old_locked, self._locked = self._locked, False
 
-        mylog.debug("######")
+        mylog.debug("######(class YTSelectionContainer, def _chunked_read)")
 
         yield
         self.field_data = old_field_data
@@ -1811,7 +1812,7 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
         mylog.debug("after yield chunk.objs = %s", chunk.objs)
         for obj in chunk.objs:
             mylog.debug("after yield obj = %s", obj)
-        mylog.debug("######")
+        mylog.debug("######after yield (class YTSelectionContainer, def _chunked_read)")
 
     @contextmanager
     def _activate_cache(self):
