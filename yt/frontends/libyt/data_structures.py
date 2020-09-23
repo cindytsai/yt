@@ -171,12 +171,19 @@ class libytDataset(Dataset):
             mylog.debug("yt/frontends/libyt/data_structures.py (class libytDataset, def __init__)")
             mylog.debug("name = %s", name)
             mylog.debug("cls = %s", cls)
-
+            
             if self._code_frontend == name[0:-len('Dataset')].lower():
+
+                mylog.debug("self.fluid_types = %s", self.fluid_types)
+
                 self._code_dataset     = name
                 self._field_info_class = cls._field_info_class
-                self._fluid_type       = cls._fluid_type
-                self.fluid_types      += ( self._fluid_type, )
+                # self._fluid_type       = cls._fluid_type
+                # self.fluid_types      += ( self._fluid_type, )
+                
+                self._fluid_type       = self._code_frontend
+                self.fluid_types       += (self._fluid_type, )
+
                 break
         else:
             mylog.warning( 'Cannot find the code frontend [%s]' % self.libyt.param_yt['frontend'] )
