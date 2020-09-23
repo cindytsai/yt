@@ -166,6 +166,12 @@ class libytDataset(Dataset):
         # and set fluid type and fields accordingly
         self._code_frontend = self.libyt.param_yt['frontend'].lower()
         for name, cls in output_type_registry.items():
+            
+            mylog.debug("#FLAG#")
+            mylog.debug("yt/frontends/libyt/data_structures.py (class libytDataset, def __init__)")
+            mylog.debug("name = %s", name)
+            mylog.debug("cls = %s", cls)
+
             if self._code_frontend == name[0:-len('Dataset')].lower():
                 self._code_dataset     = name
                 self._field_info_class = cls._field_info_class

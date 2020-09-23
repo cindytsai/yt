@@ -49,6 +49,7 @@ _frontends = [
     'stream',
     'tipsy',
     'ytdata',
+    'libyt'
 ]
 
 class _frontend_container:
