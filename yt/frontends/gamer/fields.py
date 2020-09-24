@@ -15,6 +15,7 @@ GAMER-specific fields
 
 from yt.fields.field_info_container import FieldInfoContainer
 from yt.utilities.physical_constants import mh, boltzmann_constant_cgs
+from yt.funcs import mylog
 
 b_units   = "code_magnetic"
 pre_units = "code_mass / (code_length*code_time**2)"
@@ -69,7 +70,7 @@ class GAMERFieldInfo(FieldInfoContainer):
     def setup_fluid_fields(self):
         from yt.fields.magnetic_field import setup_magnetic_field_aliases
         unit_system = self.ds.unit_system
-
+       
         # velocity
         def velocity_xyz(v):
             def _velocity(field, data):
@@ -132,6 +133,10 @@ class GAMERFieldInfo(FieldInfoContainer):
         self.add_field( ("gas","temperature"), sampling_type="cell",
                         function = _temperature,
                         units = unit_system["temperature"] )
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/gamer (class GAMERFieldInfo, def setup_fluid_fields)")
+        mylog.debug("type self.ds = %s", type(self.ds))
 
         # magnetic field aliases --> magnetic_field_x/y/z
         if self.ds.mhd:

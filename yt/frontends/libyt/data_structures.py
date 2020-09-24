@@ -148,6 +148,7 @@ class libytHierarchy(GridIndex):
 
 class libytDataset(Dataset):
     _index_class  = libytHierarchy
+    _field_info_class = libytFieldInfo
     _dataset_type = 'libyt'   # must set here since __init__() does not know dataset_type when calling it
     _debug        = False     # debug mode for libyt (not supported yet)
     libyt         = None
@@ -178,6 +179,8 @@ class libytDataset(Dataset):
 
                 self._code_dataset     = name
                 self._field_info_class = cls._field_info_class
+
+                # No _fluid_type in yt-3.6.0 at all
                 # self._fluid_type       = cls._fluid_type
                 # self.fluid_types      += ( self._fluid_type, )
                 
@@ -231,6 +234,10 @@ class libytDataset(Dataset):
         self.domain_right_edge       = np.asarray( param_yt['domain_right_edge'] )
         self.domain_dimensions       = np.asarray( param_yt['domain_dimensions'] )
         self.periodicity             = np.asarray( param_yt['periodicity']       )
+
+        # Just to make example/example run
+        if (self._code_frontend == "gamer"):
+            self.mhd = 0
 
     def _obtain_libyt(self):
         import libyt
