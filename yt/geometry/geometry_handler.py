@@ -23,6 +23,10 @@ class Index(ParallelAnalysisInterface, abc.ABC):
     _index_properties = ()
 
     def __init__(self, ds, dataset_type):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/geometry/geometry_handler.py (class Index, def __init__)")
+
         ParallelAnalysisInterface.__init__(self)
         self.dataset = weakref.proxy(ds)
         self.ds = self.dataset
@@ -43,17 +47,29 @@ class Index(ParallelAnalysisInterface, abc.ABC):
         mylog.debug("Detecting fields.")
         self._detect_output_fields()
 
+        mylog.debug("######(class Index, def __init__)")
+
     @abc.abstractmethod
     def _detect_output_fields(self):
         pass
 
     def _initialize_state_variables(self):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/geometry/geometry_handler.py (class Index, def _initialize_state_variables)")
+
         self._parallel_locking = False
         self._data_file = None
         self._data_mode = None
         self.num_grids = None
 
+        mylog.debug("######(class Index, def _initialize_state_variables)")
+
     def _initialize_data_storage(self):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/geometry/geometry_handler.py (class Index, def _initialize_data_storage)")
+
         if not ytcfg.getboolean("yt", "serialize"):
             return
         fn = self.ds.storage_filename
@@ -96,6 +112,8 @@ class Index(ParallelAnalysisInterface, abc.ABC):
         self.__data_filename = fn
         self._data_file = h5py.File(fn, mode=self._data_mode)
 
+        mylog.debug("######(class Index, def _initialize_data_storage)")
+
     def __create_data_file(self, fn):
         # Note that this used to be parallel_root_only; it no longer is,
         # because we have better logic to decide who owns the file.
@@ -103,9 +121,15 @@ class Index(ParallelAnalysisInterface, abc.ABC):
         f.close()
 
     def _setup_data_io(self):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/geometry/geometry_handler.py (class Index, def _setup_data_io)")
+
         if getattr(self, "io", None) is not None:
             return
         self.io = io_registry[self.dataset_type](self.dataset)
+
+        mylog.debug("######(class Index, def _setup_data_io)")
 
     @parallel_root_only
     def save_data(
@@ -196,48 +220,108 @@ class Index(ParallelAnalysisInterface, abc.ABC):
         return fields_to_read, fields_to_generate
 
     def _read_particle_fields(self, fields, dobj, chunk=None):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/geometry/geometry_handler.py (class Index, def _read_particle_fields)")
+        mylog.debug("fields = %s", fields)
+
         if len(fields) == 0:
+
+            mylog.debug("######(class Index, def _read_particle_fields)")
+
             return {}, []
         fields_to_read, fields_to_generate = self._split_fields(fields)
+
+        mylog.debug("fields_to_read = %s", fields_to_read)
+        mylog.debug("fields_to_generate = %s", fields_to_generate)
+
         if len(fields_to_read) == 0:
+
+            mylog.debug("######(class Index, def _read_particle_fields)")
+
             return {}, fields_to_generate
         selector = dobj.selector
+
+        mylog.debug("selector = %s", selector)
+
         if chunk is None:
             self._identify_base_chunk(dobj)
         chunks = self._chunk_io(dobj, cache=False)
         fields_to_return = self.io._read_particle_selection(
             chunks, selector, fields_to_read
         )
+
+        mylog.debug("######(class Index, def _read_particle_fields)")
+
         return fields_to_return, fields_to_generate
 
     def _read_fluid_fields(self, fields, dobj, chunk=None):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/geometry/geometry_handler.py (class Index, def _read_fluid_fields)")
+        mylog.debug("fields = %s", fields)
+
         if len(fields) == 0:
+
+            mylog.debug("######(class Index, def _read_fluid_fields)")
+
             return {}, []
         fields_to_read, fields_to_generate = self._split_fields(fields)
+
+        mylog.debug("fields_to_read = %s", fields_to_read)
+        mylog.debug("fields_to_generate = %s", fields_to_generate)
+
         if len(fields_to_read) == 0:
+
+            mylog.debug("######(class Index, def _read_fluid_fields)")
+
             return {}, fields_to_generate
         selector = dobj.selector
+
+        mylog.debug("selector = %s", selector)
+
         if chunk is None:
             self._identify_base_chunk(dobj)
             chunk_size = dobj.size
         else:
             chunk_size = chunk.data_size
+
+            mylog.debug("chunk_size = %s", chunk_size)
+
         fields_to_return = self.io._read_fluid_selection(
             self._chunk_io(dobj), selector, fields_to_read, chunk_size
         )
+
+        mylog.debug("######(class Index, def _read_fluid_fields)")
+
         return fields_to_return, fields_to_generate
 
     def _chunk(self, dobj, chunking_style, ngz=0, **kwargs):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/geometry/geometry_handler.py (class Index, def _chunk)")
+        mylog.debug("chunking_style = %s", chunking_style)
+        mylog.debug("ngz = %s", ngz)
+
         # A chunk is either None or (grids, size)
         if dobj._current_chunk is None:
             self._identify_base_chunk(dobj)
         if ngz != 0 and chunking_style != "spatial":
             raise NotImplementedError
         if chunking_style == "all":
+
+            mylog.debug("###### (class Index, def _chunk)")
+
             return self._chunk_all(dobj, **kwargs)
         elif chunking_style == "spatial":
+
+            mylog.debug("###### (class Index, def _chunk)")
+
             return self._chunk_spatial(dobj, ngz, **kwargs)
         elif chunking_style == "io":
+
+            mylog.debug("###### (class Index, def _chunk)")
+
             return self._chunk_io(dobj, **kwargs)
         else:
             raise NotImplementedError

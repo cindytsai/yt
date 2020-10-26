@@ -1,6 +1,8 @@
 from yt.fields.field_info_container import FieldInfoContainer
 from yt.utilities.physical_constants import kb, mh
 
+from yt.funcs import mylog
+
 b_units = "code_magnetic"
 pre_units = "code_mass / (code_length*code_time**2)"
 erg_units = "code_mass / (code_length*code_time**2)"
@@ -159,6 +161,10 @@ class GAMERFieldInfo(FieldInfoContainer):
             function=_temperature,
             units=unit_system["temperature"],
         )
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/gamer (class GAMERFieldInfo, def setup_fluid_fields)")
+        mylog.debug("type self.ds = %s", type(self.ds))
 
         # magnetic field aliases --> magnetic_field_x/y/z
         if self.ds.mhd:

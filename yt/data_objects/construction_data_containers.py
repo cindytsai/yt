@@ -222,6 +222,11 @@ class YTProj(YTSelectionContainer2D):
         return [k for k in self.field_data.keys() if k not in self._container_fields]
 
     def get_data(self, fields=None):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/construction_data_containers.py (class YTProj, def get_data)")
+        mylog.debug("fields = %s", fields)
+
         fields = fields or []
         fields = self._determine_fields(ensure_list(fields))
         # We need a new tree for every single set of fields we add
@@ -241,8 +246,15 @@ class YTProj(YTSelectionContainer2D):
                 self.data_source.chunks([], "io", local_only=True)
             ):
                 if not _units_initialized:
+
+                    mylog.debug("_units_initialized is False")
+
                     self._initialize_projected_units(fields, chunk)
                     _units_initialized = True
+
+                mylog.debug("fields = %s", fields)
+                mylog.debug("chunk = %s", chunk)
+
                 self._handle_chunk(chunk, fields, tree)
         # if there's less than nprocs chunks, units won't be initialized
         # on all processors, so sync with _projected_units on rank 0
@@ -299,6 +311,8 @@ class YTProj(YTSelectionContainer2D):
         mylog.info("Projection completed")
         self.tree = tree
 
+        mylog.debug("######(class YTProj, def get_data)")
+
     def to_pw(self, fields=None, center="c", width=None, origin="center-window"):
         r"""Create a :class:`~yt.visualization.plot_window.PWViewerMPL` from this
         object.
@@ -331,6 +345,10 @@ class YTProj(YTSelectionContainer2D):
         return pw
 
     def _initialize_projected_units(self, fields, chunk):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/construction_data_containers.py (class YTProj, def _initialize_projected_units)")
+
         for field in self.data_source._determine_fields(fields):
             if field in self._projected_units:
                 continue
@@ -360,6 +378,7 @@ class YTProj(YTSelectionContainer2D):
             else:
                 self._projected_units[field] = field_unit
 
+        mylog.debug("######(class YTProj, def _initialize_projected_units)")
 
 class YTParticleProj(YTProj):
     """
@@ -474,6 +493,20 @@ class YTQuadTreeProj(YTProj):
         field_parameters=None,
         max_level=None,
     ):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/construction_data_containers.py (class YTQuadTreeProj, def __init__)")
+        mylog.debug("field = %s", field)
+        mylog.debug("axis = %s", axis)
+        mylog.debug("weight_field = %s", weight_field)
+        mylog.debug("center = %s", center)
+        mylog.debug("ds = %s", ds)
+        mylog.debug("data_source = %s", data_source)
+        mylog.debug("style = %s", style)
+        mylog.debug("method = %s", method)
+        mylog.debug("field_parameters = %s", field_parameters)
+        mylog.debug("max_level = %s", max_level)
+
         super(YTQuadTreeProj, self).__init__(
             field,
             axis,
@@ -488,15 +521,27 @@ class YTQuadTreeProj(YTProj):
         )
 
         if not self.deserialize(field):
+
+            mylog.debug("self.deserialize(field) = False")
+
             self.get_data(field)
             self.serialize()
+
+        mylog.debug("######(class YTQuadTreeProj, def __init__)")
 
     @property
     def _mrep(self):
         return MinimalProjectionData(self)
 
     def deserialize(self, fields):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/construction_data_containers.py (class YTQuadTreeProj, def deserialize)")
+
         if not ytcfg.getboolean("yt", "serialize"):
+
+            mylog.debug("######(class YTQuadTreeProj, def deserialize)")
+
             return False
         for field in fields:
             self[field] = None
@@ -512,6 +557,9 @@ class YTQuadTreeProj(YTProj):
         if not deserialized_successfully:
             for field in fields:
                 del self[field]
+
+        mylog.debug("######(class YTQuadTreeProj, def deserialize)")
+
         return deserialized_successfully
 
     def serialize(self):
@@ -535,6 +583,10 @@ class YTQuadTreeProj(YTProj):
         )
 
     def _initialize_chunk(self, chunk, tree):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/construction_data_containers.py (class YTQuadTreeProj, def _initialize_chunk)")
+
         icoords = chunk.icoords
         xax = self.ds.coordinates.x_axis[self.axis]
         yax = self.ds.coordinates.y_axis[self.axis]
@@ -543,7 +595,13 @@ class YTQuadTreeProj(YTProj):
         ilevel = chunk.ires * self.ds.ires_factor
         tree.initialize_chunk(i1, i2, ilevel)
 
+        mylog.debug("######(class YTQuadTreeProj, def _initialize_chunk)")
+
     def _handle_chunk(self, chunk, fields, tree):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/construction_data_containers.py (class YTQuadTreeProj, def _handle_chunk)")
+
         mylog.debug(
             "Adding chunk (%s) to tree (%0.3e GB RAM)",
             chunk.ires.size,
@@ -578,6 +636,7 @@ class YTQuadTreeProj(YTProj):
         ilevel = chunk.ires * self.ds.ires_factor
         tree.add_chunk_to_tree(i1, i2, ilevel, v, w)
 
+        mylog.debug("######(class YTQuadTreeProj, def _handle_chunk)")
 
 class YTCoveringGrid(YTSelectionContainer3D):
     """A 3D region with all data extracted to a single, specified

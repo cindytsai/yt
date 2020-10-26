@@ -498,6 +498,10 @@ def parallel_objects(objects, njobs=0, storage=None, barrier=True, dynamic=False
     ...
 
     """
+
+    mylog.debug("#FLAG#")
+    mylog.debug("yt/utilities/parallel_tools/parallel_analysis_interface.py (def parallel_objects)")
+
     if dynamic:
         from .task_queue import dynamic_parallel_objects
 
@@ -509,6 +513,9 @@ def parallel_objects(objects, njobs=0, storage=None, barrier=True, dynamic=False
         njobs = 1
     my_communicator = communication_system.communicators[-1]
     my_size = my_communicator.size
+
+    mylog.debug("my_size = %s", my_size)
+
     if njobs <= 0:
         njobs = my_size
     if njobs > my_size:
@@ -520,12 +527,23 @@ def parallel_objects(objects, njobs=0, storage=None, barrier=True, dynamic=False
         raise RuntimeError
     my_rank = my_communicator.rank
     all_new_comms = np.array_split(np.arange(my_size), njobs)
+
+    mylog.debug("my_rank = %s", my_rank)
+    mylog.debug("all_new_comms = %s", all_new_comms)
+
     for i, comm_set in enumerate(all_new_comms):
         if my_rank in comm_set:
             my_new_id = i
+
+            mylog.debug("my_new_id = %s", my_new_id)
+            mylog.debug("comm_set = %s", comm_set)
+
             break
     if parallel_capable:
         communication_system.push_with_ids(all_new_comms[my_new_id].tolist())
+
+        mylog.debug("communication_system = %s", communication_system)
+
     to_share = {}
     # If our objects object is slice-aware, like time series data objects are,
     # this will prevent intermediate objects from being created.
@@ -549,6 +567,7 @@ def parallel_objects(objects, njobs=0, storage=None, barrier=True, dynamic=False
     if barrier:
         my_communicator.barrier()
 
+    mylog.debug("######(def parallel_objects)")
 
 def parallel_ring(objects, generator_func, mutable=False):
     r"""This function loops in a ring around a set of objects, yielding the
@@ -723,10 +742,16 @@ class Communicator:
         return (_reconstruct_communicator, ())
 
     def barrier(self):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/utilities/parallel_tools/parallel_analysis_interface.py (class Communicator, def barrier)")
+
         if not self._distributed:
             return
         mylog.debug("Opening MPI Barrier on %s", self.comm.rank)
         self.comm.Barrier()
+
+        mylog.debug("######(class Communicator, def barrier)")
 
     def mpi_exit_test(self, data=False):
         # data==True -> exit. data==False -> no exit
@@ -744,6 +769,10 @@ class Communicator:
         #   np.ndarray
         #   dict
         #   data field dict
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/utilities/parallel_tools/parallel_analysis_interface.py (class Communicator, def par_combine_object)")
+
         if datatype is not None:
             pass
         elif isinstance(data, dict):
@@ -760,6 +789,9 @@ class Communicator:
             else:
                 self.comm.send(data, dest=0, tag=0)
             data = self.comm.bcast(data, root=0)
+
+            mylog.debug("######(class Communicator, def par_combine_object)")
+
             return data
         elif datatype == "dict" and op == "cat":
             field_keys = sorted(data.keys())
@@ -776,6 +808,9 @@ class Communicator:
                 dd = data[key]
                 rv = self.alltoallv_array(dd, arr_size, offsets, sizes)
                 data[key] = rv
+
+            mylog.debug("######(class Communicator, def par_combine_object)")
+
             return data
         elif datatype == "array" and op == "cat":
             if data is None:
@@ -811,6 +846,9 @@ class Communicator:
             offsets = np.add.accumulate(np.concatenate([[0], sizes]))[:-1]
             arr_size = self.comm.allreduce(size, op=MPI.SUM)
             data = self.alltoallv_array(data, arr_size, offsets, sizes)
+
+            mylog.debug("######(class Communicator, def par_combine_object)")
+
             return data
         elif datatype == "list" and op == "cat":
             recv_data = self.comm.allgather(data)
@@ -819,6 +857,9 @@ class Communicator:
             data = []
             while recv_data:
                 data.extend(recv_data.pop(0))
+
+            mylog.debug("######(class Communicator, def par_combine_object)")
+
             return data
         raise NotImplementedError
 
@@ -1155,12 +1196,18 @@ class ParallelAnalysisInterface:
     _distributed = None
 
     def __init__(self, comm=None):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/utilities/parallel_tools/parallel_analysis_interface.py (class ParallelAnalysisInterface, def __init__)")
+
         if comm is None:
             self.comm = communication_system.communicators[-1]
         else:
             self.comm = comm
         self._grids = self.comm._grids
         self._distributed = self.comm._distributed
+
+        mylog.debug("######(class ParallelAnalysisInterface, def __init__)")
 
     def _get_objs(self, attr, *args, **kwargs):
         if self._distributed:

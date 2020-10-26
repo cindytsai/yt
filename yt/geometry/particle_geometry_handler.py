@@ -324,9 +324,15 @@ class ParticleIndex(Index):
                 yield YTDataChunk(dobj, "spatial", [g])
 
     def _chunk_io(self, dobj, cache=True, local_only=False):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/geometry/particle_geometry_handler.py (class ParticleIndex, def _chunk_io)")
+
         oobjs = getattr(dobj._current_chunk, "objs", dobj._chunk_info)
         for container in oobjs:
             yield YTDataChunk(dobj, "io", [container], None, cache=cache)
+
+        mylog.debug("######(class ParticleIndex, def _chunk_io)")
 
     def _generate_hash(self):
         # Generate an FNV hash by creating a byte array containing the

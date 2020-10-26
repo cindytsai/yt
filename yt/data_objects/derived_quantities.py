@@ -11,8 +11,13 @@ from yt.utilities.parallel_tools.parallel_analysis_interface import (
 from yt.utilities.physical_constants import gravitational_constant_cgs
 from yt.utilities.physical_ratios import HUGE
 
+from yt.funcs import mylog
 
 def get_position_fields(field, data):
+
+    mylog.debug("#FLAG#")
+    mylog.debug("yt/data_objects/derived_quantities.py (def get_position_fields(field, data))")
+
     axis_names = [data.ds.coordinates.axis_name[num] for num in [0, 1, 2]]
     field = data._determine_fields(field)[0]
     finfo = data.ds.field_info[field]
@@ -24,6 +29,8 @@ def get_position_fields(field, data):
         position_fields = [(ftype, f"particle_position_{d}") for d in axis_names]
     else:
         position_fields = axis_names
+
+    mylog.debug("######(def get_position_fields(field, data))")
 
     return position_fields
 
@@ -40,10 +47,24 @@ class DerivedQuantity(ParallelAnalysisInterface):
             derived_quantity_registry[cls.__name__] = cls
 
     def count_values(self, *args, **kwargs):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/derived_quantities.py (class DerivedQuantity, def count_values)")
+        mylog.debug("######(class DerivedQuantity, def count_values)")
+
         return
 
     def __call__(self, *args, **kwargs):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/derived_quantities.py (class DerivedQuantity, def __call__(self, *args, **kwargs))")
+
         """Calculate results for the derived quantity"""
+
+        mylog.debug("self.data_source, type = %s", type(self.data_source))
+        mylog.debug("self.data_source.ds, type = %s", type(self.data_source.ds))
+        mylog.debug("self.data_source.ds.index, type = %s", type(self.data_source.ds.index))
+
         # create the index if it doesn't exist yet
         self.data_source.ds.index
         self.count_values(*args, **kwargs)
@@ -61,6 +82,10 @@ class DerivedQuantity(ParallelAnalysisInterface):
         # These will be YTArrays
         values = [self.data_source.ds.arr(values[i]) for i in range(self.num_vals)]
         values = self.reduce_intermediate(values)
+
+        mylog.debug("values = %s", values)
+        mylog.debug("######(class DerivedQuantity, def __call__(self, *args, **kwargs))")
+
         return values
 
     def process_chunk(self, data, *args, **kwargs):
@@ -640,16 +665,34 @@ class SampleAtMaxFieldValues(DerivedQuantity):
     """
 
     def count_values(self, field, sample_fields):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/derived_quantities.py (class SampleAtMaxFieldValues, def count_values)")
+
         # field itself, then index, then the number of sample fields
         self.num_vals = 1 + len(sample_fields)
 
+        mylog.debug("######(class SampleAtMaxFieldValues, def count_values)")
+
     def __call__(self, field, sample_fields):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/derived_quantities.py (class SampleAtMaxFieldValues, def __call__(self, field, sample_fields))")
+
         rv = super(SampleAtMaxFieldValues, self).__call__(field, sample_fields)
         if len(rv) == 1:
             rv = rv[0]
+
+        mylog.debug("rv = %s", rv)
+        mylog.debug("######(class SampleAtMaxFieldValues, def __call__(self, field, sample_fields))")
+
         return rv
 
     def process_chunk(self, data, field, sample_fields):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/derived_quantities.py (class SampleAtMaxFieldValues, def process_chunk)")
+
         field = data._determine_fields(field)[0]
         ma = array_like_field(data, self._sign * HUGE, field)
         vals = [array_like_field(data, -1, sf) for sf in sample_fields]
@@ -658,10 +701,20 @@ class SampleAtMaxFieldValues(DerivedQuantity):
             maxi = self._func(data[field])
             ma = data[field][maxi]
             vals = [data[sf][maxi] for sf in sample_fields]
+
+        mylog.debug("######(class SampleAtMaxFieldValues, def process_chunk)")
+
         return (ma,) + tuple(vals)
 
     def reduce_intermediate(self, values):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/derived_quantities.py (class SampleAtMaxFieldValues, def reduce_intermediate)")
+
         i = self._func(values[0])  # ma is values[0]
+
+        mylog.debug("######(class SampleAtMaxFieldValues, def reduce_intermediate)")
+
         return [val[i] for val in values]
 
     def _func(self, arr):
@@ -688,12 +741,22 @@ class MaxLocation(SampleAtMaxFieldValues):
     """
 
     def __call__(self, field):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/derived_quantities.py (class MaxLocation, def __call__(self, field))")
+        mylog.debug("self.data_source.index, type = %s", type(self.data_source.index))
+        mylog.debug("self.data_source, type = %s", type(self.data_source))
+
         # Make sure we have an index
         self.data_source.index
         sample_fields = get_position_fields(field, self.data_source)
         rv = super(MaxLocation, self).__call__(field, sample_fields)
         if len(rv) == 1:
             rv = rv[0]
+
+        mylog.debug("rv = %s", rv)
+        mylog.debug("######(class MaxLocation, def __call__(self, field))")
+
         return rv
 
 

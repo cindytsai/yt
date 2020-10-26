@@ -20,6 +20,7 @@ from yt.utilities.on_demand_imports import _h5py as h5py, _libconf as libconf
 
 from .fields import EnzoFieldInfo
 
+import inspect
 
 class EnzoGrid(AMRGridPatch):
     """
@@ -150,6 +151,9 @@ class EnzoHierarchy(GridIndex):
 
     def __init__(self, ds, dataset_type):
 
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/enzo/data_structures.py (class EnzoHierarchy, def __init__)")
+
         self.dataset_type = dataset_type
         if ds.file_style is not None:
             self._bn = ds.file_style
@@ -170,7 +174,13 @@ class EnzoHierarchy(GridIndex):
         # sync it back
         self.dataset.dataset_type = self.dataset_type
 
+        mylog.debug("######(class EnzoHierarchy, def __init__)")
+
     def _count_grids(self):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/enzo/data_structures.py (class EnzoHierarchy, def _count_grids)")
+
         self.num_grids = None
         test_grid = test_grid_id = None
         self.num_stars = 0
@@ -191,7 +201,13 @@ class EnzoHierarchy(GridIndex):
                     break
         self._guess_dataset_type(self.ds.dimensionality, test_grid, test_grid_id)
 
+        mylog.debug("######(class EnzoHierarchy, def _count_grids)")
+
     def _guess_dataset_type(self, rank, test_grid, test_grid_id):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/enzo/data_structures.py (class EnzoHierarchy, def _guess_dataset_type)")
+
         if test_grid[0] != os.path.sep:
             test_grid = os.path.join(self.directory, test_grid)
         if not os.path.exists(test_grid):
@@ -199,6 +215,9 @@ class EnzoHierarchy(GridIndex):
             mylog.debug("Your data uses the annoying hardcoded path.")
             self._strip_path = True
         if self.dataset_type is not None:
+
+            mylog.debug("######(class EnzoHierarchy, def _guess_dataset_type)")
+
             return
         if rank == 3:
             mylog.debug("Detected packed HDF5")
@@ -216,8 +235,14 @@ class EnzoHierarchy(GridIndex):
         else:
             raise NotImplementedError
 
+        mylog.debug("######(class EnzoHierarchy, def _guess_dataset_type)")
+
     # Sets are sorted, so that won't work!
     def _parse_index(self):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/enzo/data_structures.py (class EnzoHierarchy, def _parse_index)")
+
         def _next_token_line(token, f):
             for line in f:
                 if line.startswith(token):
@@ -288,7 +313,13 @@ class EnzoHierarchy(GridIndex):
         self.grids = temp_grids
         self.filenames = fn
 
+        mylog.debug("######(class EnzoHierarchy, def _parse_index)")
+
     def _initialize_grid_arrays(self):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/enzo/data_structures.py (class EnzoHierarchy, def _initialize_grid_arrays)")
+
         super(EnzoHierarchy, self)._initialize_grid_arrays()
         if "AppendActiveParticleType" in self.parameters.keys() and len(
             self.parameters["AppendActiveParticleType"]
@@ -298,6 +329,8 @@ class EnzoHierarchy(GridIndex):
                 for ptype in self.parameters["AppendActiveParticleType"]
             )
             self.grid_active_particle_count = gac
+
+        mylog.debug("######(class EnzoHierarchy, def _initialize_grid_arrays)")
 
     def _fill_arrays(self, ei, si, LE, RE, npart, nap):
         self.grid_dimensions.flat[:] = ei
@@ -351,12 +384,18 @@ class EnzoHierarchy(GridIndex):
         mylog.info("Finished rebuilding")
 
     def _populate_grid_objects(self):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/enzo/data_structures.py (class EnzoHierarchy, def _populate_grid_objects)")
+
         for g, f in zip(self.grids, self.filenames):
             g._prepare_grid()
             g._setup_dx()
             g.set_filename(f[0])
         del self.filenames  # No longer needed.
         self.max_level = self.grid_levels.max()
+
+        mylog.debug("######(class EnzoHierarchy, def _populate_grid_objects)")
 
     def _detect_active_particle_fields(self):
         ap_list = self.dataset["AppendActiveParticleType"]
@@ -402,6 +441,10 @@ class EnzoHierarchy(GridIndex):
                 self.ds.field_info.add_field((apt, fname), sampling_type="cell", **dd)
 
     def _detect_output_fields(self):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/enzo/data_structures.py (class EnzoHierarchy, def _detect_output_fields)")
+
         self.field_list = []
         # Do this only on the root processor to save disk work.
         if self.comm.rank in (0, None):
@@ -439,6 +482,8 @@ class EnzoHierarchy(GridIndex):
         self.field_list = list(self.comm.mpi_bcast(field_list))
         self.dataset.particle_types = list(self.comm.mpi_bcast(ptypes))
         self.dataset.particle_types_raw = list(self.comm.mpi_bcast(ptypes_raw))
+
+        mylog.debug("######(class EnzoHierarchy, def _detect_output_fields)")
 
     def _generate_random_grids(self):
         if self.num_grids > 40:
@@ -545,6 +590,10 @@ class EnzoHierarchyInMemory(EnzoHierarchy):
         return self._enzo
 
     def __init__(self, ds, dataset_type=None):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/enzo/data_structures.py (class EnzoHierarchyInMemory def __init__)")
+
         self.dataset_type = dataset_type
         self.float_type = "float64"
         self.dataset = weakref.proxy(ds)  # for _obtain_enzo
@@ -552,13 +601,30 @@ class EnzoHierarchyInMemory(EnzoHierarchy):
         self.directory = os.getcwd()
         GridIndex.__init__(self, ds, dataset_type)
 
+        mylog.debug("######(class EnzoHierarchyInMemory def __init__)")
+
     def _initialize_data_storage(self):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/enzo/data_structures.py (class EnzoHierarchyInMemory def _initialize_data_storage)")
+        mylog.debug("######(class EnzoHierarchyInMemory def _initialize_data_storage)")
+
         pass
 
     def _count_grids(self):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/enzo/data_structures.py (class EnzoHierarchyInMemory def _count_grids)")
+
         self.num_grids = self.enzo.hierarchy_information["GridDimensions"].shape[0]
 
+        mylog.debug("######(class EnzoHierarchyInMemory def _count_grids)")
+
     def _parse_index(self):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/enzo/data_structures.py (class EnzoHierarchyInMemory def _parse_index)")
+
         self._copy_index_structure()
         mylog.debug("Copying reverse tree")
         reverse_tree = self.enzo.hierarchy_information["GridParentIDs"].ravel().tolist()
@@ -586,11 +652,23 @@ class EnzoHierarchyInMemory(EnzoHierarchy):
             self.grids[i] = grid
         mylog.debug("Prepared")
 
+        mylog.debug("######(class EnzoHierarchyInMemory def _parse_index)")
+
     def _initialize_grid_arrays(self):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/enzo/data_structures.py (class EnzoHierarchyInMemory def _initialize_grid_arrays)")
+
         EnzoHierarchy._initialize_grid_arrays(self)
         self.grid_procs = np.zeros((self.num_grids, 1), "int32")
 
+        mylog.debug("######(class EnzoHierarchyInMemory def _initialize_grid_arrays)")
+
     def _copy_index_structure(self):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("frontends/enzo/data_structures.py (class EnzoHierarchyInMemory, def _copy_index_structure())")
+
         # Dimensions are important!
         self.grid_dimensions[:] = self.enzo.hierarchy_information["GridEndIndices"][:]
         self.grid_dimensions -= self.enzo.hierarchy_information["GridStartIndices"][:]
@@ -602,6 +680,8 @@ class EnzoHierarchyInMemory(EnzoHierarchy):
         self.grid_particle_count[:] = self.enzo.hierarchy_information[
             "GridNumberOfParticles"
         ][:]
+
+        mylog.debug("######(class EnzoHierarchyInMemory, def _copy_index_structure())")
 
     def save_data(self, *args, **kwargs):
         pass
@@ -621,16 +701,40 @@ class EnzoHierarchyInMemory(EnzoHierarchy):
         return my_grids[(random_sample,)]
 
     def _chunk_io(self, dobj, cache=True, local_only=False):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("frontends/enzo/data_structures.py (class EnzoHierarchyInMemory, def _chunk_io())")
+
         gfiles = defaultdict(list)
+
+        mylog.debug("dobj._current_chunk = %s", dobj._current_chunk)
+        mylog.debug("dobj._chunk_info = %s", dobj._chunk_info)
+        mylog.debug("dobj type = %s", type(dobj))
+        mylog.debug("dobj._current_chunk type = %s", type(dobj._current_chunk))
+        mylog.debug("dobj._chunk_info type = %s", type(dobj._chunk_info))
+
+        mylog.debug("dobj._current_chunk attributes: ")
+        mylog.debug("%s", inspect.getmembers(dobj._current_chunk, lambda a: not (inspect.isroutine(a))))
+
         gobjs = getattr(dobj._current_chunk, "objs", dobj._chunk_info)
+
+        mylog.debug("gobjs = %s", gobjs)
+        mylog.debug("gobjs type = %s", type(gobjs))
+
         for g in gobjs:
             gfiles[g.filename].append(g)
+
+        mylog.debug("gfiles = %s", gfiles)
+
         for fn in sorted(gfiles):
             if local_only:
                 gobjs = [g for g in gfiles[fn] if g.proc_num == self.comm.rank]
                 gfiles[fn] = gobjs
             gs = gfiles[fn]
             count = self._count_selection(dobj, gs)
+
+            mylog.debug("######(class EnzoHierarchyInMemory, def _chunk_io())")
+
             yield YTDataChunk(dobj, "io", gs, count, cache=cache)
 
 

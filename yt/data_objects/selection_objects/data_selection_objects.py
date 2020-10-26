@@ -42,6 +42,10 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
     _min_level = None
 
     def __init__(self, ds, field_parameters, data_source=None):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/selection_objects/data_selection_objects.py (class YTSelectionContainer, def __init__)")
+
         ParallelAnalysisInterface.__init__(self)
         super(YTSelectionContainer, self).__init__(ds, field_parameters)
         self._data_source = data_source
@@ -62,6 +66,8 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
             self.field_parameters.update(data_source.field_parameters)
         self.quantities = DerivedQuantityCollection(self)
 
+        mylog.debug("######(class YTSelectionContainer, def __init__)")
+
     @property
     def selector(self):
         if self._selector is not None:
@@ -80,6 +86,10 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
         return self._selector
 
     def chunks(self, fields, chunking_style, **kwargs):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/selection_objects/data_selection_objects.py (class YTSelectionContainer, def chunks)")
+
         # This is an iterator that will yield the necessary chunks.
         self.get_data()  # Ensure we have built ourselves
         if fields is None:
@@ -88,14 +98,25 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
         # scalar, that'll be the only chunk that gets returned; if it's a list,
         # those are the ones that will be.
         chunk_ind = kwargs.pop("chunk_ind", None)
+
+        mylog.debug("chunk_ind = %s", chunk_ind)
+        mylog.debug("chunking_style = %s", chunking_style)
+
         if chunk_ind is not None:
             chunk_ind = ensure_list(chunk_ind)
         for ci, chunk in enumerate(self.index._chunk(self, chunking_style, **kwargs)):
+
+            mylog.debug("ci = %s", ci)
+            mylog.debug("chunk.objs = %s", chunk.objs)
+
             if chunk_ind is not None and ci not in chunk_ind:
                 continue
             with self._chunked_read(chunk):
                 self.get_data(fields)
                 # NOTE: we yield before releasing the context
+
+                mylog.debug("######(class YTSelectionContainer, def chunks)")
+
                 yield self
 
     def _identify_dependencies(self, fields_to_get, spatial=False):
@@ -125,9 +146,17 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
         return sorted(fields_to_get)
 
     def get_data(self, fields=None):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/selection_objects/data_selection_objects.py (class YTSelectionContainer, def get_data)")
+        mylog.debug("fields = %s", fields)
+
         if self._current_chunk is None:
             self.index._identify_base_chunk(self)
         if fields is None:
+
+            mylog.debug("######(class YTSelectionContainer, def get_data)")
+
             return
         nfields = []
         apply_fields = defaultdict(list)
@@ -151,6 +180,9 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
                 self.get_data(apply_fields[filter_type])
         fields = nfields
         if len(fields) == 0:
+
+            mylog.debug("######(class YTSelectionContainer, def get_data)")
+
             return
         # Now we collect all our fields
         # Here is where we need to perform a validation step, so that if we
@@ -194,6 +226,10 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
         read_fluids, gen_fluids = self.index._read_fluid_fields(
             fluids, self, self._current_chunk
         )
+
+        mylog.debug("read_fluids = %s", read_fluids)
+        mylog.debug("gen_fluids = %s", gen_fluids)
+
         for f, v in read_fluids.items():
             self.field_data[f] = self.ds.arr(v, units=finfos[f].units)
             self.field_data[f].convert_to_units(finfos[f].output_units)
@@ -201,6 +237,9 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
         read_particles, gen_particles = self.index._read_particle_fields(
             particles, self, self._current_chunk
         )
+
+        mylog.debug("read_particles = %s", read_particles)
+        mylog.debug("gen_particles = %s", gen_particles)
 
         for f, v in read_particles.items():
             self.field_data[f] = self.ds.arr(v, units=finfos[f].units)
@@ -211,6 +250,8 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
         for field in list(self.field_data.keys()):
             if field not in ofields:
                 self.field_data.pop(field)
+
+        mylog.debug("######(class YTSelectionContainer, def get_data)")
 
     def _generate_fields(self, fields_to_generate):
         index = 0
@@ -340,6 +381,10 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
 
     @contextmanager
     def _ds_hold(self, new_ds):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/selection_objects/data_selection_objects.py (class YTSelectionContainer, def _ds_hold)")
+
         """
         This contextmanager is used to take a data object and preserve its
         attributes but allow the dataset that underlies it to be swapped out.
@@ -358,6 +403,9 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
         self.size = None
         self._index._identify_base_chunk(self)
         with self._chunked_read(None):
+
+            mylog.debug("######(class YTSelectionContainer, def _ds_hold)")
+
             yield
         self._index = old_index
         self.ds = old_ds
@@ -367,16 +415,26 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
 
     @contextmanager
     def _chunked_read(self, chunk):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/selection_objects/data_selection_objects.py (class YTSelectionContainer, def _chunked_read)")
+
         # There are several items that need to be swapped out
         # field_data, size, shape
         obj_field_data = []
         if hasattr(chunk, "objs"):
+
+            mylog.debug("chunk.objs = %s", chunk.objs)
+
             for obj in chunk.objs:
                 obj_field_data.append(obj.field_data)
                 obj.field_data = YTFieldData()
         old_field_data, self.field_data = self.field_data, YTFieldData()
         old_chunk, self._current_chunk = self._current_chunk, chunk
         old_locked, self._locked = self._locked, False
+
+        mylog.debug("######(class YTSelectionContainer, def _chunked_read)")
+
         yield
         self.field_data = old_field_data
         self._current_chunk = old_chunk
@@ -384,6 +442,11 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
         if hasattr(chunk, "objs"):
             for obj in chunk.objs:
                 obj.field_data = obj_field_data.pop(0)
+
+        mylog.debug("after yield chunk.objs = %s", chunk.objs)
+        for obj in chunk.objs:
+            mylog.debug("after yield obj = %s", obj)
+        mylog.debug("######after yield (class YTSelectionContainer, def _chunked_read)")
 
     @contextmanager
     def _activate_cache(self):
@@ -436,11 +499,24 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
 
     @property
     def max_level(self):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/selection_objects/data_selection_objects.py (class YTSelectionContainer, def max_level())")
+
         if self._max_level is None:
             try:
+
+                mylog.debug("######(class YTSelectionContainer, def max_level())")
+
                 return self.ds.max_level
             except AttributeError:
+
+                mylog.debug("######(class YTSelectionContainer, def max_level())")
+
                 return None
+
+        mylog.debug("######(class YTSelectionContainer, def max_level())")
+
         return self._max_level
 
     @max_level.setter
@@ -456,11 +532,24 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
 
     @property
     def min_level(self):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/selection_objects/data_selection_objects.py (class YTSelectionContainer, def min_level())")
+
         if self._min_level is None:
             try:
+
+                mylog.debug("######(class YTSelectionContainer, def min_level())")
+
                 return 0
             except AttributeError:
+
+                mylog.debug("######(class YTSelectionContainer, def min_level())")
+
                 return None
+
+        mylog.debug("######(class YTSelectionContainer, def min_level())")
+
         return self._min_level
 
     @min_level.setter
@@ -504,10 +593,16 @@ class YTSelectionContainer2D(YTSelectionContainer):
     _spatial = False
 
     def __init__(self, axis, ds, field_parameters=None, data_source=None):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/selection_objects/data_selection_objects.py (class YTSelectionContainer2D, def __init__)")
+
         super(YTSelectionContainer2D, self).__init__(ds, field_parameters, data_source)
         # We need the ds, which will exist by now, for fix_axis.
         self.axis = fix_axis(axis, self.ds)
         self.set_field_parameter("axis", axis)
+
+        mylog.debug("######(class YTSelectionContainer2D, def __init__)")
 
     def _convert_field_name(self, field):
         return field

@@ -34,6 +34,7 @@ from yt.utilities.lib.volume_container cimport VolumeContainer
 from .oct_container cimport Oct, OctreeContainer
 from .oct_visitors cimport cind
 
+from libc.stdio cimport printf
 
 cdef extern from "math.h":
     double exp(double x) nogil
@@ -167,6 +168,10 @@ cdef class SelectorObject:
                      np.ndarray[np.float64_t, ndim=2] left_edges,
                      np.ndarray[np.float64_t, ndim=2] right_edges,
                      np.ndarray[np.int32_t, ndim=2] levels):
+
+        printf("#FLAG#\n")
+        printf("yt/geometry/selection_routines.pyx (cdef class SelectorObject, def select_grids)\n")
+
         cdef int i, n
         cdef int ng = left_edges.shape[0]
         cdef np.ndarray[np.uint8_t, ndim=1] gridi = np.zeros(ng, dtype='uint8')
@@ -182,6 +187,12 @@ cdef class SelectorObject:
                     LE[i] = left_edges[n, i]
                     RE[i] = right_edges[n, i]
                 gridi[n] = self.select_grid(LE, RE, levels[n, 0])
+
+                printf("n = %d\n", n)
+                printf("gridi[n] = %d\n", gridi[n])
+
+        printf("######(cdef class SelectorObject, def select_grids)\n")
+
         return gridi.astype("bool")
 
     def count_octs(self, OctreeContainer octree, int domain_id = -1):
@@ -347,7 +358,22 @@ cdef class SelectorObject:
     cdef int select_grid(self, np.float64_t left_edge[3],
                                np.float64_t right_edge[3],
                                np.int32_t level, Oct *o = NULL) nogil:
-        if level < self.min_level or level > self.max_level: return 0
+
+        printf("#FLAG#\n")
+        printf("yt/geometry/selection_routines.pyx (cdef class SelectorObject, cdef int select_grid)\n")
+        printf("level = %d\n", level)
+        printf("self.min_level = %d\n", self.min_level)
+        printf("self.max_level = %d\n", self.max_level)
+
+        if level < self.min_level or level > self.max_level:
+
+            printf("Inside if, in select_grid\n")
+            printf("######(cdef class SelectorObject, cdef int select_grid)\n")
+
+            return 0
+
+        printf("######(cdef class SelectorObject, cdef int select_grid)\n")
+
         return self.select_bbox(left_edge, right_edge)
 
     @cython.boundscheck(False)
@@ -1572,10 +1598,28 @@ cdef class SliceSelector(SelectorObject):
     @cython.cdivision(True)
     cdef int select_bbox(self, np.float64_t left_edge[3],
                                np.float64_t right_edge[3]) nogil:
+
+        printf("#FLAG#\n")
+        printf("yt/geometry/selection_routines.pyx (cdef class SliceSelector(SelectorObject), cdef int select_bbox)\n")
+        printf("self.axis = %d\n", self.axis)
+        printf("self.coord = %f\n", self.coord)
+        printf("grid_eps = %f\n", grid_eps)
+
         if self.reduced_dimensionality == 1:
+
+            printf("Inside if, in select_bbox, self.reduced_dimensionality == 1\n")
+            printf("######(cdef class SliceSelector(SelectorObject), cdef int select_bbox)\n")
+
             return 1
         if left_edge[self.axis] - grid_eps <= self.coord < right_edge[self.axis]:
+
+            printf("Inside if, in select_bbox\n")
+            printf("######(cdef class SliceSelector(SelectorObject), cdef int select_bbox)\n")
+
             return 1
+
+        printf("######(cdef class SliceSelector(SelectorObject), cdef int select_bbox)
+
         return 0
 
     @cython.boundscheck(False)

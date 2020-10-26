@@ -30,6 +30,10 @@ class GridIndex(Index, abc.ABC):
     )
 
     def _setup_geometry(self):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/geometry/grid_geometry_handler.py (class GridIndex, def _setup_geometry)")
+
         mylog.debug("Counting grids.")
         self._count_grids()
 
@@ -44,6 +48,8 @@ class GridIndex(Index, abc.ABC):
 
         mylog.debug("Re-examining index")
         self._initialize_level_stats()
+
+        mylog.debug("######(class GridIndex, def _setup_geometry)")
 
     @abc.abstractmethod
     def _count_grids(self):
@@ -84,6 +90,10 @@ class GridIndex(Index, abc.ABC):
             yield self.select_grids(level)
 
     def _initialize_grid_arrays(self):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/geometry/grid_geometry_handler.py (class GridIndex, def _initialize_grid_arrays)")
+
         mylog.debug("Allocating arrays for %s grids", self.num_grids)
         self.grid_dimensions = np.ones((self.num_grids, 3), "int32")
         self.grid_left_edge = self.ds.arr(
@@ -94,6 +104,8 @@ class GridIndex(Index, abc.ABC):
         )
         self.grid_levels = np.zeros((self.num_grids, 1), "int32")
         self.grid_particle_count = np.zeros((self.num_grids, 1), "int32")
+
+        mylog.debug("######(class GridIndex, def _initialize_grid_arrays)")
 
     def clear_all_data(self):
         """
@@ -114,6 +126,10 @@ class GridIndex(Index, abc.ABC):
         return {self.ds.particle_types_raw[0]: self.grid_particle_count.sum()}
 
     def _initialize_level_stats(self):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/geometry/grid_geometry_handler.py (class GridIndex, def _initialize_level_stats)")
+
         # Now some statistics:
         #   0 = number of grids
         #   1 = number of cells
@@ -129,6 +145,8 @@ class GridIndex(Index, abc.ABC):
             self.level_stats[level]["numcells"] = (
                 self.grid_dimensions[li, :].prod(axis=1).sum()
             )
+
+        mylog.debug("######(class GridIndex, def _initialize_level_stats)")
 
     @property
     def grid_corners(self):
@@ -325,18 +343,44 @@ class GridIndex(Index, abc.ABC):
         return self.dataset.conversion_factors[unit]
 
     def _identify_base_chunk(self, dobj):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("geometry/grid_geometry_handler.py (class GridIndex, def _identify_base_chunk)")
+        mylog.debug("dobj._type_name = %s", dobj._type_name)
+        mylog.debug("dobj._grids = %s", dobj._grids)
+
         fast_index = None
         if dobj._type_name == "grid":
             dobj._chunk_info = np.empty(1, dtype="object")
             dobj._chunk_info[0] = weakref.proxy(dobj)
         elif getattr(dobj, "_grids", None) is None:
+
+            mylog.debug("dobj.selector type = %s", type(dobj.selector))
+            mylog.debug("self.grid_left_edge = %s", self.grid_left_edge)
+            mylog.debug("self.grid_right_edge = %s", self.grid_right_edge)
+            mylog.debug("self.grid_levels = %s", self.grid_levels)
+
             gi = dobj.selector.select_grids(
                 self.grid_left_edge, self.grid_right_edge, self.grid_levels
             )
+
+            mylog.debug("self.grids type = %s", type(self.grids))
+            mylog.debug("self.grids = %s", self.grids)
+            mylog.debug("gi = %s", gi)
+
+            for g in self.grids[gi]:
+                mylog.debug("self.grids[g] = %s", g)
+
             if any([g.filename is not None for g in self.grids[gi]]):
                 _gsort = _grid_sort_mixed
+
+                mylog.debug("Inside if, _gsort = %s", _gsort)
+
             else:
                 _gsort = _grid_sort_id
+
+                mylog.debug("Inside else, _gsort = %s", _gsort)
+
             grids = list(sorted(self.grids[gi], key=_gsort))
             dobj._chunk_info = np.empty(len(grids), dtype="object")
             for i, g in enumerate(grids):
@@ -351,6 +395,8 @@ class GridIndex(Index, abc.ABC):
         dobj._current_chunk = list(
             self._chunk_all(dobj, cache=False, fast_index=fast_index)
         )[0]
+
+        mylog.debug("######(class GridIndex, def _identify_base_chunk)")
 
     def _count_selection(self, dobj, grids=None, fast_index=None):
         if fast_index is not None:
@@ -400,6 +446,10 @@ class GridIndex(Index, abc.ABC):
         preload_fields=None,
         chunk_sizing="auto",
     ):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/geometry/grid_geometry_handler.py (class GridIndex, def _chunk_io)")
+
         # local_only is only useful for inline datasets and requires
         # implementation by subclasses.
         if preload_fields is None:
@@ -408,9 +458,18 @@ class GridIndex(Index, abc.ABC):
         gfiles = defaultdict(list)
         gobjs = getattr(dobj._current_chunk, "objs", dobj._chunk_info)
         fast_index = dobj._current_chunk._fast_index
+
+        mylog.debug("gobjs = %s", gobjs)
+        mylog.debug("dobj._current_chunk = %s", dobj._current_chunk)
+        mylog.debug("hasattr(dobj._current_chunk, 'objs') = %s", hasattr(dobj._current_chunk, "objs"))
+        mylog.debug("dobj._chunk_info = %s", dobj._chunk_info)
+
         for g in gobjs:
             # Force to be a string because sometimes g.filename is None.
             gfiles[str(g.filename)].append(g)
+
+        mylog.debug("gfiles = %s", gfiles)
+
         # We can apply a heuristic here to make sure we aren't loading too
         # many grids all at once.
         if chunk_sizing == "auto":
@@ -421,7 +480,16 @@ class GridIndex(Index, abc.ABC):
                     self._grid_chunksize * nproc / chunk_ngrids
                 ).astype("int")
                 size = max(self._grid_chunksize // chunking_factor, 1)
+
+                mylog.debug("nproc = %s", nproc)
+                mylog.debug("chunking_factor = %s", chunking_factor)
+                mylog.debug("self._grid_chunksize = %s", self._grid_chunksize)
+                mylog.debug("chunk_ngrids = %s", chunk_ngrids)
+
             else:
+
+                mylog.debug("self._grid_chunksize = %s", self._grid_chunksize)
+
                 size = self._grid_chunksize
         elif chunk_sizing == "config_file":
             size = ytcfg.getint("yt", "chunk_size")
@@ -435,6 +503,10 @@ class GridIndex(Index, abc.ABC):
             )
         for fn in sorted(gfiles):
             gs = gfiles[fn]
+
+            mylog.debug("fn = %s", fn)
+            mylog.debug("gs = %s", gs)
+
             for grids in (gs[pos : pos + size] for pos in range(0, len(gs), size)):
                 dc = YTDataChunk(
                     dobj,
@@ -446,6 +518,10 @@ class GridIndex(Index, abc.ABC):
                 )
                 # We allow four full chunks to be included.
                 with self.io.preload(dc, preload_fields, 4.0 * size):
+
+                    mylog.debug("dc = %s", dc)
+                    mylog.debug("######(class GridIndex, def _chunk_io)")
+
                     yield dc
 
     def _add_mesh_sampling_particle_field(self, deposit_field, ftype, ptype):

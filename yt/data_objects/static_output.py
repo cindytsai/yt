@@ -503,18 +503,31 @@ class Dataset(abc.ABC):
 
     @property
     def index(self):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/static_output.py (class Dataset, def index)")
+
         if self._instantiated_index is None:
+
+            mylog.debug("self._instantiated_index is None")
+
             if self._index_class is None:
                 raise RuntimeError("You should not instantiate Dataset.")
             self._instantiated_index = self._index_class(
                 self, dataset_type=self.dataset_type
             )
+
+            mylog.debug("self._instantiated_index = %s", self._instantiated_index)
+
             # Now we do things that we need an instantiated index for
             # ...first off, we create our field_info now.
             oldsettings = np.geterr()
             np.seterr(all="ignore")
             self.create_field_info()
             np.seterr(**oldsettings)
+
+        mylog.debug("######(class Dataset, def index)")
+
         return self._instantiated_index
 
     _index_proxy = None
@@ -564,6 +577,10 @@ class Dataset(abc.ABC):
         return self.index.field_list
 
     def create_field_info(self):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/static_output.py (class Dataset, def create_field_info)")
+
         self.field_dependencies = {}
         self.derived_field_list = []
         self.filtered_particle_types = []
@@ -603,6 +620,8 @@ class Dataset(abc.ABC):
         self.fields = FieldTypeContainer(self)
         self.index.field_list = sorted(self.field_list)
         self._last_freq = (None, None)
+
+        mylog.debug("######(class Dataset, def create_field_info)")
 
     def set_field_label_format(self, format_property, value):
         """
@@ -804,6 +823,10 @@ class Dataset(abc.ABC):
     _last_finfo = None
 
     def _get_field_info(self, ftype, fname=None):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/static_output.py (class Dataset, def _get_field_info)")
+
         self.index
 
         # store the original inputs in case we need to raise an error
@@ -824,10 +847,16 @@ class Dataset(abc.ABC):
             field == self._last_freq
             and field not in self.field_info.field_aliases.values()
         ):
+
+            mylog.debug("######(class Dataset, def _get_field_info)")
+
             return self._last_finfo
         if field in self.field_info:
             self._last_freq = field
             self._last_finfo = self.field_info[(ftype, fname)]
+
+            mylog.debug("######(class Dataset, def _get_field_info)")
+
             return self._last_finfo
 
         try:
@@ -846,6 +875,9 @@ class Dataset(abc.ABC):
             ):
                 field = self.default_fluid_type, field[1]
             self._last_freq = field
+
+            mylog.debug("######(class Dataset, def _get_field_info)")
+
             return self._last_finfo
         except KeyError:
             pass
@@ -862,6 +894,9 @@ class Dataset(abc.ABC):
                 if (ftype, fname) in self.field_info:
                     self._last_freq = (ftype, fname)
                     self._last_finfo = self.field_info[(ftype, fname)]
+
+                    mylog.debug("######(class Dataset, def _get_field_info)")
+
                     return self._last_finfo
         raise YTFieldNotFound(field=INPUT, ds=self)
 
@@ -951,7 +986,14 @@ class Dataset(abc.ABC):
 
         This is a wrapper around _find_extremum
         """
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/static_output.py (class Dataset, def find_max)")
+
         mylog.debug("Searching for maximum value of %s", field)
+
+        mylog.debug("######(class Dataset, def find_max)")
+
         return self._find_extremum(field, "max", source=source, to_array=to_array)
 
     def find_min(self, field, source=None, to_array=True):
@@ -1012,11 +1054,19 @@ class Dataset(abc.ABC):
         all_data is a wrapper to the Region object for creating a region
         which covers the entire simulation domain.
         """
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/static_output.py (class Dataset, def all_data)")
+        mylog.debug("find_max = %s", find_max)
+
         self.index
         if find_max:
             c = self.find_max("density")[1]
         else:
             c = (self.domain_right_edge + self.domain_left_edge) / 2.0
+
+        mylog.debug("######(class Dataset, def all_data)")
+
         return self.region(c, self.domain_left_edge, self.domain_right_edge, **kwargs)
 
     def box(self, left_edge, right_edge, **kwargs):

@@ -76,7 +76,13 @@ class UnstructuredIndex(Index):
             yield YTDataChunk(dobj, "spatial", [g], size)
 
     def _chunk_io(self, dobj, cache=True, local_only=False):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/geometry/unstructured_mesh_handler.py (class UnstructuredIndex ,def _chunk_io)")
+
         oobjs = getattr(dobj._current_chunk, "objs", dobj._chunk_info)
         for subset in oobjs:
             s = self._count_selection(dobj, oobjs)
             yield YTDataChunk(dobj, "io", [subset], s, cache=cache)
+
+        mylog.debug("######(class UnstructuredIndex ,def _chunk_io)")
