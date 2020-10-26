@@ -41,6 +41,7 @@ _frontends = [
     "swift",
     "tipsy",
     "ytdata",
+    "libyt",
 ]
 
 
