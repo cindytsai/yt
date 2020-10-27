@@ -1618,7 +1618,7 @@ cdef class SliceSelector(SelectorObject):
 
             return 1
 
-        printf("######(cdef class SliceSelector(SelectorObject), cdef int select_bbox)
+        printf("######(cdef class SliceSelector(SelectorObject), cdef int select_bbox")
 
         return 0
 
