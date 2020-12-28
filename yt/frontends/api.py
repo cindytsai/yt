@@ -29,6 +29,7 @@ _frontends = [
     "gizmo",
     "halo_catalog",
     "http_stream",
+    "libyt",
     "moab",
     "nc4_cm1",
     "open_pmd",
@@ -41,7 +42,6 @@ _frontends = [
     "swift",
     "tipsy",
     "ytdata",
-    "libyt",
 ]
 
 
