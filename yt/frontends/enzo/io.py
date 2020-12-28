@@ -262,11 +262,12 @@ class IOHandlerInMemory(BaseIOHandler):
                 # if g.id not in self.grids_in_memory: continue
                 for field in fields:
                     ftype, fname = field
+
+                    mylog.debug("Keys in self.grids_in_memory = %s", self.grids_in_memory.keys())
+
                     data_view = self.grids_in_memory[g.id][fname][
                         self.my_slice
                     ].swapaxes(0, 2)
-
-                    mylog.debug("Keys in self.grids_in_memory = %s", self.grids_in_memory.keys())
 
                     nd = g.select(selector, data_view, rv[field], ind)
                 ind += nd
