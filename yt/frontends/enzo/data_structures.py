@@ -199,6 +199,9 @@ class EnzoHierarchy(GridIndex):
                 test_grid_id = int(line.split("=")[-1])
                 if test_grid is not None:
                     break
+
+        mylog.debug("self.ds.dimensionality = %s", self.ds.dimensionality)
+
         self._guess_dataset_type(self.ds.dimensionality, test_grid, test_grid_id)
 
         mylog.debug("######(class EnzoHierarchy, def _count_grids)")
