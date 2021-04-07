@@ -281,6 +281,9 @@ class GAMERDataset(Dataset):
 
     def _parse_parameter_file(self):
 
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/gamer/data_structures.py (class GAMERDataset, def _parse_parameter_file)")
+
         # code-specific parameters
         for t in self._handle["Info"]:
             info_category = self._handle["Info"][t]
@@ -342,13 +345,17 @@ class GAMERDataset(Dataset):
             # default to 0.6 for old data format
             self.mu = parameters.get("MolecularWeight", 0.6)
             self.mhd = parameters.get("Magnetohydrodynamics", 0)
+            mylog.debug("self.mhd = ", self.mhd)
         else:
             self.mhd = 0
+            mylog.debug("self.mhd = ", self.mhd)
 
         # old data format (version < 2210) did not contain any information of code units
         self.parameters.setdefault("Opt__Unit", 0)
 
         self.geometry = geometry_parameters[parameters.get("Coordinate", 1)]
+
+        mylog.debug("######(class GAMERDataset, def _parse_parameter_file())")
 
     @classmethod
     def _is_valid(self, *args, **kwargs):
