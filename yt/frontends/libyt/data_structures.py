@@ -271,6 +271,9 @@ class libytDataset(Dataset):
                          units_override=units_override,
                          unit_system=unit_system)
 
+        # TODO: Check CCMagXYZ
+        self.check_convert()
+
     def _set_code_unit_attributes(self):
         # currently libyt assumes cgs
         setdefaultattr(self, 'length_unit', self.quan(self.libyt.param_yt['length_unit'], 'cm'))
@@ -327,3 +330,36 @@ class libytDataset(Dataset):
         # always return false since libyt is used for inline analysis only
         return False
 
+    # TODO: Check CCMagXYZ
+    def check_convert(self):
+        from mpi4py import MPI
+        myrank = MPI.COMM_WORLD.Get_rank()
+        for id in range(self.libyt.param_yt['num_grids']):
+            if self.libyt.hierarchy['proc_num'][id,0] == myrank:
+                MagX   = self.libyt.grid_data[id]['MagX']
+                MagY   = self.libyt.grid_data[id]['MagY']
+                MagZ   = self.libyt.grid_data[id]['MagZ']
+                CCMagX = self.libyt.grid_data[id]['CCMagX']
+                CCMagY = self.libyt.grid_data[id]['CCMagY']
+                CCMagZ = self.libyt.grid_data[id]['CCMagZ']
+                # mylog.debug("MagX != CCMagX : %s" % (id(MagX) == id(CCMagX)))
+                # mylog.debug("MagY != CCMagY : %s" % (id(MagY) == id(CCMagY)))
+                # mylog.debug("MagZ != CCMagZ : %s" % (id(MagZ) == id(CCMagZ)))
+
+                # convert to cell-centered
+                converted_MagX = 0.5 * (MagX[:,:,:-1] + MagX[:,:,1:])
+                converted_MagY = 0.5 * (MagY[:,:-1,:] + MagY[:,1:,:])
+                converted_MagZ = 0.5 * (MagZ[:-1,:,:] + MagZ[1:,:,:])
+
+                # test if they are the same
+                mylog.debug("converted_MagX == CCMagX : %s" % (converted_MagX == CCMagX))
+                mylog.debug("converted_MagY == CCMagY : %s" % (converted_MagY == CCMagY))
+                mylog.debug("converted_MagZ == CCMagZ : %s" % (converted_MagZ == CCMagZ))
+                mylog.debug("converted_MagX == CCMagX : %s" % (converted_MagX - CCMagX))
+                mylog.debug("converted_MagY == CCMagY : %s" % (converted_MagY - CCMagY))
+                mylog.debug("converted_MagZ == CCMagZ : %s" % (converted_MagZ - CCMagZ))
+
+                # average difference
+                mylog.debug("<converted_MagX - CCMagX> : %lf" % (np.sum(converted_MagX - CCMagX) / 64.0))
+                mylog.debug("<converted_MagY - CCMagY> : %lf" % (np.sum(converted_MagY - CCMagY) / 64.0))
+                mylog.debug("<converted_MagZ - CCMagZ> : %lf" % (np.sum(converted_MagZ - CCMagZ) / 64.0))
