@@ -354,20 +354,20 @@ class libytDataset(Dataset):
                 # mylog.debug("MagY != CCMagY : %s" % (id(MagY) == id(CCMagY)))
                 # mylog.debug("MagZ != CCMagZ : %s" % (id(MagZ) == id(CCMagZ)))
 
-                # convert to cell-centered, these convert function seems to be failed...
+                # convert to cell-centered
                 converted_MagX = 0.5 * (MagX[:,:,:-1] + MagX[:,:,1:])
                 converted_MagY = 0.5 * (MagY[:,:-1,:] + MagY[:,1:,:])
                 converted_MagZ = 0.5 * (MagZ[:-1,:,:] + MagZ[1:,:,:])
 
                 # convert to cell-centered, function GetCellCenterBField in gamer.
-                PS1 = np.min(MagX.shape)
-                for k in range(PS1):
-                    for j in range(PS1):
-                        for i in range(PS1):
-                            B_CC = GetCellCenteredBField(MagX, MagY, MagZ, i, j, k)
-                            converted_MagX[k,j,i] = B_CC[0]
-                            converted_MagY[k,j,i] = B_CC[1]
-                            converted_MagZ[k,j,i] = B_CC[2]
+                # PS1 = np.min(MagX.shape)
+                # for k in range(PS1):
+                #     for j in range(PS1):
+                #         for i in range(PS1):
+                #             B_CC = GetCellCenteredBField(MagX, MagY, MagZ, i, j, k)
+                #             converted_MagX[k,j,i] = B_CC[0]
+                #             converted_MagY[k,j,i] = B_CC[1]
+                #             converted_MagZ[k,j,i] = B_CC[2]
 
                 # test if they are the same
                 mylog.debug("converted_MagX == CCMagX : %s" % (converted_MagX == CCMagX))
