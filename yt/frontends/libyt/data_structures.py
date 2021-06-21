@@ -354,10 +354,15 @@ class libytDataset(Dataset):
                 # mylog.debug("MagY != CCMagY : %s" % (id(MagY) == id(CCMagY)))
                 # mylog.debug("MagZ != CCMagZ : %s" % (id(MagZ) == id(CCMagZ)))
 
+                # convert using libyt method, user derived_func
+                converted_MagX = self.libyt.derived_func(id, "MagX")
+                converted_MagY = self.libyt.derived_func(id, "MagY")
+                converted_MagZ = self.libyt.derived_func(id, "MagZ")
+
                 # convert to cell-centered
-                converted_MagX = 0.5 * (MagX[:,:,:-1] + MagX[:,:,1:])
-                converted_MagY = 0.5 * (MagY[:,:-1,:] + MagY[:,1:,:])
-                converted_MagZ = 0.5 * (MagZ[:-1,:,:] + MagZ[1:,:,:])
+                # converted_MagX = 0.5 * (MagX[:,:,:-1] + MagX[:,:,1:])
+                # converted_MagY = 0.5 * (MagY[:,:-1,:] + MagY[:,1:,:])
+                # converted_MagZ = 0.5 * (MagZ[:-1,:,:] + MagZ[1:,:,:])
 
                 # convert to cell-centered, function GetCellCenterBField in gamer.
                 # PS1 = np.min(MagX.shape)
