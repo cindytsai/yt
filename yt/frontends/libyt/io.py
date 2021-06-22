@@ -190,7 +190,7 @@ class IOHandlerlibyt(BaseIOHandler):
                     if field_list[fname]["field_define_type"] == "cell-centered":
                         mylog.debug("self.grid_data[g.id][fname].shape = %s", self.grid_data[g.id][fname].shape)
                         data_view = self.grid_data[g.id][fname][:, :, :].swapaxes(0, 2)
-                    if field_list[fname]["field_define_type"] == "face-centered":
+                    elif field_list[fname]["field_define_type"] == "face-centered":
                         # convert to cell-centered
                         data_temp = self.grid_data[g.id][fname]
                         axis = np.argmax(data_temp.shape)
@@ -201,7 +201,7 @@ class IOHandlerlibyt(BaseIOHandler):
                         if axis == 2:
                             data_convert = 0.5 * (data_temp[:,:,:-1] + data_temp[:,:,1:])
                         data_view = data_convert.swapaxes(0,2)
-                    if field_list[fname]["field_define_type"] == "derived_func":
+                    elif field_list[fname]["field_define_type"] == "derived_func":
                         data_convert = self.libyt.derived_func(g.id, fname)
                         data_view = data_convert.swapaxes(0,2)
                     else:
