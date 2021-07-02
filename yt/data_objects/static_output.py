@@ -831,17 +831,25 @@ class Dataset(abc.ABC):
 
         # store the original inputs in case we need to raise an error
         INPUT = ftype, fname
+
+        mylog.debug("ftype, fname = %s, %s", ftype, fname)
+
         if fname is None:
             try:
                 ftype, fname = ftype.name
+                mylog.debug("ftype, fname = %s, %s", ftype, fname)
             except AttributeError:
                 ftype, fname = "unknown", ftype
+                mylog.debug("ftype, fname = %s, %s", ftype, fname)
 
         # storing this condition before altering it
         guessing_type = ftype == "unknown"
         if guessing_type:
             ftype = self._last_freq[0] or ftype
         field = (ftype, fname)
+
+        mylog.debug("field = ftype, fname = %s, %s", field[0], field[1])
+        mylog.debug("self._last_freq = %s", self._last_freq)
 
         if (
             field == self._last_freq
@@ -864,6 +872,9 @@ class Dataset(abc.ABC):
             # the type of field it is.  So we look at the field type and
             # determine if we need to change the type.
             fi = self._last_finfo = self.field_info[fname]
+
+            mylog.debug("fi = %s", fi)
+
             if (
                 fi.sampling_type == "particle"
                 and self._last_freq[0] not in self.particle_types
@@ -898,6 +909,9 @@ class Dataset(abc.ABC):
                     mylog.debug("######(class Dataset, def _get_field_info)")
 
                     return self._last_finfo
+
+        mylog.debug("Raise YTFieldNotFound error")
+
         raise YTFieldNotFound(field=INPUT, ds=self)
 
     def _setup_classes(self):

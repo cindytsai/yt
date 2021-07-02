@@ -1450,6 +1450,7 @@ class YTDataContainer:
         fields = ensure_list(fields)
 
         mylog.debug("fields = %s", fields)
+        mylog.debug("self._container_fields = %s", self._container_fields)
 
         explicit_fields = []
         for field in fields:
@@ -1463,6 +1464,8 @@ class YTDataContainer:
             ftype, fname = self._tupleize_field(field)
             # print(field, " : ",ftype, fname)
             finfo = self.ds._get_field_info(ftype, fname)
+
+            mylog.debug("finfo = %s", finfo)
 
             # really ugly check to ensure that this field really does exist somewhere,
             # in some naming convention, before returning it as a possible field type
