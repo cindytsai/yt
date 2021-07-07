@@ -40,6 +40,10 @@ class IOHandlerGAMER(BaseIOHandler):
         self.pgroup = ds.refine_by ** 3  # number of patches in a patch group
 
     def _read_particle_coords(self, chunks, ptf):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/gamer/io.py (class IOHandlerGAMER, def _read_particle_coords())")
+
         chunks = list(chunks)  # generator --> list
         p_idx = self.ds.index._particle_indices
 
@@ -51,6 +55,9 @@ class IOHandlerGAMER(BaseIOHandler):
         # currently GAMER does not support multiple particle types
         assert len(ptf) == 1
         ptype = list(ptf.keys())[0]
+
+        mylog.debug("ptf = %s", ptf)
+        mylog.debug("ptype = %s", ptf.keys())
 
         for chunk in chunks:
             for g1, g2 in particle_sequences(chunk.objs):

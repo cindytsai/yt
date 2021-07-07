@@ -58,6 +58,10 @@ class GAMERHierarchy(GridIndex):
         self.num_grids = self.dataset.parameters["NPatch"].sum() // self.pgroup
 
     def _parse_index(self):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/gamer/data_structures.py (class GAMERHierarchy, def _parse_index())")
+
         parameters = self.dataset.parameters
         gid0 = 0
         grid_corner = self._handle["Tree/Corner"][()][:: self.pgroup]
@@ -104,6 +108,10 @@ class GAMERHierarchy(GridIndex):
         except KeyError:
             self.grid_particle_count[:] = 0.0
 
+        for i in range(self.grid_particle_count.shape[0]):
+            mylog.debug("grid_particle_count, grid_level = %s, %s", self.grid_particle_count[i][0], self.grid_levels[i][0])
+        mylog.debug("self.num_grids = %s", self.num_grids)
+
         # calculate the starting particle indices for each grid (starting from 0)
         # --> note that the last element must store the total number of particles
         #    (see _read_particle_coords and _read_particle_fields in io.py)
@@ -111,6 +119,8 @@ class GAMERHierarchy(GridIndex):
         np.add.accumulate(
             self.grid_particle_count.squeeze(), out=self._particle_indices[1:]
         )
+
+        mylog.debug("######(class GAMERHierarchy, def _parse_index())")
 
     def _populate_grid_objects(self):
         son_list = self._handle["Tree/Son"][()]

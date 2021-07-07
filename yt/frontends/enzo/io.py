@@ -62,6 +62,10 @@ class IOHandlerPackedHDF5(BaseIOHandler):
             yield rv
 
     def _read_particle_fields(self, chunks, ptf, selector):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/enzo/io.py (class IOHandlerPackedHDF5, def _read_particle_fields())")
+
         chunks = list(chunks)
         for chunk in chunks:  # These should be organized by grid filename
             f = None
@@ -76,6 +80,10 @@ class IOHandlerPackedHDF5(BaseIOHandler):
                     continue
                 ds = f.get("/Grid%08i" % g.id)
                 for ptype, field_list in sorted(ptf.items()):
+
+                    mylog.debug("ptf.items() = %s", ptf.items())
+                    mylog.debug("ptype, field_list = %s, %s", ptype, field_list)
+
                     if ptype != "io":
                         if g.NumberOfActiveParticles[ptype] == 0:
                             continue
@@ -89,6 +97,9 @@ class IOHandlerPackedHDF5(BaseIOHandler):
                     if selector is None:
                         # This only ever happens if the call is made from
                         # _read_particle_coords.
+
+                        mylog.debug("######(class IOHandlerPackedHDF5, def _read_particle_fields())")
+
                         yield ptype, (x, y, z)
                         continue
                     mask = selector.select_points(x, y, z, 0.0)
