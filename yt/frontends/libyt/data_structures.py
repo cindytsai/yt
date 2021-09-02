@@ -68,12 +68,10 @@ class libytHierarchy(GridIndex):
         mylog.debug("#FLAG#")
         mylog.debug("yt/frontends/libyt/data_structures.py (class libytHierarchy, def _detect_output_fields())")
 
+        # appending fields
         try:
-            # Just want to make sure that num_field > 0, which is field_list exist.
-            temp = self.libyt.param_yt['field_list']
-            # assuming all grids have the same fields
-            gid = 0
-            self.field_list = [(self.dataset._code_frontend, v) for v in self.libyt.grid_data[gid].keys()]
+            field_list = self.libyt.param_yt['field_list']
+            self.field_list = [(self.dataset._code_frontend, v) for v in field_list.keys()]
         except:
             mylog.debug("No field.")
 
@@ -203,7 +201,8 @@ class libytDataset(Dataset):
                  unit_system="cgs"):
 
         # nothing to do if initialization has been done
-        if self.libyt is not None: return
+        if self.libyt is not None:
+            return
 
         # load the libyt module
         self.libyt = self._obtain_libyt()
@@ -341,14 +340,15 @@ class libytDataset(Dataset):
         # Load code specific parameters
         for key in self.libyt.param_user.keys():
             if hasattr(self, key):
-                mylog.debug("Overwrite existing attribute self.%s = %s in class libytDataset", key, getattr(self, key))
+                mylog.info("Overwrite existing attribute self.%s = %s in class libytDataset", key, getattr(self, key))
             try:
                 setattr(self, key, self.libyt.param_user[key])
-                mylog.debug("Set attribute self.%s = %s in class libytDataset.", key, self.libyt.param_user[key])
+                mylog.info("Set attribute self.%s = %s in class libytDataset.", key, self.libyt.param_user[key])
             except:
-                mylog.debug("Cannot add new attribute self.%s = %s", key, self.libyt.param_user[key])
+                mylog.warning("Cannot add new attribute self.%s = %s", key, self.libyt.param_user[key])
 
-    def _obtain_libyt(self):
+    @staticmethod
+    def _obtain_libyt():
         import libyt
         return libyt
 
