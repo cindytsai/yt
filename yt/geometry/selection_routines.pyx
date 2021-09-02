@@ -34,7 +34,6 @@ from yt.utilities.lib.volume_container cimport VolumeContainer
 from .oct_container cimport Oct, OctreeContainer
 from .oct_visitors cimport cind
 
-from libc.stdio cimport printf
 
 cdef extern from "math.h":
     double exp(double x) nogil

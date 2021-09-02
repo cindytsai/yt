@@ -514,14 +514,12 @@ def parallel_objects(objects, njobs=0, storage=None, barrier=True, dynamic=False
         raise RuntimeError
     my_rank = my_communicator.rank
     all_new_comms = np.array_split(np.arange(my_size), njobs)
-
     for i, comm_set in enumerate(all_new_comms):
         if my_rank in comm_set:
             my_new_id = i
             break
     if parallel_capable:
         communication_system.push_with_ids(all_new_comms[my_new_id].tolist())
-
     to_share = {}
     # If our objects object is slice-aware, like time series data objects are,
     # this will prevent intermediate objects from being created.
@@ -544,6 +542,7 @@ def parallel_objects(objects, njobs=0, storage=None, barrier=True, dynamic=False
         storage.update(new_storage)
     if barrier:
         my_communicator.barrier()
+
 
 def parallel_ring(objects, generator_func, mutable=False):
     r"""This function loops in a ring around a set of objects, yielding the

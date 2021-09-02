@@ -89,7 +89,6 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
         # scalar, that'll be the only chunk that gets returned; if it's a list,
         # those are the ones that will be.
         chunk_ind = kwargs.pop("chunk_ind", None)
-
         if chunk_ind is not None:
             chunk_ind = list(always_iterable(chunk_ind))
         for ci, chunk in enumerate(self.index._chunk(self, chunking_style, **kwargs)):
@@ -196,7 +195,6 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
         read_fluids, gen_fluids = self.index._read_fluid_fields(
             fluids, self, self._current_chunk
         )
-
         for f, v in read_fluids.items():
             self.field_data[f] = self.ds.arr(v, units=finfos[f].units)
             self.field_data[f].convert_to_units(finfos[f].output_units)

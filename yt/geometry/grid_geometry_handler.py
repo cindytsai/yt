@@ -335,12 +335,10 @@ class GridIndex(Index, abc.ABC):
             gi = dobj.selector.select_grids(
                 self.grid_left_edge, self.grid_right_edge, self.grid_levels
             )
-
             if any([g.filename is not None for g in self.grids[gi]]):
                 _gsort = _grid_sort_mixed
             else:
                 _gsort = _grid_sort_id
-
             grids = list(sorted(self.grids[gi], key=_gsort))
             dobj._chunk_info = np.empty(len(grids), dtype="object")
             for i, g in enumerate(grids):
@@ -412,11 +410,9 @@ class GridIndex(Index, abc.ABC):
         gfiles = defaultdict(list)
         gobjs = getattr(dobj._current_chunk, "objs", dobj._chunk_info)
         fast_index = dobj._current_chunk._fast_index
-
         for g in gobjs:
             # Force to be a string because sometimes g.filename is None.
             gfiles[str(g.filename)].append(g)
-
         # We can apply a heuristic here to make sure we aren't loading too
         # many grids all at once.
         if chunk_sizing == "auto":

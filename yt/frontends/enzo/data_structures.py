@@ -20,7 +20,6 @@ from yt.utilities.on_demand_imports import _h5py as h5py, _libconf as libconf
 
 from .fields import EnzoFieldInfo
 
-import inspect
 
 class EnzoGrid(AMRGridPatch):
     """
@@ -150,6 +149,7 @@ class EnzoHierarchy(GridIndex):
     _preload_implemented = True
 
     def __init__(self, ds, dataset_type):
+
         self.dataset_type = dataset_type
         if ds.file_style is not None:
             self._bn = ds.file_style
@@ -631,10 +631,8 @@ class EnzoHierarchyInMemory(EnzoHierarchy):
     def _chunk_io(self, dobj, cache=True, local_only=False):
         gfiles = defaultdict(list)
         gobjs = getattr(dobj._current_chunk, "objs", dobj._chunk_info)
-
         for g in gobjs:
             gfiles[g.filename].append(g)
-
         for fn in sorted(gfiles):
             if local_only:
                 gobjs = [g for g in gfiles[fn] if g.proc_num == self.comm.rank]

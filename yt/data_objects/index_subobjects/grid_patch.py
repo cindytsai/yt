@@ -20,8 +20,6 @@ from yt.utilities.lib.interpolators import ghost_zone_interpolate
 from yt.utilities.lib.mesh_utilities import clamp_edges
 from yt.utilities.nodal_data_utils import get_nodal_slices
 
-from yt.utilities.logger import ytLogger as mylog
-
 RECONSTRUCT_INDEX = bool(ytcfg.get("yt", "reconstruct_index"))
 
 

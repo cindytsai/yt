@@ -199,39 +199,32 @@ class Index(ParallelAnalysisInterface, abc.ABC):
         if len(fields) == 0:
             return {}, []
         fields_to_read, fields_to_generate = self._split_fields(fields)
-
         if len(fields_to_read) == 0:
             return {}, fields_to_generate
         selector = dobj.selector
-
         if chunk is None:
             self._identify_base_chunk(dobj)
         chunks = self._chunk_io(dobj, cache=False)
         fields_to_return = self.io._read_particle_selection(
             chunks, selector, fields_to_read
         )
-
         return fields_to_return, fields_to_generate
 
     def _read_fluid_fields(self, fields, dobj, chunk=None):
         if len(fields) == 0:
             return {}, []
         fields_to_read, fields_to_generate = self._split_fields(fields)
-
         if len(fields_to_read) == 0:
             return {}, fields_to_generate
         selector = dobj.selector
-
         if chunk is None:
             self._identify_base_chunk(dobj)
             chunk_size = dobj.size
         else:
             chunk_size = chunk.data_size
-
         fields_to_return = self.io._read_fluid_selection(
             self._chunk_io(dobj), selector, fields_to_read, chunk_size
         )
-
         return fields_to_return, fields_to_generate
 
     def _chunk(self, dobj, chunking_style, ngz=0, **kwargs):

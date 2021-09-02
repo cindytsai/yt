@@ -2,8 +2,6 @@ import numpy as np
 
 from yt.fields.field_info_container import FieldInfoContainer
 
-from yt.funcs import mylog
-
 b_units = "code_magnetic"
 pre_units = "code_mass / (code_length*code_time**2)"
 erg_units = "code_mass / (code_length*code_time**2)"

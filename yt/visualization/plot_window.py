@@ -147,6 +147,7 @@ def validate_mesh_fields(data_source, fields):
     if len(invalid_fields) > 0:
         raise YTInvalidFieldType(invalid_fields)
 
+
 class PlotWindow(ImagePlotContainer):
     r"""
     A plotting mechanism based around the concept of a window into a
@@ -1626,6 +1627,7 @@ class AxisAlignedSlicePlot(PWViewerMPL):
             axes_unit = get_axes_unit(width, ds)
         self.set_axes_unit(axes_unit)
 
+
 class ProjectionPlot(PWViewerMPL):
     r"""Creates a projection plot from a dataset
 
@@ -1849,7 +1851,6 @@ class ProjectionPlot(PWViewerMPL):
                 method=method,
                 max_level=max_level,
             )
-
         PWViewerMPL.__init__(
             self,
             proj,
@@ -1865,6 +1866,7 @@ class ProjectionPlot(PWViewerMPL):
         if axes_unit is None:
             axes_unit = get_axes_unit(width, ds)
         self.set_axes_unit(axes_unit)
+
 
 class OffAxisSlicePlot(PWViewerMPL):
     r"""Creates an off axis slice plot from a dataset
@@ -2468,6 +2470,7 @@ def SlicePlot(ds, normal=None, fields=None, axis=None, *args, **kwargs):
                 "an OffAxisSlicePlot object."
             )
             del kwargs["origin"]
+
         return OffAxisSlicePlot(ds, normal, fields, *args, **kwargs)
     else:
         # north_vector not used in AxisAlignedSlicePlots; remove it if in kwargs
@@ -2477,6 +2480,7 @@ def SlicePlot(ds, normal=None, fields=None, axis=None, *args, **kwargs):
                 "an AxisAlignedSlicePlot object."
             )
             del kwargs["north_vector"]
+
         return AxisAlignedSlicePlot(ds, normal, fields, *args, **kwargs)
 
 

@@ -12,7 +12,6 @@ from yt.utilities.parallel_tools.parallel_analysis_interface import (
 from yt.utilities.physical_constants import gravitational_constant_cgs
 from yt.utilities.physical_ratios import HUGE
 
-from yt.funcs import mylog
 
 def get_position_fields(field, data):
     axis_names = [data.ds.coordinates.axis_name[num] for num in [0, 1, 2]]

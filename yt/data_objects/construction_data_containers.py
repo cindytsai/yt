@@ -362,6 +362,7 @@ class YTProj(YTSelectionContainer2D):
             else:
                 self._projected_units[field] = field_unit
 
+
 class YTParticleProj(YTProj):
     """
     A projection operation optimized for SPH particle data.
@@ -576,6 +577,7 @@ class YTQuadTreeProj(YTProj):
         i2 = icoords[:, yax]
         ilevel = chunk.ires * self.ds.ires_factor
         tree.add_chunk_to_tree(i1, i2, ilevel, v, w)
+
 
 class YTCoveringGrid(YTSelectionContainer3D):
     """A 3D region with all data extracted to a single, specified

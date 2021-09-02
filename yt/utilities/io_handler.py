@@ -8,8 +8,6 @@ import numpy as np
 from yt.geometry.selection_routines import GridSelector
 from yt.utilities.on_demand_imports import _h5py as h5py
 
-from yt.funcs import mylog
-
 io_registry = {}
 
 use_caching = 0
