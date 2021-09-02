@@ -22,7 +22,7 @@ from yt.utilities.exceptions import YTNotInsideNotebook
 from ._commons import validate_image_name
 
 try:
-    import cmocean  # noqa
+    import cmocean
 except ImportError:
     cmocean = None
 
@@ -257,7 +257,9 @@ class PlotContainer:
             self.figure_size = float(figure_size[0]), float(figure_size[1])
         else:
             self.figure_size = float(figure_size)
-        font_path = matplotlib.get_data_path() + "/fonts/ttf/STIXGeneral.ttf"
+        font_path = os.path.join(
+            matplotlib.get_data_path(), "fonts", "ttf", "STIXGeneral.ttf"
+        )
         self._font_properties = FontProperties(size=fontsize, fname=font_path)
         self._font_color = None
         self._xlabel = None
@@ -303,7 +305,7 @@ class PlotContainer:
         log.  Symlog can also work with negative values in log space as well as
         negative and positive values simultaneously and symmetrically.  If symlog
         scaling is desired, please set log=True and either set symlog_auto=True or
-        select a alue for linthresh.
+        select a value for linthresh.
 
         Parameters
         ----------
