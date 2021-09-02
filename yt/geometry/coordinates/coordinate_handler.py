@@ -1,9 +1,10 @@
+import abc
 import weakref
 from numbers import Number
 
 import numpy as np
 
-from yt.funcs import fix_unitary, iterable, validate_width_tuple
+from yt.funcs import fix_unitary, is_sequence, validate_width_tuple
 from yt.units.yt_array import YTArray, YTQuantity
 from yt.utilities.exceptions import YTCoordinateNotImplemented, YTInvalidWidthError
 
@@ -32,7 +33,7 @@ def _get_vert_fields(axi, units="code_length"):
     return _vert
 
 
-def validate_iterable_width(width, ds, unit=None):
+def validate_sequence_width(width, ds, unit=None):
     if isinstance(width[0], tuple) and isinstance(width[1], tuple):
         validate_width_tuple(width[0])
         validate_width_tuple(width[1])
@@ -61,47 +62,56 @@ def validate_iterable_width(width, ds, unit=None):
             )
 
 
-class CoordinateHandler:
+class CoordinateHandler(abc.ABC):
     name = None
 
     def __init__(self, ds, ordering):
         self.ds = weakref.proxy(ds)
         self.axis_order = ordering
 
+    @abc.abstractmethod
     def setup_fields(self):
         # This should return field definitions for x, y, z, r, theta, phi
-        raise NotImplementedError
+        pass
 
+    @abc.abstractmethod
     def pixelize(self, dimension, data_source, field, bounds, size, antialias=True):
         # This should *actually* be a pixelize call, not just returning the
         # pixelizer
-        raise NotImplementedError
+        pass
 
+    @abc.abstractmethod
     def pixelize_line(self, field, start_point, end_point, npoints):
-        raise NotImplementedError
+        pass
 
     def distance(self, start, end):
         p1 = self.convert_to_cartesian(start)
         p2 = self.convert_to_cartesian(end)
         return np.sqrt(((p1 - p2) ** 2.0).sum())
 
+    @abc.abstractmethod
     def convert_from_cartesian(self, coord):
-        raise NotImplementedError
+        pass
 
+    @abc.abstractmethod
     def convert_to_cartesian(self, coord):
-        raise NotImplementedError
+        pass
 
+    @abc.abstractmethod
     def convert_to_cylindrical(self, coord):
-        raise NotImplementedError
+        pass
 
+    @abc.abstractmethod
     def convert_from_cylindrical(self, coord):
-        raise NotImplementedError
+        pass
 
+    @abc.abstractmethod
     def convert_to_spherical(self, coord):
-        raise NotImplementedError
+        pass
 
+    @abc.abstractmethod
     def convert_from_spherical(self, coord):
-        raise NotImplementedError
+        pass
 
     _data_projection = None
 
@@ -194,11 +204,12 @@ class CoordinateHandler:
         return ya
 
     @property
+    @abc.abstractproperty
     def period(self):
-        raise NotImplementedError
+        pass
 
     def sanitize_depth(self, depth):
-        if iterable(depth):
+        if is_sequence(depth):
             validate_width_tuple(depth)
             depth = (self.ds.quan(depth[0], fix_unitary(depth[1])),)
         elif isinstance(depth, Number):
@@ -216,7 +227,7 @@ class CoordinateHandler:
             # initialize the index if it is not already initialized
             self.ds.index
             # Default to code units
-            if not iterable(axis):
+            if not is_sequence(axis):
                 xax = self.x_axis[axis]
                 yax = self.y_axis[axis]
                 w = self.ds.domain_width[np.array([xax, yax])]
@@ -226,8 +237,8 @@ class CoordinateHandler:
                 mi = np.argmin(self.ds.domain_width)
                 w = self.ds.domain_width[np.array((mi, mi))]
             width = (w[0], w[1])
-        elif iterable(width):
-            width = validate_iterable_width(width, self.ds)
+        elif is_sequence(width):
+            width = validate_sequence_width(width, self.ds)
         elif isinstance(width, YTQuantity):
             width = (width, width)
         elif isinstance(width, Number):
@@ -256,7 +267,7 @@ class CoordinateHandler:
                 raise RuntimeError(f'center keyword "{center}" not recognized')
         elif isinstance(center, YTArray):
             return self.ds.arr(center), self.convert_to_cartesian(center)
-        elif iterable(center):
+        elif is_sequence(center):
             if isinstance(center[0], str) and isinstance(center[1], str):
                 if center[0].lower() == "min":
                     v, center = self.ds.find_min(center[1])
@@ -265,7 +276,7 @@ class CoordinateHandler:
                 else:
                     raise RuntimeError(f'center keyword "{center}" not recognized')
                 center = self.ds.arr(center, "code_length")
-            elif iterable(center[0]) and isinstance(center[1], str):
+            elif is_sequence(center[0]) and isinstance(center[1], str):
                 center = self.ds.arr(center[0], center[1])
             else:
                 center = self.ds.arr(center, "code_length")

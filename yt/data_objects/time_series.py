@@ -6,11 +6,13 @@ import weakref
 from functools import wraps
 
 import numpy as np
+from more_itertools import always_iterable
 
+from yt._maintenance.deprecation import issue_deprecation_warning
 from yt.config import ytcfg
 from yt.data_objects.analyzer_objects import AnalysisTask, create_quantity_proxy
 from yt.data_objects.particle_trajectories import ParticleTrajectories
-from yt.funcs import ensure_list, issue_deprecation_warning, iterable, mylog
+from yt.funcs import is_sequence, mylog
 from yt.units.yt_array import YTArray, YTQuantity
 from yt.utilities.exceptions import YTException
 from yt.utilities.object_registries import (
@@ -123,19 +125,21 @@ class DatasetSeries:
     --------
 
     >>> ts = DatasetSeries(
-            "GasSloshingLowRes/sloshing_low_res_hdf5_plt_cnt_0[0-6][0-9]0")
+    ...     "GasSloshingLowRes/sloshing_low_res_hdf5_plt_cnt_0[0-6][0-9]0"
+    ... )
     >>> for ds in ts:
-    ...     SlicePlot(ds, "x", "Density").save()
+    ...     SlicePlot(ds, "x", ("gas", "density")).save()
     ...
     >>> def print_time(ds):
     ...     print(ds.current_time)
     ...
     >>> ts = DatasetSeries(
     ...     "GasSloshingLowRes/sloshing_low_res_hdf5_plt_cnt_0[0-6][0-9]0",
-    ...      setup_function = print_time)
+    ...     setup_function=print_time,
+    ... )
     ...
     >>> for ds in ts:
-    ...     SlicePlot(ds, "x", "Density").save()
+    ...     SlicePlot(ds, "x", ("gas", "density")).save()
 
     """
 
@@ -151,7 +155,7 @@ class DatasetSeries:
             outputs = cls._get_filenames_from_glob_pattern(outputs)
         except TypeError:
             pass
-        ret = super(DatasetSeries, cls).__new__(cls)
+        ret = super().__new__(cls)
         ret._pre_outputs = outputs[:]
         return ret
 
@@ -165,7 +169,7 @@ class DatasetSeries:
     ):
         # This is needed to properly set _pre_outputs for Simulation subclasses.
         self._mixed_dataset_types = mixed_dataset_types
-        if iterable(outputs) and not isinstance(outputs, str):
+        if is_sequence(outputs) and not isinstance(outputs, str):
             self._pre_outputs = outputs[:]
         self.tasks = AnalysisTaskProxy(self)
         self.params = TimeSeriesParametersContainer(self)
@@ -192,22 +196,12 @@ class DatasetSeries:
         pattern = outputs
         epattern = os.path.expanduser(pattern)
         data_dir = ytcfg.get("yt", "test_data_dir")
-        # if not match if found from the current work dir,
+        # if no match if found from the current work dir,
         # we try to match the pattern from the test data dir
         file_list = glob.glob(epattern) or glob.glob(os.path.join(data_dir, epattern))
         if not file_list:
             raise FileNotFoundError(f"No match found for pattern : {pattern}")
         return sorted(file_list)
-
-    def __iter__(self):
-        # We can make this fancier, but this works
-        for o in self._pre_outputs:
-            try:
-                ds = self._load(o, **self.kwargs)
-                self._setup_function(ds)
-                yield ds
-            except TypeError:
-                yield o
 
     def __getitem__(self, key):
         if isinstance(key, slice):
@@ -218,11 +212,9 @@ class DatasetSeries:
                 self._pre_outputs[key], parallel=self.parallel, **self.kwargs
             )
         o = self._pre_outputs[key]
-        try:
+        if isinstance(o, (str, os.PathLike)):
             o = self._load(o, **self.kwargs)
             self._setup_function(o)
-        except TypeError:
-            pass
         return o
 
     def __len__(self):
@@ -275,7 +267,7 @@ class DatasetSeries:
 
         >>> ts = DatasetSeries("DD*/DD*.index")
         >>> for ds in ts.piter():
-        ...    SlicePlot(ds, "x", "Density").save()
+        ...     SlicePlot(ds, "x", ("gas", "density")).save()
         ...
 
         This demonstrates how one might store results:
@@ -283,12 +275,11 @@ class DatasetSeries:
         >>> def print_time(ds):
         ...     print(ds.current_time)
         ...
-        >>> ts = DatasetSeries("DD*/DD*.index",
-        ...             setup_function = print_time )
+        >>> ts = DatasetSeries("DD*/DD*.index", setup_function=print_time)
         ...
         >>> my_storage = {}
         >>> for sto, ds in ts.piter(storage=my_storage):
-        ...     v, c = ds.find_max("density")
+        ...     v, c = ds.find_max(("gas", "density"))
         ...     sto.result = (v, c)
         ...
         >>> for i, (v, c) in sorted(my_storage.items()):
@@ -297,10 +288,9 @@ class DatasetSeries:
 
         This shows how to dispatch 4 processors to each dataset:
 
-        >>> ts = DatasetSeries("DD*/DD*.index",
-        ...                     parallel = 4)
+        >>> ts = DatasetSeries("DD*/DD*.index", parallel=4)
         >>> for ds in ts.piter():
-        ...     ProjectionPlot(ds, "x", "Density").save()
+        ...     ProjectionPlot(ds, "x", ("gas", "density")).save()
         ...
 
         """
@@ -341,11 +331,10 @@ class DatasetSeries:
             yield next_ret
 
     def eval(self, tasks, obj=None):
-        tasks = ensure_list(tasks)
         return_values = {}
         for store, ds in self.piter(return_values):
             store.result = []
-            for task in tasks:
+            for task in always_iterable(tasks):
                 try:
                     style = inspect.getargspec(task.eval)[0][1]
                     if style == "ds":
@@ -399,15 +388,18 @@ class DatasetSeries:
         ...
         >>> ts = DatasetSeries.from_filenames(
         ...     "GasSloshingLowRes/sloshing_low_res_hdf5_plt_cnt_0[0-6][0-9]0",
-        ...      setup_function = print_time)
+        ...     setup_function=print_time,
+        ... )
         ...
         >>> for ds in ts:
-        ...     SlicePlot(ds, "x", "Density").save()
+        ...     SlicePlot(ds, "x", ("gas", "density")).save()
 
         """
         issue_deprecation_warning(
             "DatasetSeries.from_filenames() is deprecated and will be removed "
-            "in a future version of yt. Use DatasetSeries() directly."
+            "in a future version of yt. Use DatasetSeries() directly.",
+            since="4.0.0",
+            removal="4.1.0",
         )
         obj = cls(filenames, parallel=parallel, setup_function=setup_function, **kwargs)
         return obj
@@ -463,19 +455,27 @@ class DatasetSeries:
         --------
         >>> my_fns = glob.glob("orbit_hdf5_chk_00[0-9][0-9]")
         >>> my_fns.sort()
-        >>> fields = ["particle_position_x", "particle_position_y",
-        >>>           "particle_position_z", "particle_velocity_x",
-        >>>           "particle_velocity_y", "particle_velocity_z"]
+        >>> fields = [
+        ...     ("all", "particle_position_x"),
+        ...     ("all", "particle_position_y"),
+        ...     ("all", "particle_position_z"),
+        ...     ("all", "particle_velocity_x"),
+        ...     ("all", "particle_velocity_y"),
+        ...     ("all", "particle_velocity_z"),
+        ... ]
         >>> ds = load(my_fns[0])
-        >>> init_sphere = ds.sphere(ds.domain_center, (.5, "unitary"))
-        >>> indices = init_sphere["particle_index"].astype("int")
+        >>> init_sphere = ds.sphere(ds.domain_center, (0.5, "unitary"))
+        >>> indices = init_sphere[("all", "particle_index")].astype("int")
         >>> ts = DatasetSeries(my_fns)
         >>> trajs = ts.particle_trajectories(indices, fields=fields)
-        >>> for t in trajs :
-        >>>     print(t["particle_velocity_x"].max(), t["particle_velocity_x"].min())
+        >>> for t in trajs:
+        ...     print(
+        ...         t[("all", "particle_velocity_x")].max(),
+        ...         t[("all", "particle_velocity_x")].min(),
+        ...     )
 
-        Note
-        ----
+        Notes
+        -----
         This function will fail if there are duplicate particle ids or if some of the
         particle disappear.
         """
@@ -511,12 +511,10 @@ class DatasetSeriesObject:
         self.data_object_name = data_object_name
         self._args = args
         self._kwargs = kwargs
-        qs = dict(
-            [
-                (qn, create_quantity_proxy(qv))
-                for qn, qv in derived_quantity_registry.items()
-            ]
-        )
+        qs = {
+            qn: create_quantity_proxy(qv)
+            for qn, qv in derived_quantity_registry.items()
+        }
         self.quantities = TimeSeriesQuantitiesContainer(self, qs)
 
     def eval(self, tasks):
@@ -634,10 +632,10 @@ class SimulationTimeSeries(DatasetSeries):
 
         Parameters
         ----------
-        key: str
+        key : str
             The key by which to retrieve outputs, usually 'time' or
             'redshift'.
-        values: array_like
+        values : array_like
             A list of values, given as floats.
         tolerance : float
             If not None, do not return a dataset unless the value is
@@ -651,7 +649,7 @@ class SimulationTimeSeries(DatasetSeries):
 
         Examples
         --------
-        >>> datasets = es.get_outputs_by_key('redshift', [0, 1, 2], tolerance=0.1)
+        >>> datasets = es.get_outputs_by_key("redshift", [0, 1, 2], tolerance=0.1)
 
         """
 

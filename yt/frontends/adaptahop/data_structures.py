@@ -39,7 +39,13 @@ class AdaptaHOPParticleIndex(ParticleIndex):
             ]
         else:
             self.data_files = [
-                cls(self.dataset, self.io, self.dataset.parameter_filename, 0, None,)
+                cls(
+                    self.dataset,
+                    self.io,
+                    self.dataset.parameter_filename,
+                    0,
+                    None,
+                )
             ]
 
 
@@ -70,7 +76,7 @@ class AdaptaHOPDataset(Dataset):
             )
         self.parent_ds = parent_ds
 
-        super(AdaptaHOPDataset, self).__init__(
+        super().__init__(
             filename,
             dataset_type,
             units_override=units_override,
@@ -101,7 +107,7 @@ class AdaptaHOPDataset(Dataset):
         self.current_time = self.quan(params["age"], "Gyr")
         self.omega_lambda = 0.724  # hard coded if not inferred from parent ds
         self.hubble_constant = 0.7  # hard coded if not inferred from parent ds
-        self.periodicity = (True, True, True)
+        self._periodicity = (True, True, True)
         self.particle_types = "halos"
         self.particle_types_raw = "halos"
 
@@ -119,10 +125,10 @@ class AdaptaHOPDataset(Dataset):
         self.parameters.update(params)
 
     @classmethod
-    def _is_valid(self, *args, **kwargs):
-        fname = os.path.split(args[0])[1]
+    def _is_valid(cls, filename, *args, **kwargs):
+        fname = os.path.split(filename)[1]
         if not fname.startswith("tree_bricks") or not re.match(
-            "^tree_bricks\d{3}$", fname
+            r"^tree_bricks\d{3}$", fname
         ):
             return False
         return True
@@ -196,10 +202,10 @@ class AdaptaHOPHaloContainer(YTSelectionContainer):
 
     >>> import yt
     >>> ds = yt.load(
-    ...      'output_00080_halos/tree_bricks080',
-    ...       parent_ds=yt.load('output_00080/info_00080.txt')
+    ...     "output_00080_halos/tree_bricks080",
+    ...     parent_ds=yt.load("output_00080/info_00080.txt"),
     ... )
-    >>> ds.halo(1, ptype='io')
+    >>> ds.halo(1, ptype="io")
     >>> print(halo.mass)
     119.22804260253906 100000000000.0*Msun
     >>> print(halo.position)
@@ -208,11 +214,11 @@ class AdaptaHOPHaloContainer(YTSelectionContainer):
     [3306394.95849609 8584366.60766602 9982682.80029297] cm/s
     >>> print(halo["io", "particle_mass"])
     [3.19273578e-06 3.19273578e-06 ... 3.19273578e-06 3.19273578e-06] code_mass
-    >>>
+
     >>> # particle ids for this halo
     >>> print(halo.member_ids)
     [     48      64     176 ... 999947 1005471 1006779]
-    >>>
+
     """
 
     _type_name = "halo"
@@ -242,7 +248,7 @@ class AdaptaHOPHaloContainer(YTSelectionContainer):
         self._set_halo_member_data()
 
         # Call constructor
-        super(AdaptaHOPHaloContainer, self).__init__(parent_ds, {})
+        super().__init__(parent_ds, {})
 
     def __repr__(self):
         return "%s_%s_%09d" % (self.ds, self.ptype, self.particle_identifier)
@@ -297,7 +303,7 @@ class AdaptaHOPHaloContainer(YTSelectionContainer):
 
         # Build subregion that only contains halo particles
         reg = sph.cut_region(
-            ['np.in1d(obj["io", "particle_identity"].astype(int), members)'],
+            ['np.in1d(obj[("io", "particle_identity")].astype(int), members)'],
             locals=dict(members=members, np=np),
         )
 

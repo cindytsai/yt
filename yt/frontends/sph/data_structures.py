@@ -25,13 +25,14 @@ class SPHDataset(ParticleDataset):
         index_filename=None,
         kdtree_filename=None,
         kernel_name=None,
+        default_species_fields=None,
     ):
         if kernel_name is None:
             self.kernel_name = self.default_kernel_name
         else:
             self.kernel_name = kernel_name
         self.kdtree_filename = kdtree_filename
-        super(SPHDataset, self).__init__(
+        super().__init__(
             filename,
             dataset_type=dataset_type,
             file_style=file_style,
@@ -39,6 +40,7 @@ class SPHDataset(ParticleDataset):
             unit_system=unit_system,
             index_order=index_order,
             index_filename=index_filename,
+            default_species_fields=default_species_fields,
         )
 
     @property
@@ -86,7 +88,7 @@ class SPHParticleIndex(ParticleIndex):
         if hasattr(self.io, "_generate_smoothing_length"):
             self.io._generate_smoothing_length(self)
 
-        super(SPHParticleIndex, self)._initialize_index()
+        super()._initialize_index()
 
     def _generate_kdtree(self, fname):
         from yt.utilities.lib.cykdtree import PyKDTree
@@ -111,12 +113,13 @@ class SPHParticleIndex(ParticleIndex):
             return
         positions = np.concatenate(positions)
         mylog.info("Allocating KDTree for %s particles", positions.shape[0])
+        num_neighbors = getattr(self.ds, "num_neighbors", 32)
         self._kdtree = PyKDTree(
             positions.astype("float64"),
             left_edge=self.ds.domain_left_edge,
             right_edge=self.ds.domain_right_edge,
             periodic=np.array(self.ds.periodicity),
-            leafsize=2 * int(self.ds.num_neighbors),
+            leafsize=2 * int(num_neighbors),
             data_version=self.ds._file_hash,
         )
         if fname is not None:

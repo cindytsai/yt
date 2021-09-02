@@ -30,14 +30,15 @@ class YTUnidentifiedDataType(YTException):
 
 
 class YTOutputNotIdentified(YTUnidentifiedDataType):
-    # kept for backwards compatibility
     def __init__(self, filename, args=None, kwargs=None):
         super(YTUnidentifiedDataType, self).__init__(filename, args, kwargs)
         # this cannot be imported at the module level (creates circular imports)
-        from yt.funcs import issue_deprecation_warning
+        from yt._maintenance.deprecation import issue_deprecation_warning
 
         issue_deprecation_warning(
-            "YTOutputNotIdentified is a deprecated alias for YTUnidentifiedDataType"
+            "YTOutputNotIdentified is a deprecated alias for YTUnidentifiedDataType",
+            since="4.0.0",
+            removal="4.1.0",
         )
 
 
@@ -63,7 +64,7 @@ class YTSphereTooSmall(YTException):
         self.smallest_cell = smallest_cell
 
     def __str__(self):
-        return "%0.5e < %0.5e" % (self.radius, self.smallest_cell)
+        return f"{self.radius:0.5e} < {self.smallest_cell:0.5e}"
 
 
 class YTAxesNotOrthogonalError(YTException):
@@ -89,9 +90,67 @@ class YTFieldNotFound(YTException):
     def __init__(self, field, ds):
         self.field = field
         self.ds = ds
+        self.suggestions = []
+        try:
+            self._find_suggestions()
+        except AttributeError:
+            # This may happen if passing a field that is e.g. an Ellipsis
+            # e.g. when using ds.r[...]
+            pass
+
+    def _find_suggestions(self):
+        from yt.funcs import levenshtein_distance
+
+        field = self.field
+        ds = self.ds
+
+        suggestions = {}
+        if not isinstance(field, tuple):
+            ftype, fname = None, field
+        elif field[1] is None:
+            ftype, fname = None, field[0]
+        else:
+            ftype, fname = field
+
+        # Limit the suggestions to a distance of 3 (at most 3 edits)
+        # This is very arbitrary, but is picked so that...
+        # - small typos lead to meaningful suggestions (e.g. `densty` -> `density`)
+        # - we don't suggest unrelated things (e.g. `pressure` -> `density` has a distance
+        #   of 6, we definitely do not want it)
+        # A threshold of 3 seems like a good middle point.
+        max_distance = 3
+
+        # Suggest (ftype, fname), with alternative ftype
+        for ft, fn in ds.derived_field_list:
+            if fn.lower() == fname.lower() and (
+                ftype is None or ft.lower() != ftype.lower()
+            ):
+                suggestions[ft, fn] = 0
+
+        if ftype is not None:
+            # Suggest close matches using levenshtein distance
+            fields_str = {_: str(_).lower() for _ in ds.derived_field_list}
+            field_str = str(field).lower()
+
+            for (ft, fn), fs in fields_str.items():
+                distance = levenshtein_distance(field_str, fs, max_dist=max_distance)
+                if distance < max_distance:
+                    if (ft, fn) in suggestions:
+                        continue
+                    suggestions[ft, fn] = distance
+
+        # Return suggestions sorted by increasing distance (first are most likely)
+        self.suggestions = [
+            (ft, fn)
+            for (ft, fn), distance in sorted(suggestions.items(), key=lambda v: v[1])
+        ]
 
     def __str__(self):
-        return f"Could not find field {self.field} in {self.ds}."
+        msg = f"Could not find field {self.field} in {self.ds}."
+        if self.suggestions:
+            msg += "\nDid you mean:\n\t"
+            msg += "\n\t".join(str(_) for _ in self.suggestions)
+        return msg
 
 
 class YTParticleTypeNotFound(YTException):
@@ -237,7 +296,7 @@ class YTFieldUnitError(YTException):
 
 class YTFieldUnitParseError(YTException):
     def __init__(self, field_info):
-        self.msg = "The field '%s' has unparseable units '%s'."
+        self.msg = "The field '%s' has unparsable units '%s'."
         self.msg = self.msg % (field_info.name, field_info.units)
 
     def __str__(self):
@@ -270,7 +329,7 @@ class YTNoFilenamesMatchPattern(YTException):
         self.pattern = pattern
 
     def __str__(self):
-        return "No filenames were found to match the pattern: " + f"'{self.pattern}'"
+        return f"No filenames were found to match the pattern: '{self.pattern}'"
 
 
 class YTNoOldAnswer(YTException):
@@ -278,7 +337,7 @@ class YTNoOldAnswer(YTException):
         self.path = path
 
     def __str__(self):
-        return "There is no old answer available.\n" + str(self.path)
+        return f"There is no old answer available.\n{self.path}"
 
 
 class YTNoAnswerNameSpecified(YTException):
@@ -336,7 +395,7 @@ class YTNoAPIKey(YTException):
         self.config_name = config_name
 
     def __str__(self):
-        return "You need to set an API key for %s in ~/.config/yt/ytrc as %s" % (
+        return "You need to set an API key for {} in ~/.config/yt/ytrc as {}".format(
             self.service,
             self.config_name,
         )
@@ -393,7 +452,7 @@ class YTDomainOverflow(YTException):
         self.dre = dre
 
     def __str__(self):
-        return "Particle bounds %s and %s exceed domain bounds %s and %s" % (
+        return "Particle bounds {} and {} exceed domain bounds {} and {}".format(
             self.mi,
             self.ma,
             self.dle,
@@ -417,7 +476,7 @@ class YTIllDefinedFilter(YTException):
         self.s2 = s2
 
     def __str__(self):
-        return "Filter '%s' ill-defined.  Applied to shape %s but is shape %s." % (
+        return "Filter '{}' ill-defined.  Applied to shape {} but is shape {}.".format(
             self.filter,
             self.s1,
             self.s2,
@@ -435,7 +494,7 @@ class YTIllDefinedParticleFilter(YTException):
             "are not defined for this dataset."
         )
         f = self.filter
-        return msg.format("\n".join([str(m) for m in self.missing]), f.name)
+        return msg.format("\n".join(str(m) for m in self.missing), f.name)
 
 
 class YTIllDefinedBounds(YTException):
@@ -444,7 +503,7 @@ class YTIllDefinedBounds(YTException):
         self.ub = ub
 
     def __str__(self):
-        v = "The bounds %0.3e and %0.3e are ill-defined. " % (self.lb, self.ub)
+        v = f"The bounds {self.lb:0.3e} and {self.ub:0.3e} are ill-defined. "
         v += "Typically this happens when a log binning is specified "
         v += "and zero or negative values are given for the bounds."
         return v
@@ -483,13 +542,8 @@ class YTRockstarMultiMassNotSupported(YTException):
         self.ptype = ptype
 
     def __str__(self):
-        v = "Particle type '%s' has minimum mass %0.3e and maximum " % (
-            self.ptype,
-            self.mi,
-        )
-        v += "mass %0.3e.  Multi-mass particles are not currently supported." % (
-            self.ma
-        )
+        v = f"Particle type '{self.ptype}' has minimum mass {self.mi:0.3e} and maximum "
+        v += f"mass {self.ma:0.3e}.  Multi-mass particles are not currently supported."
         return v
 
 
@@ -504,7 +558,7 @@ class YTElementTypeNotRecognized(YTException):
         self.num_nodes = num_nodes
 
     def __str__(self):
-        return "Element type not recognized - dim = %s, num_nodes = %s" % (
+        return "Element type not recognized - dim = {}, num_nodes = {}".format(
             self.dim,
             self.num_nodes,
         )
@@ -543,7 +597,7 @@ class YTIllDefinedCutRegion(Exception):
         r = """Can't mix particle/discrete and fluid/mesh conditions or
                quantities.  Conditions specified:
             """
-        r += "\n".join([c for c in self.conditions])
+        r += "\n".join(c for c in self.conditions)
         return r
 
 
@@ -556,7 +610,7 @@ class YTMixedCutRegion(Exception):
         r = f"""Can't mix particle/discrete and fluid/mesh conditions or
                quantities.  Field: {self.field} and Conditions specified:
             """
-        r += "\n".join([c for c in self.conditions])
+        r += "\n".join(c for c in self.conditions)
         return r
 
 
@@ -842,7 +896,7 @@ class YTCommandRequiresModule(YTException):
         msg += "appropriate for your python environment, e.g.:\n"
         msg += f"  conda install {self.module}\n"
         msg += "or:\n"
-        msg += f"  pip install {self.module}\n"
+        msg += f" python -m pip install {self.module}\n"
         return msg
 
 
@@ -871,4 +925,4 @@ class YTArrayTooLargeToDisplay(YTException):
 class GenerationInProgress(Exception):
     def __init__(self, fields):
         self.fields = fields
-        super(GenerationInProgress, self).__init__()
+        super().__init__()

@@ -43,7 +43,7 @@ class ARTIndex(OctreeIndex):
         self.directory = os.path.dirname(self.index_filename)
         self.max_level = ds.max_level
         self.float_type = np.float64
-        super(ARTIndex, self).__init__(ds, dataset_type)
+        super().__init__(ds, dataset_type)
 
     def get_smallest_dx(self):
         """
@@ -151,6 +151,7 @@ class ARTDataset(Dataset):
         file_particle_stars=None,
         units_override=None,
         unit_system="cgs",
+        default_species_fields=None,
     ):
         self.fluid_types += ("art",)
         if fields is None:
@@ -175,6 +176,7 @@ class ARTDataset(Dataset):
             dataset_type,
             units_override=units_override,
             unit_system=unit_system,
+            default_species_fields=default_species_fields,
         )
         self.storage_filename = storage_filename
 
@@ -201,7 +203,7 @@ class ARTDataset(Dataset):
             else:
                 setattr(self, "_file_" + filetype, None)
 
-    def __repr__(self):
+    def __str__(self):
         return self._file_amr.split("/")[-1]
 
     def _set_code_unit_attributes(self):
@@ -246,7 +248,7 @@ class ARTDataset(Dataset):
         self.domain_right_edge = np.zeros(3, dtype="float") + 1.0
         self.dimensionality = 3
         self.refine_by = 2
-        self.periodicity = (True, True, True)
+        self._periodicity = (True, True, True)
         self.cosmological_simulation = True
         self.parameters = {}
         self.parameters.update(constants)
@@ -290,7 +292,7 @@ class ARTDataset(Dataset):
             # lextra needs to be loaded as a string, but it's actually
             # array values.  So pop it off here, and then re-insert.
             lextra = amr_header_vals.pop("lextra")
-            amr_header_vals["lextra"] = np.fromstring(lextra, ">f4")
+            amr_header_vals["lextra"] = np.frombuffer(lextra, ">f4")
             self.parameters.update(amr_header_vals)
             amr_header_vals = None
             # estimate the root level
@@ -313,7 +315,7 @@ class ARTDataset(Dataset):
                 # extras needs to be loaded as a string, but it's actually
                 # array values.  So pop it off here, and then re-insert.
                 extras = particle_header_vals.pop("extras")
-                particle_header_vals["extras"] = np.fromstring(extras, ">f4")
+                particle_header_vals["extras"] = np.frombuffer(extras, ">f4")
             self.parameters["wspecies"] = wspecies[:n]
             self.parameters["lspecies"] = lspecies[:n]
             for specie in range(n):
@@ -359,7 +361,7 @@ class ARTDataset(Dataset):
         mylog.info("Max level is %02i", self.max_level)
 
     def create_field_info(self):
-        super(ARTDataset, self).create_field_info()
+        super().create_field_info()
         if "wspecies" in self.parameters:
             # We create dark_matter and stars unions.
             ptr = self.particle_types_raw
@@ -369,12 +371,12 @@ class ARTDataset(Dataset):
             self.add_particle_union(pu)
 
     @classmethod
-    def _is_valid(self, *args, **kwargs):
+    def _is_valid(cls, filename, *args, **kwargs):
         """
         Defined for the NMSU file naming scheme.
         This could differ for other formats.
         """
-        f = f"{args[0]}"
+        f = str(filename)
         prefix, suffix = filename_pattern["amr"]
         if not os.path.isfile(f):
             return False
@@ -391,7 +393,7 @@ class ARTDataset(Dataset):
 
 class ARTParticleFile(ParticleFile):
     def __init__(self, ds, io, filename, file_id):
-        super(ARTParticleFile, self).__init__(ds, io, filename, file_id, range=None)
+        super().__init__(ds, io, filename, file_id, range=None)
         self.total_particles = {}
         for ptype, count in zip(
             ds.particle_types_raw, ds.parameters["total_particles"]
@@ -482,7 +484,7 @@ class DarkMatterARTDataset(ARTDataset):
             else:
                 setattr(self, "_file_" + filetype, None)
 
-    def __repr__(self):
+    def __str__(self):
         return self._file_particle.split("/")[-1]
 
     def _set_code_unit_attributes(self):
@@ -525,7 +527,7 @@ class DarkMatterARTDataset(ARTDataset):
         self.domain_right_edge = np.zeros(3, dtype="float") + 1.0
         self.dimensionality = 3
         self.refine_by = 2
-        self.periodicity = (True, True, True)
+        self._periodicity = (True, True, True)
         self.cosmological_simulation = True
         self.parameters = {}
         self.parameters.update(constants)
@@ -568,43 +570,41 @@ class DarkMatterARTDataset(ARTDataset):
             boxsize = np.fromfile(fh, count=1, dtype=">f4")
         n = nspecs[0]
         particle_header_vals = {}
-        tmp = np.array(
-            [
-                headerstr,
-                aexpn,
-                aexp0,
-                amplt,
-                astep,
-                istep,
-                partw,
-                tintg,
-                ekin,
-                ekin1,
-                ekin2,
-                au0,
-                aeu0,
-                nrowc,
-                ngridc,
-                nspecs,
-                nseed,
-                Om0,
-                Oml0,
-                hubble,
-                Wp5,
-                Ocurv,
-                wspecies,
-                lspecies,
-                extras,
-                boxsize,
-            ]
-        )
-        for i in range(len(tmp)):
+        tmp = [
+            headerstr,
+            aexpn,
+            aexp0,
+            amplt,
+            astep,
+            istep,
+            partw,
+            tintg,
+            ekin,
+            ekin1,
+            ekin2,
+            au0,
+            aeu0,
+            nrowc,
+            ngridc,
+            nspecs,
+            nseed,
+            Om0,
+            Oml0,
+            hubble,
+            Wp5,
+            Ocurv,
+            wspecies,
+            lspecies,
+            extras,
+            boxsize,
+        ]
+        for i, arr in enumerate(tmp):
             a1 = dmparticle_header_struct[0][i]
             a2 = dmparticle_header_struct[1][i]
             if a2 == 1:
-                particle_header_vals[a1] = tmp[i][0]
+                particle_header_vals[a1] = arr[0]
             else:
-                particle_header_vals[a1] = tmp[i][:a2]
+                particle_header_vals[a1] = arr[:a2]
         for specie in range(n):
             self.particle_types.append("specie%i" % specie)
         self.particle_types_raw = tuple(self.particle_types)
@@ -664,12 +664,12 @@ class DarkMatterARTDataset(ARTDataset):
         pass
 
     @classmethod
-    def _is_valid(self, *args, **kwargs):
+    def _is_valid(cls, filename, *args, **kwargs):
         """
         Defined for the NMSU file naming scheme.
         This could differ for other formats.
         """
-        f = f"{args[0]}"
+        f = str(filename)
         prefix, suffix = filename_pattern["particle_data"]
         if not os.path.isfile(f):
             return False
@@ -882,10 +882,10 @@ class ARTDomainFile:
 
     def _read_amr_level(self, oct_handler):
         """Open the oct file, read in octs level-by-level.
-           For each oct, only the position, index, level and domain
-           are needed - its position in the octree is found automatically.
-           The most important is finding all the information to feed
-           oct_handler.add
+        For each oct, only the position, index, level and domain
+        are needed - its position in the octree is found automatically.
+        The most important is finding all the information to feed
+        oct_handler.add
         """
         self.level_offsets
         f = open(self.ds._file_amr, "rb")

@@ -1,6 +1,5 @@
 import numpy as np
 
-from yt import YTArray
 from yt.data_objects.selection_objects.data_selection_objects import (
     YTSelectionContainer,
     YTSelectionContainer3D,
@@ -11,9 +10,10 @@ from yt.funcs import (
     validate_3d_array,
     validate_center,
     validate_float,
-    validate_iterable,
     validate_object,
+    validate_sequence,
 )
+from yt.units import YTArray
 from yt.utilities.exceptions import YTEllipsoidOrdering, YTException, YTSphereTooSmall
 from yt.utilities.logger import ytLogger as mylog
 from yt.utilities.math_utils import get_rotation_matrix
@@ -39,8 +39,8 @@ class YTSphere(YTSelectionContainer3D):
 
     >>> import yt
     >>> ds = yt.load("RedshiftOutput0005")
-    >>> c = [0.5,0.5,0.5]
-    >>> sphere = ds.sphere(c, (1., "kpc"))
+    >>> c = [0.5, 0.5, 0.5]
+    >>> sphere = ds.sphere(c, (1.0, "kpc"))
     """
 
     _type_name = "sphere"
@@ -54,7 +54,7 @@ class YTSphere(YTSelectionContainer3D):
         validate_object(ds, Dataset)
         validate_object(field_parameters, dict)
         validate_object(data_source, YTSelectionContainer)
-        super(YTSphere, self).__init__(center, ds, field_parameters, data_source)
+        super().__init__(center, ds, field_parameters, data_source)
         # Unpack the radius, if necessary
         radius = fix_length(radius, self.ds)
         if radius < self.index.get_smallest_dx():
@@ -88,7 +88,7 @@ class YTMinimalSphere(YTSelectionContainer3D):
 
     >>> import yt
     >>> ds = yt.load("output_00080/info_00080.txt")
-    >>> points = ds.r['particle_position']
+    >>> points = ds.r["particle_position"]
     >>> sphere = ds.minimal_sphere(points)
     """
 
@@ -114,7 +114,7 @@ class YTMinimalSphere(YTSelectionContainer3D):
 
         center = ds.arr(mb.center(), points.units)
         radius = ds.quan(np.sqrt(mb.squared_radius()), points.units)
-        super(YTMinimalSphere, self).__init__(center, ds, field_parameters, data_source)
+        super().__init__(center, ds, field_parameters, data_source)
         self.set_field_parameter("radius", radius)
         self.set_field_parameter("center", self.center)
         self.radius = radius
@@ -139,7 +139,7 @@ class YTEllipsoid(YTSelectionContainer3D):
     e0 : array_like (automatically normalized)
         the direction of the largest semi-major axis of the ellipsoid
     tilt : float
-        After the rotation about the z-axis to allign e0 to x in the x-y
+        After the rotation about the z-axis to align e0 to x in the x-y
         plane, and then rotating about the y-axis to align e0 completely
         to the x-axis, tilt is the angle in radians remaining to
         rotate about the x-axis to align both e1 to the y-axis and e2 to
@@ -149,7 +149,7 @@ class YTEllipsoid(YTSelectionContainer3D):
 
     >>> import yt
     >>> ds = yt.load("RedshiftOutput0005")
-    >>> c = [0.5,0.5,0.5]
+    >>> c = [0.5, 0.5, 0.5]
     >>> ell = ds.ellipsoid(c, 0.1, 0.1, 0.1, np.array([0.1, 0.1, 0.1]), 0.2)
     """
 
@@ -175,7 +175,7 @@ class YTEllipsoid(YTSelectionContainer3D):
         validate_float(C)
         validate_3d_array(e0)
         validate_float(tilt)
-        validate_iterable(fields)
+        validate_sequence(fields)
         validate_object(ds, Dataset)
         validate_object(field_parameters, dict)
         validate_object(data_source, YTSelectionContainer)

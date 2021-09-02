@@ -6,7 +6,7 @@ from .utils import data_source_or_all
 
 
 def create_scene(data_source, field=None, lens_type="plane-parallel"):
-    r""" Set up a scene object with sensible defaults for use in volume
+    r"""Set up a scene object with sensible defaults for use in volume
     rendering.
 
     A helper function that creates a default camera view, transfer
@@ -72,7 +72,7 @@ def create_scene(data_source, field=None, lens_type="plane-parallel"):
 def volume_render(
     data_source, field=None, fname=None, sigma_clip=None, lens_type="plane-parallel"
 ):
-    r""" Create a simple volume rendering of a data source.
+    r"""Create a simple volume rendering of a data source.
 
     A helper function that creates a default camera view, transfer
     function, and image size. Using these, it returns an image and
@@ -118,7 +118,7 @@ def volume_render(
 
     >>> import yt
     >>> ds = yt.load("Enzo_64/DD0046/DD0046")
-    >>> im, sc = yt.volume_render(ds, fname='test.png', sigma_clip=4.0)
+    >>> im, sc = yt.volume_render(ds, fname="test.png", sigma_clip=4.0)
     """
     sc = create_scene(data_source, field=field)
     im = sc.render()

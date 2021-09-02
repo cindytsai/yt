@@ -144,9 +144,12 @@ class GAMERHierarchy(GridIndex):
         for grid in self.grids:
             # parent->children == itself
             if grid.Parent is not None:
-                assert grid in grid.Parent.Children, (
-                    "Grid %d, Parent %d, Parent->Children[0] %d"
-                    % (grid.id, grid.Parent.id, grid.Parent.Children[0].id)
+                assert (
+                    grid in grid.Parent.Children
+                ), "Grid %d, Parent %d, Parent->Children[0] %d" % (
+                    grid.id,
+                    grid.Parent.id,
+                    grid.Parent.Children[0].id,
                 )
 
             # children->parent == itself
@@ -159,21 +162,24 @@ class GAMERHierarchy(GridIndex):
 
             # all refinement grids should have parent
             if grid.Level > 0:
-                assert grid.Parent is not None and grid.Parent.id >= 0, (
-                    "Grid %d, Level %d, Parent %d"
-                    % (
-                        grid.id,
-                        grid.Level,
-                        grid.Parent.id if grid.Parent is not None else -999,
-                    )
+                assert (
+                    grid.Parent is not None and grid.Parent.id >= 0
+                ), "Grid %d, Level %d, Parent %d" % (
+                    grid.id,
+                    grid.Level,
+                    grid.Parent.id if grid.Parent is not None else -999,
                 )
 
             # parent index is consistent with the loaded dataset
             if grid.Level > 0:
                 father_gid = father_list[grid.id * self.pgroup] // self.pgroup
-                assert father_gid == grid.Parent.id, (
-                    "Grid %d, Level %d, Parent_Found %d, Parent_Expect %d"
-                    % (grid.id, grid.Level, grid.Parent.id, father_gid)
+                assert (
+                    father_gid == grid.Parent.id
+                ), "Grid %d, Level %d, Parent_Found %d, Parent_Expect %d" % (
+                    grid.id,
+                    grid.Level,
+                    grid.Parent.id,
+                    father_gid,
                 )
 
             # edges between children and parent
@@ -212,6 +218,7 @@ class GAMERDataset(Dataset):
         particle_filename=None,
         units_override=None,
         unit_system="cgs",
+        default_species_fields=None,
     ):
 
         if self._handle is not None:
@@ -244,6 +251,7 @@ class GAMERDataset(Dataset):
             dataset_type,
             units_override=units_override,
             unit_system=unit_system,
+            default_species_fields=default_species_fields,
         )
         self.storage_filename = storage_filename
 
@@ -314,7 +322,7 @@ class GAMERDataset(Dataset):
             periodic_bc = 1
         else:
             periodic_bc = 0
-        self.periodicity = (
+        self._periodicity = (
             bool(parameters["Opt__BC_Flu"][0] == periodic_bc),
             bool(parameters["Opt__BC_Flu"][2] == periodic_bc),
             bool(parameters["Opt__BC_Flu"][4] == periodic_bc),
@@ -338,11 +346,16 @@ class GAMERDataset(Dataset):
         # make aliases to some frequently used variables
         if parameters["Model"] == "Hydro":
             self.gamma = parameters["Gamma"]
+            self.eos = parameters.get("EoS", 1)  # Assume gamma-law by default
             # default to 0.6 for old data format
-            self.mu = parameters.get("MolecularWeight", 0.6)
+            self.mu = parameters.get(
+                "MolecularWeight", 0.6
+            )  # Assume ionized primordial by default
             self.mhd = parameters.get("Magnetohydrodynamics", 0)
+            self.srhd = parameters.get("SRHydrodynamics", 0)
         else:
             self.mhd = 0
+            self.srhd = 0
 
         # old data format (version < 2210) did not contain any information of code units
         self.parameters.setdefault("Opt__Unit", 0)
@@ -350,10 +363,10 @@ class GAMERDataset(Dataset):
         self.geometry = geometry_parameters[parameters.get("Coordinate", 1)]
 
     @classmethod
-    def _is_valid(self, *args, **kwargs):
+    def _is_valid(cls, filename, *args, **kwargs):
         try:
             # define a unique way to identify GAMER datasets
-            f = HDF5FileHandler(args[0])
+            f = HDF5FileHandler(filename)
             if "Info" in f["/"].keys() and "KeyInfo" in f["/Info"].keys():
                 return True
         except Exception:

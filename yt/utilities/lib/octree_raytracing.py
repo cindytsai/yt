@@ -6,7 +6,7 @@ from yt.funcs import mylog
 from yt.utilities.lib._octree_raytracing import _OctreeRayTracing
 
 
-class OctreeRayTracing(object):
+class OctreeRayTracing:
     octree = None
     data_source = None
     log_fields = None
@@ -94,7 +94,8 @@ class OctreeRayTracing(object):
 
         Parameters
         ----------
-        vp_pos, vp_dir : float arrays (Nrays, Ndim)
+        vp_pos : float arrays (Nrays, Ndim)
+        vp_dir : float arrays (Nrays, Ndim)
             The position (unitary) and direction of each ray
 
         Returns

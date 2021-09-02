@@ -65,8 +65,8 @@ def standard_small_simulation(ds_fn, fields):
     if not can_run_ds(ds_fn):
         return
     dso = [None]
-    tolerance = ytcfg.getint("yt", "answer_testing_tolerance")
-    bitwise = ytcfg.getboolean("yt", "answer_testing_bitwise")
+    tolerance = ytcfg.get("yt", "answer_testing_tolerance")
+    bitwise = ytcfg.get("yt", "answer_testing_bitwise")
     for field in fields:
         if bitwise:
             yield GridValuesTest(ds_fn, field)
@@ -74,7 +74,7 @@ def standard_small_simulation(ds_fn, fields):
             continue
         for dobj_name in dso:
             for axis in [0, 1, 2]:
-                for weight_field in [None, "Density"]:
+                for weight_field in [None, ("gas", "density")]:
                     yield ProjectionValuesTest(
                         ds_fn, axis, field, weight_field, dobj_name, decimals=tolerance
                     )

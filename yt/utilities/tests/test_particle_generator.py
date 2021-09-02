@@ -39,10 +39,12 @@ def test_particle_generator():
     particles1.apply_to_stream()
     particles_per_grid1 = [grid.NumberOfParticles for grid in ds.index.grids]
     assert_equal(particles_per_grid1, particles1.NumberOfParticles)
-    particles_per_grid1 = [len(grid["particle_position_x"]) for grid in ds.index.grids]
+    particles_per_grid1 = [
+        len(grid[("all", "particle_position_x")]) for grid in ds.index.grids
+    ]
     assert_equal(particles_per_grid1, particles1.NumberOfParticles)
 
-    tags = uconcatenate([grid["particle_index"] for grid in ds.index.grids])
+    tags = uconcatenate([grid[("all", "particle_index")] for grid in ds.index.grids])
     assert np.unique(tags).size == num_particles
 
     del tags
@@ -52,7 +54,7 @@ def test_particle_generator():
 
     def new_indices():
         # We just add new indices onto the existing ones
-        return np.arange((np.product(pdims))) + num_particles
+        return np.arange(np.product(pdims)) + num_particles
 
     le = np.array([0.25, 0.25, 0.25])
     re = np.array([0.75, 0.75, 0.75])
@@ -85,15 +87,17 @@ def test_particle_generator():
     )
 
     [grid.field_data.clear() for grid in ds.index.grids]
-    particles_per_grid2 = [len(grid["particle_position_x"]) for grid in ds.index.grids]
+    particles_per_grid2 = [
+        len(grid[("all", "particle_position_x")]) for grid in ds.index.grids
+    ]
     assert_equal(
         particles_per_grid2, particles1.NumberOfParticles + particles2.NumberOfParticles
     )
 
     # Test the uniqueness of tags
-    tags = np.concatenate([grid["particle_index"] for grid in ds.index.grids])
+    tags = np.concatenate([grid[("all", "particle_index")] for grid in ds.index.grids])
     tags.sort()
-    assert_equal(tags, np.arange((np.product(pdims) + num_particles)))
+    assert_equal(tags, np.arange(np.product(pdims) + num_particles))
 
     del tags
 
@@ -113,7 +117,9 @@ def test_particle_generator():
     assert_equal(
         particles_per_grid3, particles1.NumberOfParticles + particles2.NumberOfParticles
     )
-    particles_per_grid2 = [len(grid["particle_position_z"]) for grid in ds.index.grids]
+    particles_per_grid2 = [
+        len(grid[("all", "particle_position_z")]) for grid in ds.index.grids
+    ]
     assert_equal(
         particles_per_grid3, particles1.NumberOfParticles + particles2.NumberOfParticles
     )

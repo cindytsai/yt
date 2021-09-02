@@ -8,13 +8,33 @@ def test_multi_mesh():
         [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]], dtype=np.float64
     )
 
-    connect1 = np.array([[0, 1, 3],], dtype=np.int64)
-    connect2 = np.array([[1, 2, 3],], dtype=np.int64)
+    connect1 = np.array(
+        [
+            [0, 1, 3],
+        ],
+        dtype=np.int64,
+    )
+    connect2 = np.array(
+        [
+            [1, 2, 3],
+        ],
+        dtype=np.int64,
+    )
 
     data1 = {}
     data2 = {}
-    data1["connect1", "test"] = np.array([[0.0, 1.0, 3.0],], dtype=np.float64)
-    data2["connect2", "test"] = np.array([[1.0, 2.0, 3.0],], dtype=np.float64)
+    data1["connect1", "test"] = np.array(
+        [
+            [0.0, 1.0, 3.0],
+        ],
+        dtype=np.float64,
+    )
+    data2["connect2", "test"] = np.array(
+        [
+            [1.0, 2.0, 3.0],
+        ],
+        dtype=np.float64,
+    )
 
     connectList = [connect1, connect2]
     dataList = [data1, data2]
@@ -47,8 +67,8 @@ def test_multi_field():
 
     ds = load_unstructured_mesh(connect, coords, data)
 
-    sl = SlicePlot(ds, "z", "test")
+    sl = SlicePlot(ds, "z", ("connect1", "test"))
     sl.annotate_mesh_lines()
 
-    sl = SlicePlot(ds, "z", "testAgain")
+    sl = SlicePlot(ds, "z", ("connect1", "testAgain"))
     sl.annotate_mesh_lines()

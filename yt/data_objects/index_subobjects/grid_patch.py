@@ -1,5 +1,6 @@
 import warnings
 import weakref
+from typing import List, Tuple
 
 import numpy as np
 
@@ -8,7 +9,7 @@ from yt.config import ytcfg
 from yt.data_objects.selection_objects.data_selection_objects import (
     YTSelectionContainer,
 )
-from yt.funcs import iterable
+from yt.funcs import is_sequence
 from yt.geometry.selection_routines import convert_mask_to_indices
 from yt.units.yt_array import YTArray
 from yt.utilities.exceptions import (
@@ -45,7 +46,7 @@ class AMRGridPatch(YTSelectionContainer):
     OverlappingSiblings = None
 
     def __init__(self, id, filename=None, index=None):
-        super(AMRGridPatch, self).__init__(index.dataset, None)
+        super().__init__(index.dataset, None)
         self.id = id
         self._child_mask = self._child_indices = self._child_index_mask = None
         self.ds = index.dataset
@@ -76,7 +77,7 @@ class AMRGridPatch(YTSelectionContainer):
         return self.start_index
 
     def __getitem__(self, key):
-        tr = super(AMRGridPatch, self).__getitem__(key)
+        tr = super().__getitem__(key)
         try:
             fields = self._determine_fields(key)
         except YTFieldTypeNotFound:
@@ -156,11 +157,11 @@ class AMRGridPatch(YTSelectionContainer):
         all field parameters.
 
         """
-        super(AMRGridPatch, self).clear_data()
+        super().clear_data()
         self._setup_dx()
 
     def _prepare_grid(self):
-        """ Copies all the appropriate attributes from the index. """
+        """Copies all the appropriate attributes from the index."""
         # This is definitely the slowest part of generating the index
         # Now we give it pointers to all of its attributes
         # Note that to keep in line with Enzo, we have broken PEP-8
@@ -172,7 +173,7 @@ class AMRGridPatch(YTSelectionContainer):
         # This can be expensive so we allow people to disable this behavior
         # via a config option
         if RECONSTRUCT_INDEX:
-            if iterable(self.Parent) and len(self.Parent) > 0:
+            if is_sequence(self.Parent) and len(self.Parent) > 0:
                 p = self.Parent[0]
             else:
                 p = self.Parent
@@ -187,7 +188,7 @@ class AMRGridPatch(YTSelectionContainer):
         self.NumberOfParticles = h.grid_particle_count[my_ind, 0]
 
     def get_position(self, index):
-        """ Returns center position of an *index*. """
+        """Returns center position of an *index*."""
         pos = (index + 0.5) * self.dds + self.LeftEdge
         return pos
 
@@ -270,7 +271,12 @@ class AMRGridPatch(YTSelectionContainer):
         cube._base_grid = self
         return cube
 
-    def get_vertex_centered_data(self, fields, smoothed=True, no_ghost=False):
+    def get_vertex_centered_data(
+        self,
+        fields: List[Tuple[str, str]],
+        smoothed: bool = True,
+        no_ghost: bool = False,
+    ):
         _old_api = isinstance(fields, (str, tuple))
         if _old_api:
             message = (

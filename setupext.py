@@ -6,29 +6,18 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from textwrap import dedent
 from concurrent.futures import ThreadPoolExecutor
 from distutils import log
 from distutils.ccompiler import CCompiler, new_compiler
 from distutils.errors import CompileError, LinkError
 from distutils.sysconfig import customize_compiler
-from distutils.version import LooseVersion
 from subprocess import PIPE, Popen
 from sys import platform as _platform
 
 from pkg_resources import resource_filename
 from setuptools.command.build_ext import build_ext as _build_ext
 from setuptools.command.sdist import sdist as _sdist
-
-CCODE = """
-#include <omp.h>
-#include <stdio.h>
-int main() {
-  omp_set_num_threads(2);
-  #pragma omp parallel
-  printf("nthreads=%d\\n", omp_get_num_threads());
-  return 0;
-}
-"""
 
 
 @contextlib.contextmanager
@@ -59,7 +48,8 @@ def stdchannel_redirected(stdchannel, dest_filename):
 
 
 def check_for_openmp():
-    """Returns True if local setup supports OpenMP, False otherwise
+    """Returns OpenMP compiler and linker flags if local setup supports
+    OpenMP or [], [] otherwise
 
     Code adapted from astropy_helpers, originally written by Tom
     Robitaille and Curtis McCully.
@@ -72,15 +62,28 @@ def check_for_openmp():
     tmp_dir = tempfile.mkdtemp()
     start_dir = os.path.abspath(".")
 
+    CCODE = dedent("""\
+        #include <omp.h>
+        #include <stdio.h>
+        int main() {
+            omp_set_num_threads(2);
+            #pragma omp parallel
+            printf("nthreads=%d\\n", omp_get_num_threads());
+            return 0;
+        }"""
+    )
+
+    # TODO: test more known compilers:
+    # MinGW, AppleClang with libomp, MSVC, ICC, XL, PGI, ...
     if os.name == "nt":
         # TODO: make this work with mingw
         # AFAICS there's no easy way to get the compiler distutils
         # will be using until compilation actually happens
-        compile_flag = "-openmp"
-        link_flag = ""
+        compile_flags = ["-openmp"]
+        link_flags = [""]
     else:
-        compile_flag = "-fopenmp"
-        link_flag = "-fopenmp"
+        compile_flags = ["-fopenmp"]
+        link_flags = ["-fopenmp"]
 
     try:
         os.chdir(tmp_dir)
@@ -93,12 +96,12 @@ def check_for_openmp():
         # Compile, link, and run test program
         with stdchannel_redirected(sys.stderr, os.devnull):
             ccompiler.compile(
-                ["test_openmp.c"], output_dir="objects", extra_postargs=[compile_flag]
+                ["test_openmp.c"], output_dir="objects", extra_postargs=compile_flags
             )
             ccompiler.link_executable(
                 glob.glob(os.path.join("objects", "*")),
                 "test_openmp",
-                extra_postargs=[link_flag],
+                extra_postargs=link_flags,
             )
             output = (
                 subprocess.check_output("./test_openmp")
@@ -136,7 +139,65 @@ def check_for_openmp():
             "extensions will be compiled without parallel support"
         )
 
-    return using_openmp
+    if using_openmp:
+        return compile_flags, link_flags
+    else:
+        return [], []
+
+
+def check_CPP14_flag(compile_flags):
+    # Create a temporary directory
+    ccompiler = new_compiler()
+    customize_compiler(ccompiler)
+
+    tmp_dir = tempfile.mkdtemp()
+    start_dir = os.path.abspath(".")
+
+    # Note: This code requires C++14 functionalities (also required to compile yt)
+    # It compiles on gcc 4.7.4 (together with the entirety of yt) with the flag "-std=gnu++0x".
+    # It does not compile on gcc 4.6.4 (neither does yt).
+    CPPCODE = dedent("""\
+        #include <vector>
+
+        struct node {
+            std::vector<int> vic;
+            bool visited = false;
+        };
+
+        int main() {
+            return 0;
+        }"""
+    )
+
+    os.chdir(tmp_dir)
+    try:
+        with open("test_cpp14.cpp", "w") as f:
+            f.write(CPPCODE)
+
+        os.mkdir("objects")
+
+        # Compile, link, and run test program
+        with stdchannel_redirected(sys.stderr, os.devnull):
+            ccompiler.compile(
+                ["test_cpp14.cpp"], output_dir="objects", extra_postargs=compile_flags
+            )
+        return True
+    except CompileError:
+        return False
+    finally:
+        os.chdir(start_dir)
+
+
+def check_CPP14_flags(possible_compile_flags):
+    for flags in possible_compile_flags:
+        if check_CPP14_flag([flags]):
+            return flags
+
+    log.warn(
+        "Your compiler seems to be too old to support C++14. "
+        "yt may not be able to compile. Please use a newer version."
+    )
+    return []
 
 
 def check_for_pyembree(std_libs):
@@ -215,7 +276,13 @@ def read_embree_location():
         # Attempt to compile a test script.
         filename = r"test.cpp"
         file = open(filename, "wt", 1)
-        file.write('#include "embree2/rtcore.h"\n' "int main() {\n" "return 0;\n" "}")
+        CCODE = dedent("""\
+            #include "embree2/rtcore.h
+            int main() {
+                return 0;
+            }"""
+        )
+        file.write(CCODE)
         file.flush()
         p = Popen(
             compiler + ["-I%s/include/" % rd, filename],
@@ -228,7 +295,7 @@ def read_embree_location():
 
         if exit_code != 0:
             log.warn(
-                "Pyembree is installed, but I could not compile Embree " "test code."
+                "Pyembree is installed, but I could not compile Embree test code."
             )
             log.warn("The error message was: ")
             log.warn(err)
@@ -303,30 +370,10 @@ def create_build_ext(lib_exts, cythonize_aliases):
     class build_ext(_build_ext):
         # subclass setuptools extension builder to avoid importing cython and numpy
         # at top level in setup.py. See http://stackoverflow.com/a/21621689/1382869
+        # NOTE: this is likely not necessary anymore since
+        # pyproject.toml was introduced in the project
+
         def finalize_options(self):
-            try:
-                import cython
-                import numpy
-            except ImportError as e:
-                raise ImportError(
-                    """Could not import cython or numpy. Building yt from source requires
-    cython and numpy to be installed. Please install these packages using
-    the appropriate package manager for your python environment."""
-                ) from e
-            if LooseVersion(cython.__version__) < LooseVersion("0.26.1"):
-                raise RuntimeError(
-                    """Building yt from source requires Cython 0.26.1 or newer but
-    Cython %s is installed. Please update Cython using the appropriate
-    package manager for your python environment."""
-                    % cython.__version__
-                )
-            if LooseVersion(numpy.__version__) < LooseVersion("1.13.3"):
-                raise RuntimeError(
-                    """Building yt from source requires NumPy 1.13.3 or newer but
-    NumPy %s is installed. Please update NumPy using the appropriate
-    package manager for your python environment."""
-                    % numpy.__version__
-                )
             from Cython.Build import cythonize
 
             # Override the list of extension modules

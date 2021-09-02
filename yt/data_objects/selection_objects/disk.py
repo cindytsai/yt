@@ -10,8 +10,8 @@ from yt.funcs import (
     validate_3d_array,
     validate_center,
     validate_float,
-    validate_iterable,
     validate_object,
+    validate_sequence,
 )
 
 
@@ -49,8 +49,8 @@ class YTDisk(YTSelectionContainer3D):
 
     >>> import yt
     >>> ds = yt.load("RedshiftOutput0005")
-    >>> c = [0.5,0.5,0.5]
-    >>> disk = ds.disk(c, [1,0,0], (1, 'kpc'), (10, 'kpc'))
+    >>> c = [0.5, 0.5, 0.5]
+    >>> disk = ds.disk(c, [1, 0, 0], (1, "kpc"), (10, "kpc"))
     """
 
     _type_name = "disk"
@@ -71,7 +71,7 @@ class YTDisk(YTSelectionContainer3D):
         validate_3d_array(normal)
         validate_float(radius)
         validate_float(height)
-        validate_iterable(fields)
+        validate_sequence(fields)
         validate_object(ds, Dataset)
         validate_object(field_parameters, dict)
         validate_object(data_source, YTSelectionContainer)

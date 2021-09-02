@@ -17,7 +17,7 @@ def setup():
     """Test specific setup."""
     from yt.config import ytcfg
 
-    ytcfg["yt", "__withintesting"] = "True"
+    ytcfg["yt", "internals", "within_testing"] = True
 
 
 class RotationTest(TestCase):
@@ -51,7 +51,7 @@ class RotationTest(TestCase):
         vol = sc.get_source(0)
         tf = vol.transfer_function
         tf.clear()
-        mi, ma = dd.quantities.extrema("density")
+        mi, ma = dd.quantities.extrema(("gas", "density"))
         mi = np.log10(mi)
         ma = np.log10(ma)
         mi_bound = ((ma - mi) * (0.10)) + mi
@@ -63,7 +63,7 @@ class RotationTest(TestCase):
 
         tf = vol2.transfer_function
         tf.clear()
-        mi, ma = dd2.quantities.extrema("density")
+        mi, ma = dd2.quantities.extrema(("gas", "density"))
         mi = np.log10(mi)
         ma = np.log10(ma)
         mi_bound = ((ma - mi) * (0.10)) + mi

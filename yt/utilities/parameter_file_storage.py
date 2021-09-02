@@ -56,7 +56,7 @@ class ParameterFileStore:
         """
         if not self._register:
             return
-        if ytcfg.getboolean("yt", "StoreParameterFiles"):
+        if ytcfg.get("yt", "store_parameter_files"):
             self._read_only = False
             self.init_db()
             self._records = self.read_db()
@@ -82,23 +82,23 @@ class ParameterFileStore:
         # these will be broadcast
 
     def _get_db_name(self):
-        base_file_name = ytcfg.get("yt", "ParameterFileStore")
+        base_file_name = ytcfg.get("yt", "parameter_file_store")
         if not os.access(os.path.expanduser("~/"), os.W_OK):
             return os.path.abspath(base_file_name)
         return os.path.expanduser(f"~/.yt/{base_file_name}")
 
     def get_ds_hash(self, hash):
-        """ This returns a dataset based on a hash. """
+        """This returns a dataset based on a hash."""
         return self._convert_ds(self._records[hash])
 
     def get_ds_ctid(self, ctid):
-        """ This returns a dataset based on a CurrentTimeIdentifier. """
+        """This returns a dataset based on a CurrentTimeIdentifier."""
         for h in self._records:
             if self._records[h]["ctid"] == ctid:
                 return self._convert_ds(self._records[h])
 
     def _adapt_ds(self, ds):
-        """ This turns a dataset into a CSV entry. """
+        """This turns a dataset into a CSV entry."""
         return dict(
             bn=ds.basename,
             fp=ds.fullpath,
@@ -109,7 +109,7 @@ class ParameterFileStore:
         )
 
     def _convert_ds(self, ds_dict):
-        """ This turns a CSV entry into a dataset. """
+        """This turns a CSV entry into a dataset."""
         bn = ds_dict["bn"]
         fp = ds_dict["fp"]
         fn = os.path.join(fp, bn)
@@ -120,7 +120,7 @@ class ParameterFileStore:
         if os.path.exists(fn):
             ds = output_type_registry[class_name](os.path.join(fp, bn))
         else:
-            raise IOError
+            raise OSError
         # This next one is to ensure that we manually update the last_seen
         # record *now*, for during write_out.
         self._records[ds._hash()]["last_seen"] = ds._instantiated
@@ -143,7 +143,7 @@ class ParameterFileStore:
             self.insert_ds(ds)
 
     def insert_ds(self, ds):
-        """ This will insert a new *ds* and flush the database to disk. """
+        """This will insert a new *ds* and flush the database to disk."""
         self._records[ds._hash()] = self._adapt_ds(ds)
         self.flush_db()
 
@@ -158,7 +158,7 @@ class ParameterFileStore:
         self.flush_db()
 
     def flush_db(self):
-        """ This flushes the storage to disk. """
+        """This flushes the storage to disk."""
         if self._read_only:
             return
         self._write_out()
@@ -173,9 +173,9 @@ class ParameterFileStore:
         if self._read_only:
             return
         fn = self._get_db_name()
-        f = open(f"{fn}.tmp", "wb")
+        f = open(f"{fn}.tmp", "w")
         w = csv.DictWriter(f, _field_names)
-        maxn = ytcfg.getint("yt", "maximumstoreddatasets")  # number written
+        maxn = ytcfg.get("yt", "maximum_stored_datasets")  # number written
         for h, v in islice(
             sorted(self._records.items(), key=lambda a: -a[1]["last_seen"]), 0, maxn
         ):
@@ -186,8 +186,8 @@ class ParameterFileStore:
 
     @parallel_simple_proxy
     def read_db(self):
-        """ This will read the storage device from disk. """
-        f = open(self._get_db_name(), "rb")
+        """This will read the storage device from disk."""
+        f = open(self._get_db_name())
         vals = csv.DictReader(f, _field_names)
         db = {}
         for v in vals:
@@ -196,4 +196,5 @@ class ParameterFileStore:
                 v["last_seen"] = 0.0
             else:
                 v["last_seen"] = float(v["last_seen"])
+        f.close()
         return db

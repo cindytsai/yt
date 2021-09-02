@@ -16,12 +16,12 @@ class ExodusIIUnstructuredMesh(UnstructuredMesh):
     _index_offset = 1
 
     def __init__(self, *args, **kwargs):
-        super(ExodusIIUnstructuredMesh, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
 
 class ExodusIIUnstructuredIndex(UnstructuredIndex):
     def __init__(self, ds, dataset_type="exodus_ii"):
-        super(ExodusIIUnstructuredIndex, self).__init__(ds, dataset_type)
+        super().__init__(ds, dataset_type)
 
     def _initialize_mesh(self):
         coords = self.ds._read_coordinates()
@@ -108,24 +108,35 @@ class ExodusIIDataset(Dataset):
         the 2nd mesh without applying any scale or offset:
 
         >>> import yt
-        >>> ds = yt.load("MOOSE_sample_data/mps_out.e", step=10,
-                         displacements={'connect2': (1.0, [0.0, 0.0, 0.0])})
+        >>> ds = yt.load(
+        ...     "MOOSE_sample_data/mps_out.e",
+        ...     step=10,
+        ...     displacements={"connect2": (1.0, [0.0, 0.0, 0.0])},
+        ... )
 
         This will load the Dataset at index 10, scaling the displacements
         in the 2nd mesh by a factor of 5 while not applying an offset:
 
         >>> import yt
-        >>> ds = yt.load("MOOSE_sample_data/mps_out.e", step=10,
-                         displacements={'connect2': (1.0, [0.0, 0.0, 0.0])})
+        >>> ds = yt.load(
+        ...     "MOOSE_sample_data/mps_out.e",
+        ...     step=10,
+        ...     displacements={"connect2": (1.0, [0.0, 0.0, 0.0])},
+        ... )
 
         This will load the Dataset at index 10, scaling the displacements for
         the 2nd mesh by a factor of 5.0 and shifting all the vertices in
         the first mesh by 1.0 unit in the z direction.
 
         >>> import yt
-        >>> ds = yt.load("MOOSE_sample_data/mps_out.e", step=10,
-                         displacements={'connect1': (0.0, [0.0, 0.0, 1.0]),
-                                        'connect2': (5.0, [0.0, 0.0, 0.0])})
+        >>> ds = yt.load(
+        ...     "MOOSE_sample_data/mps_out.e",
+        ...     step=10,
+        ...     displacements={
+        ...         "connect1": (0.0, [0.0, 0.0, 1.0]),
+        ...         "connect2": (5.0, [0.0, 0.0, 0.0]),
+        ...     },
+        ... )
 
         """
         self.parameter_filename = filename
@@ -135,9 +146,7 @@ class ExodusIIDataset(Dataset):
             self.displacements = {}
         else:
             self.displacements = displacements
-        super(ExodusIIDataset, self).__init__(
-            filename, dataset_type, units_override=units_override
-        )
+        super().__init__(filename, dataset_type, units_override=units_override)
         self.index_filename = filename
         self.storage_filename = storage_filename
         self.default_field = [f for f in self.field_list if f[0] == "connect1"][-1]
@@ -169,7 +178,7 @@ class ExodusIIDataset(Dataset):
             self.parameters["elem_names"] = self._get_elem_names()
             self.parameters["nod_names"] = self._get_nod_names()
             self.domain_left_edge, self.domain_right_edge = self._load_domain_edge()
-            self.periodicity = (False, False, False)
+            self._periodicity = (False, False, False)
 
         # These attributes don't really make sense for unstructured
         # mesh data, but yt warns if they are not present, so we set
@@ -247,7 +256,7 @@ class ExodusIIDataset(Dataset):
                 return []
             else:
                 return [
-                    sanitize_string(v.tostring()) for v in ds.variables["name_glo_var"]
+                    sanitize_string(v.tobytes()) for v in ds.variables["name_glo_var"]
                 ]
 
     def _get_elem_names(self):
@@ -263,7 +272,7 @@ class ExodusIIDataset(Dataset):
                 return []
             else:
                 return [
-                    sanitize_string(v.tostring()) for v in ds.variables["name_elem_var"]
+                    sanitize_string(v.tobytes()) for v in ds.variables["name_elem_var"]
                 ]
 
     def _get_nod_names(self):
@@ -279,7 +288,7 @@ class ExodusIIDataset(Dataset):
                 return []
             else:
                 return [
-                    sanitize_string(v.tostring()) for v in ds.variables["name_nod_var"]
+                    sanitize_string(v.tobytes()) for v in ds.variables["name_nod_var"]
                 ]
 
     def _read_coordinates(self):
@@ -394,12 +403,11 @@ class ExodusIIDataset(Dataset):
         return mi, ma
 
     @classmethod
-    def _is_valid(self, *args, **kwargs):
-        warn_netcdf(args[0])
+    def _is_valid(cls, filename, *args, **kwargs):
+        warn_netcdf(filename)
         try:
             from netCDF4 import Dataset
 
-            filename = args[0]
             # We use keepweakref here to avoid holding onto the file handle
             # which can interfere with other is_valid calls.
             with Dataset(filename, keepweakref=True) as f:

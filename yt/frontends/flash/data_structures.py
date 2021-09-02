@@ -93,9 +93,9 @@ class FLASHHierarchy(GridIndex):
             nyb = ds.parameters["nyb"]
             nzb = ds.parameters["nzb"]
         except KeyError:
-            nxb, nyb, nzb = [
+            nxb, nyb, nzb = (
                 int(f["/simulation parameters"][f"n{ax}b"]) for ax in "xyz"
-            ]
+            )
         self.grid_dimensions[:] *= (nxb, nyb, nzb)
         try:
             self.grid_particle_count[:] = f_part["/localnp"][:][:, None]
@@ -174,6 +174,7 @@ class FLASHDataset(Dataset):
         particle_filename=None,
         units_override=None,
         unit_system="cgs",
+        default_species_fields=None,
     ):
 
         self.fluid_types += ("flash",)
@@ -223,6 +224,7 @@ class FLASHDataset(Dataset):
             dataset_type,
             units_override=units_override,
             unit_system=unit_system,
+            default_species_fields=default_species_fields,
         )
         self.storage_filename = storage_filename
 
@@ -263,10 +265,12 @@ class FLASHDataset(Dataset):
         setdefaultattr(self, "temperature_unit", self.quan(temperature_factor, "K"))
 
     def set_code_units(self):
-        super(FLASHDataset, self).set_code_units()
+        super().set_code_units()
 
     def _find_parameter(self, ptype, pname, scalar=False):
-        nn = "/%s %s" % (ptype, {False: "runtime parameters", True: "scalars"}[scalar])
+        nn = "/{} {}".format(
+            ptype, {False: "runtime parameters", True: "scalars"}[scalar]
+        )
         if nn not in self._handle:
             raise KeyError(nn)
         for tpname, pval in zip(
@@ -355,9 +359,9 @@ class FLASHDataset(Dataset):
             nyb = self.parameters["nyb"]
             nzb = self.parameters["nzb"]
         except KeyError:
-            nxb, nyb, nzb = [
+            nxb, nyb, nzb = (
                 int(self._handle["/simulation parameters"][f"n{ax}b"]) for ax in "xyz"
-            ]  # FLASH2 only!
+            )  # FLASH2 only!
 
         # Determine dimensionality
         try:
@@ -433,7 +437,7 @@ class FLASHDataset(Dataset):
             self.parameters.get(f"{ax}l_boundary_type", None) == "periodic"
             for ax in "xyz"
         ]
-        self.periodicity = tuple(p)
+        self._periodicity = tuple(p)
 
         # Determine cosmological parameters.
         try:
@@ -445,16 +449,16 @@ class FLASHDataset(Dataset):
             self.hubble_constant = self.parameters["hubbleconstant"]
             self.hubble_constant *= cm_per_mpc * 1.0e-5 * 1.0e-2  # convert to 'h'
         except Exception:
-            self.current_redshift = (
-                self.omega_lambda
-            ) = (
-                self.omega_matter
-            ) = self.hubble_constant = self.cosmological_simulation = 0.0
+            self.current_redshift = 0.0
+            self.omega_lambda = 0.0
+            self.omega_matter = 0.0
+            self.hubble_constant = 0.0
+            self.cosmological_simulation = 0
 
     @classmethod
-    def _is_valid(self, *args, **kwargs):
+    def _is_valid(cls, filename, *args, **kwargs):
         try:
-            fileh = HDF5FileHandler(args[0])
+            fileh = HDF5FileHandler(filename)
             if "bounding box" in fileh["/"].keys():
                 return True
         except (OSError, ImportError):
@@ -511,7 +515,7 @@ class FLASHParticleDataset(FLASHDataset):
     def _parse_parameter_file(self):
         # Let the superclass do all the work but then
         # fix the domain dimensions
-        super(FLASHParticleDataset, self)._parse_parameter_file()
+        super()._parse_parameter_file()
         domain_dimensions = np.zeros(3, "int32")
         domain_dimensions[: self.dimensionality] = 1
         self.domain_dimensions = domain_dimensions
@@ -519,10 +523,10 @@ class FLASHParticleDataset(FLASHDataset):
         self.file_count = 1
 
     @classmethod
-    def _is_valid(self, *args, **kwargs):
-        warn_h5py(args[0])
+    def _is_valid(cls, filename, *args, **kwargs):
+        warn_h5py(filename)
         try:
-            fileh = HDF5FileHandler(args[0])
+            fileh = HDF5FileHandler(filename)
             if (
                 "bounding box" not in fileh["/"].keys()
                 and "localnp" in fileh["/"].keys()

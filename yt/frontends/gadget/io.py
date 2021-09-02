@@ -14,7 +14,7 @@ from .definitions import SNAP_FORMAT_2_OFFSET, gadget_hdf5_ptypes
 
 class IOHandlerGadgetHDF5(IOHandlerSPH):
     _dataset_type = "gadget_hdf5"
-    _vector_fields = ("Coordinates", "Velocity", "Velocities")
+    _vector_fields = ("Coordinates", "Velocity", "Velocities", "MagneticField")
     _known_ptypes = gadget_hdf5_ptypes
     _var_mass = None
     _element_names = (
@@ -45,7 +45,7 @@ class IOHandlerGadgetHDF5(IOHandlerSPH):
     def _read_particle_coords(self, chunks, ptf):
         # This will read chunks and yield the results.
         chunks = list(chunks)
-        data_files = set([])
+        data_files = set()
         for chunk in chunks:
             for obj in chunk.objs:
                 data_files.update(obj.data_files)
@@ -119,7 +119,9 @@ class IOHandlerGadgetHDF5(IOHandlerSPH):
             offset += count
         kdtree = index.kdtree
         positions = uconcatenate(positions)[kdtree.idx]
-        hsml = generate_smoothing_length(positions, kdtree, self.ds._num_neighbors)
+        hsml = generate_smoothing_length(
+            positions.astype("float64"), kdtree, self.ds._num_neighbors
+        )
         dtype = positions.dtype
         hsml = hsml[np.argsort(kdtree.idx)].astype(dtype)
         mylog.warning("Writing smoothing lengths to hsml files.")
@@ -160,7 +162,7 @@ class IOHandlerGadgetHDF5(IOHandlerSPH):
 
     def _read_particle_fields(self, chunks, ptf, selector):
         # Now we have all the sizes, and we can allocate
-        data_files = set([])
+        data_files = set()
         for chunk in chunks:
             for obj in chunk.objs:
                 data_files.update(obj.data_files)
@@ -209,6 +211,9 @@ class IOHandlerGadgetHDF5(IOHandlerSPH):
                     elif field.startswith("Chemistry_"):
                         col = int(field.rsplit("_", 1)[-1])
                         data = g["ChemistryAbundances"][si:ei, col][mask]
+                    elif field.startswith("PassiveScalars_"):
+                        col = int(field.rsplit("_", 1)[-1])
+                        data = g["PassiveScalars"][si:ei, col][mask]
                     elif field == "smoothing_length":
                         # This is for frontends which do not store
                         # the smoothing length on-disk, so we do not
@@ -234,7 +239,7 @@ class IOHandlerGadgetHDF5(IOHandlerSPH):
         f.close()
         if None not in (si, ei):
             np.clip(pcount - si, 0, ei - si, out=pcount)
-        npart = dict((f"PartType{i}", v) for i, v in enumerate(pcount))
+        npart = {f"PartType{i}": v for i, v in enumerate(pcount)}
         return npart
 
     def _identify_fields(self, data_file):
@@ -272,8 +277,11 @@ class IOHandlerGadgetHDF5(IOHandlerSPH):
                     for j in gp.keys():
                         kk = j
                         fields.append((ptype, str(kk)))
-                elif k in ["Metallicity", "GFM_Metals"] and len(g[k].shape) > 1:
-                    # Vector of metallicity
+                elif (
+                    k in ["Metallicity", "GFM_Metals", "PassiveScalars"]
+                    and len(g[k].shape) > 1
+                ):
+                    # Vector of metallicity or passive scalar
                     for i in range(g[k].shape[1]):
                         fields.append((ptype, "%s_%02i" % (k, i)))
                 elif k == "ChemistryAbundances" and len(g[k].shape) > 1:
@@ -304,7 +312,9 @@ class IOHandlerGadgetBinary(IOHandlerSPH):
         ("Coordinates", 3),
         ("Velocity", 3),
         ("Velocities", 3),
+        ("MagneticField", 3),
         ("FourMetalFractions", 4),
+        ("ElevenMetalMasses", 11),
     )
 
     # Particle types (Table 3 in GADGET-2 user guide)
@@ -330,12 +340,12 @@ class IOHandlerGadgetBinary(IOHandlerSPH):
         self._vector_fields = dict(self._vector_fields)
         self._fields = ds._field_spec
         self._ptypes = ds._ptype_spec
-        self.data_files = set([])
+        self.data_files = set()
         gformat, endianswap = ds._header.gadget_format
         # gadget format 1 original, 2 with block name
         self._format = gformat
         self._endian = endianswap
-        super(IOHandlerGadgetBinary, self).__init__(ds, *args, **kwargs)
+        super().__init__(ds, *args, **kwargs)
 
     @property
     def var_mass(self):
@@ -351,7 +361,7 @@ class IOHandlerGadgetBinary(IOHandlerSPH):
         raise NotImplementedError
 
     def _read_particle_coords(self, chunks, ptf):
-        data_files = set([])
+        data_files = set()
         for chunk in chunks:
             for obj in chunk.objs:
                 data_files.update(obj.data_files)
@@ -360,6 +370,9 @@ class IOHandlerGadgetBinary(IOHandlerSPH):
             tp = data_file.total_particles
             f = open(data_file.filename, "rb")
             for ptype in ptf:
+                if tp[ptype] == 0:
+                    # skip if there are no particles
+                    continue
                 f.seek(poff[ptype, "Coordinates"], os.SEEK_SET)
                 pos = self._read_field_from_file(f, tp[ptype], "Coordinates")
                 if ptype == self.ds._sph_ptypes[0]:
@@ -371,7 +384,7 @@ class IOHandlerGadgetBinary(IOHandlerSPH):
             f.close()
 
     def _read_particle_fields(self, chunks, ptf, selector):
-        data_files = set([])
+        data_files = set()
         for chunk in chunks:
             for obj in chunk.objs:
                 data_files.update(obj.data_files)
@@ -475,7 +488,7 @@ class IOHandlerGadgetBinary(IOHandlerSPH):
         pcount = np.array(data_file.header["Npart"])
         if None not in (si, ei):
             np.clip(pcount - si, 0, ei - si, out=pcount)
-        npart = dict((self._ptypes[i], v) for i, v in enumerate(pcount))
+        npart = {self._ptypes[i]: v for i, v in enumerate(pcount)}
         return npart
 
     # header is 256, but we have 4 at beginning and end for ints

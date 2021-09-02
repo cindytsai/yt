@@ -104,15 +104,15 @@ class OWLSFieldInfo(SPHFieldInfo):
 
         self.known_particle_fields += new_particle_fields
 
-        super(OWLSFieldInfo, self).__init__(ds, field_list, slice_info=slice_info)
+        super().__init__(ds, field_list, slice_info=slice_info)
 
         # This enables the machinery in yt.fields.species_fields
         self.species_names += list(self._elements)
 
     def setup_particle_fields(self, ptype):
-        """ additional particle fields derived from those in snapshot.
+        """additional particle fields derived from those in snapshot.
         we also need to add the smoothed fields here b/c setup_fluid_fields
-        is called before setup_particle_fields. """
+        is called before setup_particle_fields."""
 
         smoothed_suffixes = ("_number_density", "_density", "_mass")
 
@@ -140,7 +140,7 @@ class OWLSFieldInfo(SPHFieldInfo):
         else:
             ftype = ptype
 
-        super(OWLSFieldInfo, self).setup_particle_fields(
+        super().setup_particle_fields(
             ptype, num_neighbors=self._num_neighbors, ftype=ftype
         )
 
@@ -175,7 +175,7 @@ class OWLSFieldInfo(SPHFieldInfo):
                 if (ptype, symbol + "_fraction") not in self.field_aliases:
                     continue
 
-                pstr = "_p" + str(roman - 1)
+                pstr = f"_p{roman - 1}"
                 yt_ion = symbol + pstr
 
                 # add particle field
@@ -226,7 +226,7 @@ class OWLSFieldInfo(SPHFieldInfo):
                 if (ptype, symbol + "_fraction") not in self.field_aliases:
                     continue
 
-                pstr = "_p" + str(roman - 1)
+                pstr = f"_p{roman - 1}"
                 yt_ion = symbol + pstr
 
                 for sfx in smoothed_suffixes:
@@ -234,7 +234,7 @@ class OWLSFieldInfo(SPHFieldInfo):
                     self.alias(("gas", fname), (ptype, fname))
 
     def setup_gas_ion_particle_fields(self, ptype):
-        """ Sets up particle fields for gas ion densities. """
+        """Sets up particle fields for gas ion densities."""
 
         # loop over all ions and make fields
         # ----------------------------------------------
@@ -252,7 +252,7 @@ class OWLSFieldInfo(SPHFieldInfo):
             if (ptype, symbol + "_fraction") not in self.field_aliases:
                 continue
 
-            pstr = "_p" + str(roman - 1)
+            pstr = f"_p{roman - 1}"
             yt_ion = symbol + pstr
             ftype = ptype
 
@@ -279,8 +279,7 @@ class OWLSFieldInfo(SPHFieldInfo):
             self._show_field_errors.append((ftype, fname))
 
     def _create_ion_density_func(self, ftype, ion):
-        """ returns a function that calculates the ion density of a particle.
-        """
+        """returns a function that calculates the ion density of a particle."""
 
         def get_owls_ion_density_field(ion, ftype, itab):
             def _func(field, data):
@@ -295,8 +294,7 @@ class OWLSFieldInfo(SPHFieldInfo):
         return get_owls_ion_density_field(ion, ftype, itab)
 
     def _create_ion_mass_func(self, ftype, ion):
-        """ returns a function that calculates the ion mass of a particle
-        """
+        """returns a function that calculates the ion mass of a particle"""
 
         def get_owls_ion_mass_field(ion, ftype, itab):
             def _func(field, data):
@@ -330,7 +328,7 @@ class OWLSFieldInfo(SPHFieldInfo):
         # ----------------------------------------------
         tdir = ytcfg.get("yt", "test_data_dir")
 
-        # set download destination to tdir or ./ if tdir isnt defined
+        # set download destination to tdir or ./ if tdir isn't defined
         # ----------------------------------------------
         if tdir == "/does/not/exist":
             data_dir = "./"
@@ -347,7 +345,7 @@ class OWLSFieldInfo(SPHFieldInfo):
             fname = data_dir + "/" + data_file
             download_file(os.path.join(data_url, data_file), fname)
 
-            cmnd = "cd " + data_dir + "; " + "tar xf " + data_file
+            cmnd = f"cd {data_dir}; tar xf {data_file}"
             os.system(cmnd)
 
         if not os.path.exists(owls_ion_path):

@@ -8,10 +8,10 @@ import functools
 
 import numpy as np
 
-from yt import mylog
 from yt.fields.field_info_container import FieldInfoContainer
 from yt.fields.magnetic_field import setup_magnetic_field_aliases
 from yt.units import dimensions
+from yt.utilities.logger import ytLogger as mylog
 
 # We need to specify which fields we might have in our dataset.  The field info
 # container subclass here will define which fields it knows about.  There are
@@ -83,6 +83,7 @@ class AMRVACFieldInfo(FieldInfoContainer):
         ("b1", ("code_magnetic", ["magnetic_1"], None)),
         ("b2", ("code_magnetic", ["magnetic_2"], None)),
         ("b3", ("code_magnetic", ["magnetic_3"], None)),
+        ("Te", ("code_temperature", ["temperature"], None)),
         *known_dust_fields,
     )
 
@@ -138,7 +139,7 @@ class AMRVACFieldInfo(FieldInfoContainer):
         if n_dust_found > 0:
 
             def _total_dust_density(field, data):
-                tot = np.zeros_like(data["density"])
+                tot = np.zeros_like(data[("gas", "density")])
                 for idust in range(1, n_dust_found + 1):
                     tot += data["dust%d_density" % idust]
                 return tot
@@ -152,7 +153,7 @@ class AMRVACFieldInfo(FieldInfoContainer):
             )
 
             def dust_to_gas_ratio(field, data):
-                return data["total_dust_density"] / data["density"]
+                return data[("gas", "total_dust_density")] / data[("gas", "density")]
 
             self.add_field(
                 ("gas", "dust_to_gas_ratio"),

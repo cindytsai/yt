@@ -1,13 +1,13 @@
 import numpy as np
 
-from yt import iterable
 from yt.data_objects.selection_objects.data_selection_objects import (
     YTSelectionContainer,
     YTSelectionContainer2D,
 )
 from yt.data_objects.static_output import Dataset
 from yt.funcs import (
-    ensure_list,
+    is_sequence,
+    iter_fields,
     validate_3d_array,
     validate_axis,
     validate_center,
@@ -15,6 +15,7 @@ from yt.funcs import (
     validate_object,
     validate_width_tuple,
 )
+from yt.utilities.exceptions import YTNotInsideNotebook
 from yt.utilities.minimal_representation import MinimalSliceData
 from yt.utilities.orientation import Orientation
 
@@ -56,7 +57,7 @@ class YTSlice(YTSelectionContainer2D):
     >>> import yt
     >>> ds = yt.load("RedshiftOutput0005")
     >>> slice = ds.slice(0, 0.25)
-    >>> print(slice["Density"])
+    >>> print(slice[("gas", "density")])
     """
 
     _top_node = "/Slices"
@@ -131,7 +132,10 @@ class YTSlice(YTSelectionContainer2D):
             width = self.ds.domain_width
             center = self.ds.domain_center
         pw = self._get_pw(fields, center, width, "native", "Slice")
-        pw.show()
+        try:
+            pw.show()
+        except YTNotInsideNotebook:
+            pass
         return pw
 
 
@@ -180,7 +184,7 @@ class YTCuttingPlane(YTSelectionContainer2D):
     >>> import yt
     >>> ds = yt.load("RedshiftOutput0005")
     >>> cp = ds.cutting([0.1, 0.2, -0.9], [0.5, 0.42, 0.6])
-    >>> print(cp["Density"])
+    >>> print(cp[("gas", "density")])
     """
 
     _plane = None
@@ -281,7 +285,7 @@ class YTCuttingPlane(YTSelectionContainer2D):
         """
         normal = self.normal
         center = self.center
-        self.fields = ensure_list(fields) + [
+        self.fields = list(iter_fields(fields)) + [
             k for k in self.field_data.keys() if k not in self._key_fields
         ]
         from yt.visualization.fixed_resolution import FixedResolutionBuffer
@@ -312,7 +316,7 @@ class YTCuttingPlane(YTSelectionContainer2D):
         r"""This function returns a FixedResolutionBuffer generated from this
         object.
 
-        An ObliqueFixedResolutionBuffer is an object that accepts a
+        An FixedResolutionBuffer is an object that accepts a
         variable-resolution 2D object and transforms it into an NxM bitmap that
         can be plotted, examined or processed.  This is a convenience function
         to return an FRB directly from an existing 2D data object.  Unlike the
@@ -336,28 +340,28 @@ class YTCuttingPlane(YTSelectionContainer2D):
 
         Returns
         -------
-        frb : :class:`~yt.visualization.fixed_resolution.ObliqueFixedResolutionBuffer`
+        frb : :class:`~yt.visualization.fixed_resolution.FixedResolutionBuffer`
             A fixed resolution buffer, which can be queried for fields.
 
         Examples
         --------
 
-        >>> v, c = ds.find_max("density")
-        >>> sp = ds.sphere(c, (100.0, 'au'))
+        >>> v, c = ds.find_max(("gas", "density"))
+        >>> sp = ds.sphere(c, (100.0, "au"))
         >>> L = sp.quantities.angular_momentum_vector()
         >>> cutting = ds.cutting(L, c)
-        >>> frb = cutting.to_frb( (1.0, 'pc'), 1024)
-        >>> write_image(np.log10(frb["Density"]), 'density_1pc.png')
+        >>> frb = cutting.to_frb((1.0, "pc"), 1024)
+        >>> write_image(np.log10(frb[("gas", "density")]), "density_1pc.png")
         """
-        if iterable(width):
+        if is_sequence(width):
             validate_width_tuple(width)
             width = self.ds.quan(width[0], width[1])
         if height is None:
             height = width
-        elif iterable(height):
+        elif is_sequence(height):
             validate_width_tuple(height)
             height = self.ds.quan(height[0], height[1])
-        if not iterable(resolution):
+        if not is_sequence(resolution):
             resolution = (resolution, resolution)
         from yt.visualization.fixed_resolution import FixedResolutionBuffer
 

@@ -15,18 +15,18 @@ def setup_poynting_vector(self):
             u = mu_0 ** -1
             if axis in "x":
                 return u * (
-                    data["E_y"] * data["magnetic_field_z"]
-                    - data["E_z"] * data["magnetic_field_y"]
+                    data[("openPMD", "E_y")] * data[("gas", "magnetic_field_z")]
+                    - data[("openPMD", "E_z")] * data[("gas", "magnetic_field_y")]
                 )
             elif axis in "y":
                 return u * (
-                    data["E_z"] * data["magnetic_field_x"]
-                    - data["E_x"] * data["magnetic_field_z"]
+                    data[("openPMD", "E_z")] * data[("gas", "magnetic_field_x")]
+                    - data[("openPMD", "E_x")] * data[("gas", "magnetic_field_z")]
                 )
             elif axis in "z":
                 return u * (
-                    data["E_x"] * data["magnetic_field_y"]
-                    - data["E_y"] * data["magnetic_field_x"]
+                    data[("openPMD", "E_x")] * data[("gas", "magnetic_field_y")]
+                    - data[("openPMD", "E_y")] * data[("gas", "magnetic_field_x")]
                 )
 
         return poynting
@@ -103,7 +103,7 @@ def setup_absolute_positions(self, ptype):
 
 
 class OpenPMDFieldInfo(FieldInfoContainer):
-    """Specifies which fields from the dataset yt should know about.
+    r"""Specifies which fields from the dataset yt should know about.
 
     ``self.known_other_fields`` and ``self.known_particle_fields`` must be populated.
     Entries for both of these lists must be tuples of the form ("name", ("units",
@@ -134,7 +134,7 @@ class OpenPMDFieldInfo(FieldInfoContainer):
     References
     ----------
     * http://yt-project.org/docs/dev/analyzing/fields.html
-    * http://yt-project.org/docs/dev/developing/creating_frontend.html#data-meaning-structures  # NOQA E501
+    * http://yt-project.org/docs/dev/developing/creating_frontend.html#data-meaning-structures
     * https://github.com/openPMD/openPMD-standard/blob/latest/STANDARD.md
     * [1] http://yt-project.org/docs/dev/reference/field_list.html#universal-fields
     """
@@ -156,7 +156,7 @@ class OpenPMDFieldInfo(FieldInfoContainer):
                     # This appears to be a vector field of single dimensionality
                     ytname = str("_".join([fname.replace("_", "-")]))
                     parsed = parse_unit_dimension(
-                        np.asarray(field.attrs["unitDimension"], dtype=np.int)
+                        np.asarray(field.attrs["unitDimension"], dtype="int64")
                     )
                     unit = str(YTQuantity(1, parsed).units)
                     aliases = []
@@ -169,7 +169,7 @@ class OpenPMDFieldInfo(FieldInfoContainer):
                     for axis in field.keys():
                         ytname = str("_".join([fname.replace("_", "-"), axis]))
                         parsed = parse_unit_dimension(
-                            np.asarray(field.attrs["unitDimension"], dtype=np.int)
+                            np.asarray(field.attrs["unitDimension"], dtype="int64")
                         )
                         unit = str(YTQuantity(1, parsed).units)
                         aliases = []
@@ -226,7 +226,7 @@ class OpenPMDFieldInfo(FieldInfoContainer):
         except (KeyError, TypeError, AttributeError):
             pass
 
-        super(OpenPMDFieldInfo, self).__init__(ds, field_list)
+        super().__init__(ds, field_list)
 
     def setup_fluid_fields(self):
         """Defines which derived mesh fields to create.
@@ -248,4 +248,4 @@ class OpenPMDFieldInfo(FieldInfoContainer):
         setup_absolute_positions(self, ptype)
         setup_kinetic_energy(self, ptype)
         setup_velocity(self, ptype)
-        super(OpenPMDFieldInfo, self).setup_particle_fields(ptype)
+        super().setup_particle_fields(ptype)

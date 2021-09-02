@@ -21,10 +21,11 @@ from matplotlib import image as mpimg
 from matplotlib.testing.compare import compare_images
 from nose.plugins import Plugin
 
+from yt._maintenance.deprecation import issue_deprecation_warning
 from yt.config import ytcfg
 from yt.data_objects.static_output import Dataset
 from yt.data_objects.time_series import SimulationTimeSeries
-from yt.funcs import get_pbar, issue_deprecation_warning
+from yt.funcs import get_pbar, get_yt_version
 from yt.loaders import load, load_simulation
 from yt.testing import (
     assert_allclose_units,
@@ -32,7 +33,6 @@ from yt.testing import (
     assert_equal,
     assert_rel_equal,
 )
-from yt.utilities.command_line import get_yt_version
 from yt.utilities.exceptions import YTCloudError, YTNoAnswerNameSpecified, YTNoOldAnswer
 from yt.utilities.logger import disable_stream_logging
 from yt.visualization import (
@@ -56,7 +56,7 @@ class AnswerTesting(Plugin):
     _my_version = None
 
     def options(self, parser, env=os.environ):
-        super(AnswerTesting, self).options(parser, env=env)
+        super().options(parser, env=env)
         parser.add_option(
             "--answer-name",
             dest="answer_name",
@@ -106,7 +106,7 @@ class AnswerTesting(Plugin):
         return self._my_version
 
     def configure(self, options, conf):
-        super(AnswerTesting, self).configure(options, conf)
+        super().configure(options, conf)
         if not self.enabled:
             return
         disable_stream_logging()
@@ -136,7 +136,7 @@ class AnswerTesting(Plugin):
 
         self.store_results = options.store_results
 
-        ytcfg["yt", "__withintesting"] = "True"
+        ytcfg["yt", "internals", "within_testing"] = True
         AnswerTestingTest.result_storage = self.result_storage = defaultdict(dict)
         if self.compare_name == "SKIP":
             self.compare_name = None
@@ -218,7 +218,7 @@ class AnswerTestCloudStorage(AnswerTestStorage):
                 except Exception:
                     time.sleep(0.01)
                 else:
-                    # We were succesful
+                    # We were successful
                     break
             else:
                 # Raise error if all tries were unsuccessful
@@ -244,7 +244,7 @@ class AnswerTestCloudStorage(AnswerTestStorage):
         c = cf.get_container("yt-answer-tests")
         pb = get_pbar("Storing results ", len(result_storage))
         for i, ds_name in enumerate(result_storage):
-            pb.update(i)
+            pb.update(i + 1)
             rs = pickle.dumps(result_storage[ds_name])
             object_name = f"{self.answer_name}_{ds_name}"
             if object_name in c.get_object_names():
@@ -306,7 +306,7 @@ def can_run_ds(ds_fn, file_check=False):
     try:
         load(ds_fn)
     except FileNotFoundError:
-        if ytcfg.getboolean("yt", "__strict_requires"):
+        if ytcfg.get("yt", "internals", "strict_requires"):
             if result_storage is not None:
                 result_storage["tainted"] = True
             raise
@@ -317,8 +317,10 @@ def can_run_ds(ds_fn, file_check=False):
 def can_run_sim(sim_fn, sim_type, file_check=False):
     issue_deprecation_warning(
         "This function is no longer used in the "
-        + "yt project testing framework and is "
-        + "targeted for deprecation."
+        "yt project testing framework and is "
+        "targeted for deprecation.",
+        since="4.0.0",
+        removal="4.1.0",
     )
     result_storage = AnswerTestingTest.result_storage
     if isinstance(sim_fn, SimulationTimeSeries):
@@ -331,7 +333,7 @@ def can_run_sim(sim_fn, sim_type, file_check=False):
     try:
         load_simulation(sim_fn, sim_type)
     except FileNotFoundError:
-        if ytcfg.getboolean("yt", "__strict_requires"):
+        if ytcfg.get("yt", "internals", "strict_requires"):
             if result_storage is not None:
                 result_storage["tainted"] = True
             raise
@@ -357,7 +359,7 @@ def data_dir_load(ds_fn, cls=None, args=None, kwargs=None):
 
 def sim_dir_load(sim_fn, path=None, sim_type="Enzo", find_outputs=False):
     if path is None and not os.path.exists(sim_fn):
-        raise IOError
+        raise OSError
     if os.path.exists(sim_fn) or not path:
         path = "."
     return load_simulation(
@@ -460,7 +462,7 @@ class AnswerTestingTest:
         This is a helper function to return the location of the most dense
         point.
         """
-        return self.ds.find_max("density")[1]
+        return self.ds.find_max(("gas", "density"))[1]
 
     @property
     def entire_simulation(self):
@@ -475,7 +477,7 @@ class AnswerTestingTest:
         if obj_type is None:
             oname = "all"
         else:
-            oname = "_".join((str(s) for s in obj_type))
+            oname = "_".join(str(s) for s in obj_type)
         args = [self._type_name, str(self.ds), oname]
         args += [str(getattr(self, an)) for an in self._attrs]
         suffix = getattr(self, "suffix", None)
@@ -489,7 +491,7 @@ class FieldValuesTest(AnswerTestingTest):
     _attrs = ("field",)
 
     def __init__(self, ds_fn, field, obj_type=None, particle_type=False, decimals=10):
-        super(FieldValuesTest, self).__init__(ds_fn)
+        super().__init__(ds_fn)
         self.obj_type = obj_type
         self.field = field
         self.particle_type = particle_type
@@ -539,7 +541,7 @@ class AllFieldValuesTest(AnswerTestingTest):
     _attrs = ("field",)
 
     def __init__(self, ds_fn, field, obj_type=None, decimals=None):
-        super(AllFieldValuesTest, self).__init__(ds_fn)
+        super().__init__(ds_fn)
         self.obj_type = obj_type
         self.field = field
         self.decimals = decimals
@@ -569,7 +571,7 @@ class ProjectionValuesTest(AnswerTestingTest):
     def __init__(
         self, ds_fn, axis, field, weight_field=None, obj_type=None, decimals=10
     ):
-        super(ProjectionValuesTest, self).__init__(ds_fn)
+        super().__init__(ds_fn)
         self.axis = axis
         self.field = field
         self.weight_field = weight_field
@@ -631,7 +633,7 @@ class PixelizedProjectionValuesTest(AnswerTestingTest):
     _attrs = ("field", "axis", "weight_field")
 
     def __init__(self, ds_fn, axis, field, weight_field=None, obj_type=None):
-        super(PixelizedProjectionValuesTest, self).__init__(ds_fn)
+        super().__init__(ds_fn)
         self.axis = axis
         self.field = field
         self.weight_field = weight_field
@@ -690,13 +692,13 @@ class GridValuesTest(AnswerTestingTest):
     _attrs = ("field",)
 
     def __init__(self, ds_fn, field):
-        super(GridValuesTest, self).__init__(ds_fn)
+        super().__init__(ds_fn)
         self.field = field
 
     def run(self):
         hashes = {}
         for g in self.ds.index.grids:
-            hashes[g.id] = hashlib.md5(g[self.field].tostring()).hexdigest()
+            hashes[g.id] = hashlib.md5(g[self.field].tobytes()).hexdigest()
             g.clear_data()
         return hashes
 
@@ -836,7 +838,7 @@ class VRImageComparisonTest(AnswerTestingTest):
     _attrs = ("desc",)
 
     def __init__(self, scene, ds, desc, decimals):
-        super(VRImageComparisonTest, self).__init__(None)
+        super().__init__(None)
         self.obj_type = ("vr",)
         self.ds = ds
         self.scene = scene
@@ -878,7 +880,7 @@ class PlotWindowAttributeTest(AnswerTestingTest):
         callback_id="",
         callback_runners=None,
     ):
-        super(PlotWindowAttributeTest, self).__init__(ds_fn)
+        super().__init__(ds_fn)
         self.plot_type = plot_type
         self.plot_field = plot_field
         self.plot_axis = plot_axis
@@ -927,7 +929,7 @@ class PhasePlotAttributeTest(AnswerTestingTest):
         decimals,
         plot_type="PhasePlot",
     ):
-        super(PhasePlotAttributeTest, self).__init__(ds_fn)
+        super().__init__(ds_fn)
         self.data_source = self.ds.all_data()
         self.plot_type = plot_type
         self.x_field = x_field
@@ -978,7 +980,7 @@ class GenericArrayTest(AnswerTestingTest):
     _attrs = ("array_func_name", "args", "kwargs")
 
     def __init__(self, ds_fn, array_func, args=None, kwargs=None, decimals=None):
-        super(GenericArrayTest, self).__init__(ds_fn)
+        super().__init__(ds_fn)
         self.array_func = array_func
         self.array_func_name = array_func.__name__
         self.args = args
@@ -1025,7 +1027,7 @@ class GenericImageTest(AnswerTestingTest):
     _attrs = ("image_func_name", "args", "kwargs")
 
     def __init__(self, ds_fn, image_func, decimals, args=None, kwargs=None):
-        super(GenericImageTest, self).__init__(ds_fn)
+        super().__init__(ds_fn)
         self.image_func = image_func
         self.image_func_name = image_func.__name__
         self.args = args
@@ -1065,7 +1067,7 @@ class AxialPixelizationTest(AnswerTestingTest):
     _attrs = ("geometry",)
 
     def __init__(self, ds_fn, decimals=None):
-        super(AxialPixelizationTest, self).__init__(ds_fn)
+        super().__init__(ds_fn)
         self.decimals = decimals
         self.geometry = self.ds.coordinates.name
 
@@ -1079,8 +1081,8 @@ class AxialPixelizationTest(AnswerTestingTest):
             slc = ds.slice(axis, center[i])
             xax = ds.coordinates.axis_name[ds.coordinates.x_axis[axis]]
             yax = ds.coordinates.axis_name[ds.coordinates.y_axis[axis]]
-            pix_x = ds.coordinates.pixelize(axis, slc, xax, bounds, (512, 512))
-            pix_y = ds.coordinates.pixelize(axis, slc, yax, bounds, (512, 512))
+            pix_x = ds.coordinates.pixelize(axis, slc, ("gas", xax), bounds, (512, 512))
+            pix_y = ds.coordinates.pixelize(axis, slc, ("gas", yax), bounds, (512, 512))
             # Wipe out invalid values (fillers)
             pix_x[~np.isfinite(pix_x)] = 0.0
             pix_y[~np.isfinite(pix_y)] = 0.0
@@ -1111,8 +1113,10 @@ class AxialPixelizationTest(AnswerTestingTest):
 def requires_sim(sim_fn, sim_type, big_data=False, file_check=False):
     issue_deprecation_warning(
         "This function is no longer used in the "
-        + "yt project testing framework and is "
-        + "targeted for deprecation."
+        "yt project testing framework and is "
+        "targeted for deprecation.",
+        since="4.0.0",
+        removal="4.1.0",
     )
 
     from functools import wraps
@@ -1181,7 +1185,7 @@ def requires_ds(ds_fn, big_data=False, file_check=False):
         return ftrue
 
 
-def small_patch_amr(ds_fn, fields, input_center="max", input_weight="density"):
+def small_patch_amr(ds_fn, fields, input_center="max", input_weight=("gas", "density")):
     if not can_run_ds(ds_fn):
         return
     dso = [None, ("sphere", (input_center, (0.1, "unitary")))]
@@ -1189,16 +1193,16 @@ def small_patch_amr(ds_fn, fields, input_center="max", input_weight="density"):
     yield ParentageRelationshipsTest(ds_fn)
     for field in fields:
         yield GridValuesTest(ds_fn, field)
-        for axis in [0, 1, 2]:
-            for dobj_name in dso:
+        for dobj_name in dso:
+            for axis in [0, 1, 2]:
                 for weight_field in [None, input_weight]:
                     yield ProjectionValuesTest(
                         ds_fn, axis, field, weight_field, dobj_name
                     )
-                yield FieldValuesTest(ds_fn, field, dobj_name)
+            yield FieldValuesTest(ds_fn, field, dobj_name)
 
 
-def big_patch_amr(ds_fn, fields, input_center="max", input_weight="density"):
+def big_patch_amr(ds_fn, fields, input_center="max", input_weight=("gas", "density")):
     if not can_run_ds(ds_fn):
         return
     dso = [None, ("sphere", (input_center, (0.1, "unitary")))]
@@ -1214,11 +1218,13 @@ def big_patch_amr(ds_fn, fields, input_center="max", input_weight="density"):
                     )
 
 
-def _particle_answers(ds, ds_str_repr, ds_nparticles, fields, proj_test_class):
+def _particle_answers(
+    ds, ds_str_repr, ds_nparticles, fields, proj_test_class, center="c"
+):
     if not can_run_ds(ds):
         return
     assert_equal(str(ds), ds_str_repr)
-    dso = [None, ("sphere", ("c", (0.1, "unitary")))]
+    dso = [None, ("sphere", (center, (0.1, "unitary")))]
     dd = ds.all_data()
     # this needs to explicitly be "all"
     assert_equal(dd["all", "particle_position"].shape, (ds_nparticles, 3))
@@ -1235,15 +1241,25 @@ def _particle_answers(ds, ds_str_repr, ds_nparticles, fields, proj_test_class):
             yield FieldValuesTest(ds, field, dobj_name, particle_type=particle_type)
 
 
-def nbody_answer(ds, ds_str_repr, ds_nparticles, fields):
+def nbody_answer(ds, ds_str_repr, ds_nparticles, fields, center="c"):
     return _particle_answers(
-        ds, ds_str_repr, ds_nparticles, fields, PixelizedParticleProjectionValuesTest
+        ds,
+        ds_str_repr,
+        ds_nparticles,
+        fields,
+        PixelizedParticleProjectionValuesTest,
+        center=center,
     )
 
 
-def sph_answer(ds, ds_str_repr, ds_nparticles, fields):
+def sph_answer(ds, ds_str_repr, ds_nparticles, fields, center="c"):
     return _particle_answers(
-        ds, ds_str_repr, ds_nparticles, fields, PixelizedProjectionValuesTest
+        ds,
+        ds_str_repr,
+        ds_nparticles,
+        fields,
+        PixelizedProjectionValuesTest,
+        center=center,
     )
 
 

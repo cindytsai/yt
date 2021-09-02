@@ -1,7 +1,6 @@
 import numpy as np
 from unyt import udot, unorm
 
-from yt import YTArray, YTQuantity
 from yt.data_objects.selection_objects.data_selection_objects import (
     YTSelectionContainer,
     YTSelectionContainer1D,
@@ -13,9 +12,10 @@ from yt.funcs import (
     validate_3d_array,
     validate_axis,
     validate_float,
-    validate_iterable,
     validate_object,
+    validate_sequence,
 )
+from yt.units import YTArray, YTQuantity
 from yt.utilities.lib.pixelization_routines import SPHKernelInterpolationTable
 from yt.utilities.logger import ytLogger as mylog
 
@@ -54,7 +54,7 @@ class YTOrthoRay(YTSelectionContainer1D):
     >>> import yt
     >>> ds = yt.load("RedshiftOutput0005")
     >>> oray = ds.ortho_ray(0, (0.2, 0.74))
-    >>> print(oray["Density"])
+    >>> print(oray[("gas", "density")])
 
     Note: The low-level data representation for rays are not guaranteed to be
     spatially ordered.  In particular, with AMR datasets, higher resolution
@@ -65,7 +65,7 @@ class YTOrthoRay(YTSelectionContainer1D):
 
     >>> my_ray = ds.ortho_ray(...)
     >>> ray_sort = np.argsort(my_ray["t"])
-    >>> density = my_ray["density"][ray_sort]
+    >>> density = my_ray[("gas", "density")][ray_sort]
     """
 
     _key_fields = ["x", "y", "z", "dx", "dy", "dz"]
@@ -74,13 +74,13 @@ class YTOrthoRay(YTSelectionContainer1D):
 
     def __init__(self, axis, coords, ds=None, field_parameters=None, data_source=None):
         validate_axis(ds, axis)
-        validate_iterable(coords)
+        validate_sequence(coords)
         for c in coords:
             validate_float(c)
         validate_object(ds, Dataset)
         validate_object(field_parameters, dict)
         validate_object(data_source, YTSelectionContainer)
-        super(YTOrthoRay, self).__init__(ds, field_parameters, data_source)
+        super().__init__(ds, field_parameters, data_source)
         self.axis = fix_axis(axis, self.ds)
         xax = self.ds.coordinates.x_axis[self.axis]
         yax = self.ds.coordinates.y_axis[self.axis]
@@ -138,7 +138,7 @@ class YTRay(YTSelectionContainer1D):
     >>> import yt
     >>> ds = yt.load("RedshiftOutput0005")
     >>> ray = ds.ray((0.2, 0.74, 0.11), (0.4, 0.91, 0.31))
-    >>> print(ray["Density"], ray["t"], ray["dts"])
+    >>> print(ray[("gas", "density")], ray["t"], ray["dts"])
 
     Note: The low-level data representation for rays are not guaranteed to be
     spatially ordered.  In particular, with AMR datasets, higher resolution
@@ -149,7 +149,7 @@ class YTRay(YTSelectionContainer1D):
 
     >>> my_ray = ds.ray(...)
     >>> ray_sort = np.argsort(my_ray["t"])
-    >>> density = my_ray["density"][ray_sort]
+    >>> density = my_ray[("gas", "density")][ray_sort]
     """
 
     _type_name = "ray"
@@ -164,7 +164,7 @@ class YTRay(YTSelectionContainer1D):
         validate_object(ds, Dataset)
         validate_object(field_parameters, dict)
         validate_object(data_source, YTSelectionContainer)
-        super(YTRay, self).__init__(ds, field_parameters, data_source)
+        super().__init__(ds, field_parameters, data_source)
         if isinstance(start_point, YTArray):
             self.start_point = self.ds.arr(start_point).to("code_length")
         else:
@@ -178,7 +178,7 @@ class YTRay(YTSelectionContainer1D):
         ).any():
             mylog.warning(
                 "Ray start or end is outside the domain. "
-                + "Returned data will only be for the ray section inside the domain."
+                "Returned data will only be for the ray section inside the domain."
             )
         self.vec = self.end_point - self.start_point
         self._set_center(self.start_point)

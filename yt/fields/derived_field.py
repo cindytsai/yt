@@ -3,10 +3,13 @@ import inspect
 import re
 import warnings
 
+from more_itertools import always_iterable
+
 import yt.units.dimensions as ytdims
-from yt.funcs import VisibleDeprecationWarning, ensure_list
+from yt.funcs import iter_fields
 from yt.units.unit_object import Unit
 from yt.utilities.exceptions import YTFieldNotFound
+from yt.utilities.logger import ytLogger as mylog
 
 from .field_detector import FieldDetector
 from .field_exceptions import (
@@ -30,6 +33,25 @@ def TranslationFunc(field_name):
 
 def NullFunc(field, data):
     raise YTFieldNotFound(field.name)
+
+
+def DeprecatedFieldFunc(ret_field, func, since, removal):
+    def _DeprecatedFieldFunc(field, data):
+        # Only log a warning if we've already done
+        # field detection
+        if data.ds.fields_detected:
+            args = [field.name, since, removal]
+            msg = (
+                "The Derived Field %s is deprecated as of yt v%s "
+                "and will be removed in yt v%s. "
+            )
+            if ret_field != field.name:
+                msg += "Use %s instead."
+                args.append(ret_field)
+            mylog.warning(msg, *args)
+        return func(field, data)
+
+    return _DeprecatedFieldFunc
 
 
 class DerivedField:
@@ -136,10 +158,7 @@ class DerivedField:
 
         self._function = function
 
-        if validators:
-            self.validators = ensure_list(validators)
-        else:
-            self.validators = []
+        self.validators = list(always_iterable(validators))
 
         # handle units
         if units is None:
@@ -160,7 +179,7 @@ class DerivedField:
             self.units = units.decode("utf-8")
         else:
             raise FieldUnitsError(
-                "Cannot handle units '%s' (type %s)."
+                "Cannot handle units '%s' (type %s). "
                 "Please provide a string or Unit "
                 "object." % (units, type(units))
             )
@@ -184,16 +203,6 @@ class DerivedField:
         dd["not_in_all"] = self.not_in_all
         dd["display_name"] = self.display_name
         return dd
-
-    @property
-    def particle_type(self):
-        warnings.warn(
-            "particle_type has been deprecated, "
-            "check for field.sampling_type == 'particle' instead.",
-            VisibleDeprecationWarning,
-            stacklevel=2,
-        )
-        return self.sampling_type in ("discrete", "particle")
 
     @property
     def is_sph_field(self):
@@ -241,10 +250,7 @@ class DerivedField:
         This returns a list of names of fields that this field depends on.
         """
         e = FieldDetector(*args, **kwargs)
-        if self._function.__name__ == "<lambda>":
-            e.requested.append(self.name)
-        else:
-            e[self.name]
+        e[self.name]
         return e
 
     def _get_needed_parameters(self, fd):
@@ -276,7 +282,7 @@ class DerivedField:
         self._unit_registry = old_registry
 
     def __call__(self, data):
-        """ Return the value of the field in a given *data* object. """
+        """Return the value of the field in a given *data* object."""
         self.check_available(data)
         original_fields = data.keys()  # Copy
         if self._function is NullFunc:
@@ -430,10 +436,10 @@ class DerivedField:
                 roman = pnum2rom[pstr[1:]]
                 label = (
                     species_label
-                    + "\ "
+                    + r"\ "
                     + roman
-                    + "\ "
-                    + "\ ".join(segments[ipstr + 1 :])
+                    + r"\ "
+                    + r"\ ".join(segments[ipstr + 1 :])
                 )
 
             # use +/- for ionization
@@ -446,8 +452,8 @@ class DerivedField:
                     + "^{"
                     + sign
                     + "}"
-                    + "\ "
-                    + "\ ".join(segments[ipstr + 1 :])
+                    + r"\ "
+                    + r"\ ".join(segments[ipstr + 1 :])
                 )
 
         else:
@@ -459,12 +465,12 @@ class DerivedField:
         if label is None:
             if self._is_ion():
                 fname = self._ion_to_label()
-                label = r"$\rm{" + fname.replace("_", "\ ") + r"}$"
+                label = r"$\rm{" + fname.replace("_", r"\ ") + r"}$"
                 label = label.replace("latexsub", "_")
             else:
-                label = r"$\rm{" + self.name[1].replace("_", "\ ").title() + r"}$"
+                label = r"$\rm{" + self.name[1].replace("_", r"\ ").title() + r"}$"
         elif label.find("$") == -1:
-            label = label.replace(" ", "\ ")
+            label = label.replace(" ", r"\ ")
             label = r"$\rm{" + label + r"}$"
         return label
 
@@ -482,7 +488,7 @@ class ValidateParameter(FieldValidator):
         is available for all permutations of the field parameter.
         """
         FieldValidator.__init__(self)
-        self.parameters = ensure_list(parameters)
+        self.parameters = list(always_iterable(parameters))
         self.parameter_values = parameter_values
 
     def __call__(self, data):
@@ -502,7 +508,7 @@ class ValidateDataField(FieldValidator):
         in it.
         """
         FieldValidator.__init__(self)
-        self.fields = ensure_list(field)
+        self.fields = list(iter_fields(field))
 
     def __call__(self, data):
         doesnt_have = []
@@ -522,7 +528,7 @@ class ValidateProperty(FieldValidator):
         This validator ensures that the data object has a given python attribute.
         """
         FieldValidator.__init__(self)
-        self.prop = ensure_list(prop)
+        self.prop = list(always_iterable(prop))
 
     def __call__(self, data):
         doesnt_have = []
