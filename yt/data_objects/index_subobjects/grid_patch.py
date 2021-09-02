@@ -407,16 +407,9 @@ class AMRGridPatch(YTSelectionContainer):
         return mask
 
     def select(self, selector, source, dest, offset):
-
-        mylog.debug("#FLAG#")
-        mylog.debug("yt/data_objects/index_subobjects/grid_patch.py (class AMGGridPatch, def select())")
-
         mask = self._get_selector_mask(selector)
         count = self.count(selector)
         if count == 0:
-
-            mylog.debug("######(class AMGGridPatch, def select())")
-
             return 0
         dim = np.squeeze(self.ds.dimensionality)
         nodal_flag = source.shape[:dim] - self.ActiveDimensions[:dim]
@@ -426,9 +419,6 @@ class AMRGridPatch(YTSelectionContainer):
             slices = get_nodal_slices(source.shape, nodal_flag, dim)
             for i, sl in enumerate(slices):
                 dest[offset : offset + count, i] = source[tuple(sl)][np.squeeze(mask)]
-
-        mylog.debug("######(class AMGGridPatch, def select())")
-
         return count
 
     def count(self, selector):

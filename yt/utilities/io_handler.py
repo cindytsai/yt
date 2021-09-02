@@ -104,13 +104,6 @@ class BaseIOHandler:
         # rewrite a whole bunch of IO handlers all at once, and to allow a
         # better abstraction for grid-based frontends, we're now defining it in
         # the base class.
-
-        mylog.debug("#FLAG#")
-        mylog.debug("yt/utilities/io_handler.py (class BaseIOHandler, def _read_fluid_selection)")
-        mylog.debug("chunks = %s", chunks)
-        mylog.debug("fields = %s", fields)
-        mylog.debug("size = %s", size)
-
         rv = {}
         nodal_fields = []
         for field in fields:
@@ -131,9 +124,6 @@ class BaseIOHandler:
                 rv[field] = data.copy()
             else:
                 ind[field] += obj.select(selector, data, rv[field], ind[field])
-
-        mylog.debug("######(class BaseIOHandler, def _read_fluid_selection)")
-
         return rv
 
     def io_iter(self, chunks, fields):
@@ -169,12 +159,6 @@ class BaseIOHandler:
         return psize
 
     def _read_particle_selection(self, chunks, selector, fields):
-
-        mylog.debug("#FLAG#")
-        mylog.debug("yt/utilities/io_handler.py (class BaseIOHandler, def _read_particle_selection)")
-        mylog.debug("chunks = %s", chunks)
-        mylog.debug("fields = %s", fields)
-
         rv = {}
         ind = {}
         # We first need a set of masks for each particle type
@@ -231,9 +215,6 @@ class BaseIOHandler:
         # over-estimating.
         for field_f in ind:
             rv[field_f] = rv[field_f][: ind[field_f]]
-
-        mylog.debug("######(class BaseIOHandler, def _read_particle_selection)")
-
         return rv
 
 

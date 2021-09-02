@@ -62,10 +62,6 @@ class IOHandlerPackedHDF5(BaseIOHandler):
             yield rv
 
     def _read_particle_fields(self, chunks, ptf, selector):
-
-        mylog.debug("#FLAG#")
-        mylog.debug("yt/frontends/enzo/io.py (class IOHandlerPackedHDF5, def _read_particle_fields())")
-
         chunks = list(chunks)
         for chunk in chunks:  # These should be organized by grid filename
             f = None
@@ -80,10 +76,6 @@ class IOHandlerPackedHDF5(BaseIOHandler):
                     continue
                 ds = f.get("/Grid%08i" % g.id)
                 for ptype, field_list in sorted(ptf.items()):
-
-                    mylog.debug("ptf.items() = %s", ptf.items())
-                    mylog.debug("ptype, field_list = %s, %s", ptype, field_list)
-
                     if ptype != "io":
                         if g.NumberOfActiveParticles[ptype] == 0:
                             continue
@@ -97,9 +89,6 @@ class IOHandlerPackedHDF5(BaseIOHandler):
                     if selector is None:
                         # This only ever happens if the call is made from
                         # _read_particle_coords.
-
-                        mylog.debug("######(class IOHandlerPackedHDF5, def _read_particle_fields())")
-
                         yield ptype, (x, y, z)
                         continue
                     mask = selector.select_points(x, y, z, 0.0)
@@ -114,18 +103,11 @@ class IOHandlerPackedHDF5(BaseIOHandler):
                 f.close()
 
     def io_iter(self, chunks, fields):
-
-        mylog.debug("#FLAG#")
-        mylog.debug("yt/frontends/enzo/io.py (class IOHandlerPackedHDF5, def io_iter)")
-
         h5_dtype = self._field_dtype
         for chunk in chunks:
             fid = None
             filename = -1
             for obj in chunk.objs:
-
-                mylog.debug("obj = %s", obj)
-
                 if obj.filename is None:
                     continue
                 if obj.filename != filename:
@@ -143,9 +125,6 @@ class IOHandlerPackedHDF5(BaseIOHandler):
                     nodal_flag = self.ds.field_info[field].nodal_flag
                     dims = obj.ActiveDimensions[::-1] + nodal_flag[::-1]
                     data = np.empty(dims, dtype=h5_dtype)
-
-                    mylog.debug("######(class IOHandlerPackedHDF5, def io_iter)")
-
                     yield field, obj, self._read_obj_field(obj, field, (fid, data))
         if fid is not None:
             fid.close()
@@ -228,13 +207,6 @@ class IOHandlerInMemory(BaseIOHandler):
         return fields
 
     def _read_fluid_selection(self, chunks, selector, fields, size):
-
-        mylog.debug("#FLAG#")
-        mylog.debug("yt/frontends/enzo/io.py ( class IOHandlerInMemory, def _read_fluid_selection )")
-        mylog.debug("selector = %s", selector)
-        mylog.debug("fields = %s", fields)
-        mylog.debug("size = %s", size)
-
         rv = {}
         # Now we have to do something unpleasant
         chunks = list(chunks)
@@ -260,22 +232,12 @@ class IOHandlerInMemory(BaseIOHandler):
         )
 
         ind = 0
-
-        mylog.debug("chunks = %s", chunks)
-        for chunk in chunks:
-            mylog.debug("chunk = %s", chunk)
-            for g in chunk.objs:
-                mylog.debug("g = %s", g)
-
         for chunk in chunks:
             for g in chunk.objs:
                 # We want a *hard error* here.
                 # if g.id not in self.grids_in_memory: continue
                 for field in fields:
                     ftype, fname = field
-
-                    mylog.debug("Keys in self.grids_in_memory = %s", self.grids_in_memory.keys())
-
                     data_view = self.grids_in_memory[g.id][fname][
                         self.my_slice
                     ].swapaxes(0, 2)
@@ -283,9 +245,6 @@ class IOHandlerInMemory(BaseIOHandler):
                     nd = g.select(selector, data_view, rv[field], ind)
                 ind += nd
         assert ind == fsize
-
-        mylog.debug("######( class IOHandlerInMemory, def _read_fluid_selection )")
-
         return rv
 
     def _read_particle_coords(self, chunks, ptf):
@@ -342,10 +301,6 @@ class IOHandlerPacked2D(IOHandlerPackedHDF5):
         return ds.transpose()[:, :, None]
 
     def _read_fluid_selection(self, chunks, selector, fields, size):
-
-        mylog.debug("#FLAG#")
-        mylog.debug("yt/frontends/enzo/io.py (class IOHandlerPacked2D, def _read_fluid_selection)")
-
         rv = {}
         # Now we have to do something unpleasant
         chunks = list(chunks)
@@ -358,9 +313,6 @@ class IOHandlerPacked2D(IOHandlerPackedHDF5):
             for ftype, fname in fields:
                 rv[(ftype, fname)] = np.atleast_3d(gds.get(fname)[()].transpose())
             f.close()
-
-            mylog.debug("######(class IOHandlerPacked2D, def _read_fluid_selection)")
-
             return rv
         if size is None:
             size = sum((g.count(selector) for chunk in chunks for g in chunk.objs))
@@ -391,9 +343,6 @@ class IOHandlerPacked2D(IOHandlerPackedHDF5):
                     nd = g.select(selector, ds, rv[field], ind)  # caches
                 ind += nd
             f.close()
-
-        mylog.debug("######(class IOHandlerPacked2D, def _read_fluid_selection)")
-
         return rv
 
 

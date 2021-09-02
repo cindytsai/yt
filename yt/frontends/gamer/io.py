@@ -40,10 +40,6 @@ class IOHandlerGAMER(BaseIOHandler):
         self.pgroup = ds.refine_by ** 3  # number of patches in a patch group
 
     def _read_particle_coords(self, chunks, ptf):
-
-        mylog.debug("#FLAG#")
-        mylog.debug("yt/frontends/gamer/io.py (class IOHandlerGAMER, def _read_particle_coords())")
-
         chunks = list(chunks)  # generator --> list
         p_idx = self.ds.index._particle_indices
 
@@ -55,9 +51,6 @@ class IOHandlerGAMER(BaseIOHandler):
         # currently GAMER does not support multiple particle types
         assert len(ptf) == 1
         ptype = list(ptf.keys())[0]
-
-        mylog.debug("ptf = %s", ptf)
-        mylog.debug("ptype = %s", ptf.keys())
 
         for chunk in chunks:
             for g1, g2 in particle_sequences(chunk.objs):
@@ -99,10 +92,6 @@ class IOHandlerGAMER(BaseIOHandler):
                     yield (ptype, field), data[mask]
 
     def _read_fluid_selection(self, chunks, selector, fields, size):
-
-        mylog.debug("#FLAG#")
-        mylog.debug("yt/frontends/gamer/io.py (class IOHandlerGAMER, def _read_fluid_selection)")
-
         chunks = list(chunks)  # generator --> list
 
         if any((ftype != "gamer" for ftype, fname in fields)):
@@ -150,9 +139,6 @@ class IOHandlerGAMER(BaseIOHandler):
 
                     for i, g in enumerate(gs):
                         offset += g.select(selector, data[..., i], rv[field], offset)
-
-        mylog.debug("######(class IOHandlerGAMER, def _read_fluid_selection)")
-
         return rv
 
     def _read_chunk_data(self, chunk, fields):

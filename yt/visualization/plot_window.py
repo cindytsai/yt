@@ -118,18 +118,10 @@ def get_axes_unit(width, ds):
 
 
 def validate_mesh_fields(data_source, fields):
-
-    mylog.debug("#FLAG#")
-    mylog.debug("yt/visualization/plot_window.py (def validate_mesh_fields)")
-    mylog.debug("data_source type = %s", type(data_source))
-
     # this check doesn't make sense for ytdata plot datasets, which
     # load mesh data as a particle field but nonetheless can still
     # make plots with it
     if isinstance(data_source.ds, YTSpatialPlotDataset):
-
-        mylog.debug("######(def validate_mesh_fields)")
-
         return
     canonical_fields = data_source._determine_fields(fields)
     invalid_fields = []
@@ -144,8 +136,6 @@ def validate_mesh_fields(data_source, fields):
 
     if len(invalid_fields) > 0:
         raise YTInvalidFieldType(invalid_fields)
-
-    mylog.debug("######(def validate_mesh_fields)")
 
 class PlotWindow(ImagePlotContainer):
     r"""
@@ -200,10 +190,6 @@ class PlotWindow(ImagePlotContainer):
         aspect=None,
         setup=False,
     ):
-
-        mylog.debug("#FLAG#")
-        mylog.debug("yt/visualization/plot_window.py (class PlotWindow, def __init__)")
-
         self.center = None
         self._periodic = periodic
         self.oblique = oblique
@@ -251,8 +237,6 @@ class PlotWindow(ImagePlotContainer):
                 self._field_transform[field] = linear_transform
         self.setup_callbacks()
         self._setup_plots()
-
-        mylog.debug("######(class PlotWindow, def __init__)")
 
     def __iter__(self):
         for ds in self.ts:
@@ -825,18 +809,12 @@ class PWViewerMPL(PlotWindow):
     _data_valid = False
 
     def __init__(self, *args, **kwargs):
-
-        mylog.debug("#FLAG#")
-        mylog.debug("yt/visualization/plot_window.py (class PWViewerMPL, def __init__)")
-
         if self._frb_generator is None:
             self._frb_generator = kwargs.pop("frb_generator")
         if self._plot_type is None:
             self._plot_type = kwargs.pop("plot_type")
         self._splat_color = kwargs.pop("splat_color", None)
         PlotWindow.__init__(self, *args, **kwargs)
-
-        mylog.debug("######(class PWViewerMPL, def __init__)")
 
     def _setup_origin(self):
         origin = self.origin
@@ -1519,10 +1497,6 @@ class AxisAlignedSlicePlot(PWViewerMPL):
         data_source=None,
         buff_size=(800, 800),
     ):
-
-        mylog.debug("#FLAG#")
-        mylog.debug("yt/visualization/plot_window.py (class AxisAlignedSlicePlot, def __init__)")
-
         # this will handle time series data and controllers
         axis = fix_axis(axis, ds)
         (bounds, center, display_center) = get_window_parameters(
@@ -1530,9 +1504,6 @@ class AxisAlignedSlicePlot(PWViewerMPL):
         )
         if field_parameters is None:
             field_parameters = {}
-
-        mylog.debug("ds type = %s", type(ds))
-        mylog.debug("ds.geometry = %s", ds.geometry)
 
         if ds.geometry in (
             "spherical",
@@ -1556,9 +1527,6 @@ class AxisAlignedSlicePlot(PWViewerMPL):
                 center=center,
                 data_source=data_source,
             )
-
-            mylog.debug("slc type = %s", type(slc))
-
             slc.get_data(fields)
         validate_mesh_fields(slc, fields)
         PWViewerMPL.__init__(
@@ -1576,9 +1544,6 @@ class AxisAlignedSlicePlot(PWViewerMPL):
         if axes_unit is None:
             axes_unit = get_axes_unit(width, ds)
         self.set_axes_unit(axes_unit)
-
-        mylog.debug("######(class AxisAlignedSlicePlot, def __init__)")
-
 
 class ProjectionPlot(PWViewerMPL):
     r"""Creates a projection plot from a dataset
@@ -1751,10 +1716,6 @@ class ProjectionPlot(PWViewerMPL):
         buff_size=(800, 800),
         aspect=None,
     ):
-
-        mylog.debug("#FLAG#")
-        mylog.debug("yt/visualization/plot_window.py (class ProjectionPlot, def __init__)")
-
         axis = fix_axis(axis, ds)
         if ds.geometry in (
             "spherical",
@@ -1782,9 +1743,6 @@ class ProjectionPlot(PWViewerMPL):
         test_data_source = ds.all_data()
         validate_mesh_fields(test_data_source, fields)
 
-        mylog.debug("ds type = %s", type(ds))
-        mylog.debug("isinstance(ds, YTSpatialPlotDataset) = %s", isinstance(ds, YTSpatialPlotDataset))
-
         if isinstance(ds, YTSpatialPlotDataset):
             proj = ds.all_data()
             proj.axis = axis
@@ -1809,9 +1767,6 @@ class ProjectionPlot(PWViewerMPL):
                 max_level=max_level,
             )
 
-            mylog.debug("proj = %s", proj)
-            mylog.debug("proj type = %s", type(proj))
-
         PWViewerMPL.__init__(
             self,
             proj,
@@ -1827,9 +1782,6 @@ class ProjectionPlot(PWViewerMPL):
         if axes_unit is None:
             axes_unit = get_axes_unit(width, ds)
         self.set_axes_unit(axes_unit)
-
-        mylog.debug("######(class ProjectionPlot, def __init__)")
-
 
 class OffAxisSlicePlot(PWViewerMPL):
     r"""Creates an off axis slice plot from a dataset
@@ -2396,10 +2348,6 @@ def SlicePlot(ds, normal=None, fields=None, axis=None, *args, **kwargs):
     ...                 north_vector=[0.2,-0.3,0.1])
 
     """
-
-    mylog.debug("#FLAG#")
-    mylog.debug("yt/visualization/plot_window.py (def SlicePlot)")
-
     if axis is not None:
         issue_deprecation_warning(
             "SlicePlot's argument 'axis' is a deprecated alias for 'normal', it "
@@ -2436,9 +2384,6 @@ def SlicePlot(ds, normal=None, fields=None, axis=None, *args, **kwargs):
                 "an OffAxisSlicePlot object."
             )
             del kwargs["origin"]
-
-        mylog.debug("######(def SlicePlot)")
-
         return OffAxisSlicePlot(ds, normal, fields, *args, **kwargs)
     else:
         # north_vector not used in AxisAlignedSlicePlots; remove it if in kwargs
@@ -2448,9 +2393,6 @@ def SlicePlot(ds, normal=None, fields=None, axis=None, *args, **kwargs):
                 "an AxisAlignedSlicePlot object."
             )
             del kwargs["north_vector"]
-
-        mylog.debug("######(def SlicePlot)")
-
         return AxisAlignedSlicePlot(ds, normal, fields, *args, **kwargs)
 
 

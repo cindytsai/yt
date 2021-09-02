@@ -73,10 +73,6 @@ class YTDataContainer:
         sets its initial set of fields, and the remainder of the arguments
         are passed as field_parameters.
         """
-
-        mylog.debug("#FLAG#")
-        mylog.debug("yt/data_objects/data_containers.py (class YTDataContainer, def __init__)")
-
         # ds is typically set in the new object type created in
         # Dataset._add_object_class but it can also be passed as a parameter to the
         # constructor, in which case it will override the default.
@@ -110,8 +106,6 @@ class YTDataContainer:
         self._set_default_field_parameters()
         for key, val in field_parameters.items():
             self.set_field_parameter(key, val)
-
-        mylog.debug("######(class YTDataContainer, def __init__)")
 
     def __init_subclass__(cls, *args, **kwargs):
         super().__init_subclass__(*args, **kwargs)
@@ -1443,20 +1437,9 @@ class YTDataContainer:
         raise YTFieldNotParseable(field)
 
     def _determine_fields(self, fields):
-
-        mylog.debug("#FLAG#")
-        mylog.debug("yt/data_objects/data_containers.py (class YTDataContainer, def _determine_fields)")
-
         fields = ensure_list(fields)
-
-        mylog.debug("fields = %s", fields)
-        mylog.debug("self._container_fields = %s", self._container_fields)
-
         explicit_fields = []
         for field in fields:
-
-            mylog.debug("field = %s", field)
-
             if field in self._container_fields:
                 explicit_fields.append(field)
                 continue
@@ -1464,9 +1447,6 @@ class YTDataContainer:
             ftype, fname = self._tupleize_field(field)
             # print(field, " : ",ftype, fname)
             finfo = self.ds._get_field_info(ftype, fname)
-
-            mylog.debug("finfo = %s", finfo)
-
             # really ugly check to ensure that this field really does exist somewhere,
             # in some naming convention, before returning it as a possible field type
             if (
@@ -1490,9 +1470,6 @@ class YTDataContainer:
             elif not particle_field and ftype not in self.ds.fluid_types:
                 raise YTFieldTypeNotFound(ftype, ds=self.ds)
             explicit_fields.append((ftype, fname))
-
-        mylog.debug("######(class YTDataContainer, def _determine_fields)")
-
         return explicit_fields
 
     _tree = None

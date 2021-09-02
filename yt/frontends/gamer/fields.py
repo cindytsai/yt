@@ -162,10 +162,6 @@ class GAMERFieldInfo(FieldInfoContainer):
             units=unit_system["temperature"],
         )
 
-        mylog.debug("#FLAG#")
-        mylog.debug("yt/frontends/gamer (class GAMERFieldInfo, def setup_fluid_fields)")
-        mylog.debug("type self.ds = %s", type(self.ds))
-
         # magnetic field aliases --> magnetic_field_x/y/z
         if self.ds.mhd:
             setup_magnetic_field_aliases(self, "gamer", [f"CCMag{v}" for v in "XYZ"])

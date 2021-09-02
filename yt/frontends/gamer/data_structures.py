@@ -58,10 +58,6 @@ class GAMERHierarchy(GridIndex):
         self.num_grids = self.dataset.parameters["NPatch"].sum() // self.pgroup
 
     def _parse_index(self):
-
-        mylog.debug("#FLAG#")
-        mylog.debug("yt/frontends/gamer/data_structures.py (class GAMERHierarchy, def _parse_index())")
-
         parameters = self.dataset.parameters
         gid0 = 0
         grid_corner = self._handle["Tree/Corner"][()][:: self.pgroup]
@@ -108,10 +104,6 @@ class GAMERHierarchy(GridIndex):
         except KeyError:
             self.grid_particle_count[:] = 0.0
 
-        for i in range(self.grid_particle_count.shape[0]):
-            mylog.debug("grid_particle_count, grid_level = %s, %s", self.grid_particle_count[i][0], self.grid_levels[i][0])
-        mylog.debug("self.num_grids = %s", self.num_grids)
-
         # calculate the starting particle indices for each grid (starting from 0)
         # --> note that the last element must store the total number of particles
         #    (see _read_particle_coords and _read_particle_fields in io.py)
@@ -119,8 +111,6 @@ class GAMERHierarchy(GridIndex):
         np.add.accumulate(
             self.grid_particle_count.squeeze(), out=self._particle_indices[1:]
         )
-
-        mylog.debug("######(class GAMERHierarchy, def _parse_index())")
 
     def _populate_grid_objects(self):
         son_list = self._handle["Tree/Son"][()]
@@ -290,10 +280,6 @@ class GAMERDataset(Dataset):
                     mylog.warning("Assuming %8s unit = %f %s", unit, value, cgs)
 
     def _parse_parameter_file(self):
-
-        mylog.debug("#FLAG#")
-        mylog.debug("yt/frontends/gamer/data_structures.py (class GAMERDataset, def _parse_parameter_file)")
-
         # code-specific parameters
         for t in self._handle["Info"]:
             info_category = self._handle["Info"][t]
@@ -355,17 +341,13 @@ class GAMERDataset(Dataset):
             # default to 0.6 for old data format
             self.mu = parameters.get("MolecularWeight", 0.6)
             self.mhd = parameters.get("Magnetohydrodynamics", 0)
-            mylog.debug("self.mhd = %s", self.mhd)
         else:
             self.mhd = 0
-            mylog.debug("self.mhd = %s", self.mhd)
 
         # old data format (version < 2210) did not contain any information of code units
         self.parameters.setdefault("Opt__Unit", 0)
 
         self.geometry = geometry_parameters[parameters.get("Coordinate", 1)]
-
-        mylog.debug("######(class GAMERDataset, def _parse_parameter_file())")
 
     @classmethod
     def _is_valid(self, *args, **kwargs):
