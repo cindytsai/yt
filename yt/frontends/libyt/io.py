@@ -41,6 +41,9 @@ class IOHandlerlibyt(BaseIOHandler):
 #                        slice(ghost_zones,-ghost_zones))
 
     def _read_particle_coords(self, chunks, ptf):
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/libyt/io.py (class IOHandlerlibyt, def _read_particle_coords) ")
+
         chunks = list(chunks)
 
         # Get position (coordinate) label.
@@ -81,6 +84,9 @@ class IOHandlerlibyt(BaseIOHandler):
                         yield ptype, (x, y, z)
 
     def _read_particle_fields(self, chunks, ptf, selector):
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/libyt/io.py (class IOHandlerlibyt, def _read_particle_fields) ")
+
         chunks = list(chunks)
 
         # Get position (coordinate) label and append particle attribute to get after them.
@@ -140,6 +146,9 @@ class IOHandlerlibyt(BaseIOHandler):
                             yield (ptype, field), data[mask]
 
     def _read_chunk_data(self, chunk, fields):
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/libyt/io.py (class IOHandlerlibyt, def _read_chunk_data) ")
+
         # TODO: The suite hasn't been tested yet.
         #       Although it's be use for caching, I wonder do libyt need this.
         #       Since we don't need to load data from file. Although we do need
@@ -180,6 +189,9 @@ class IOHandlerlibyt(BaseIOHandler):
         return rv
 
     def _read_fluid_selection(self, chunks, selector, fields, size):
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/libyt/io.py (class IOHandlerlibyt, def _read_fluid_selection) ")
+
         rv = {}
         chunks = list(chunks)
 
