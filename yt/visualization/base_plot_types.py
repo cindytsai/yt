@@ -131,6 +131,9 @@ class PlotMPL:
     def save(self, name, mpl_kwargs=None, canvas=None):
         """Choose backend and save image to disk"""
 
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/visualization/base_plot_types.py (class PlotMPL, def save())")
+
         if mpl_kwargs is None:
             mpl_kwargs = {}
         if "papertype" not in mpl_kwargs and Version(matplotlib.__version__) < Version(
@@ -148,6 +151,9 @@ class PlotMPL:
         mylog.info("Saving plot %s", name)
         with matplotlib_style_context():
             canvas.print_figure(name, **mpl_kwargs)
+
+        mylog.debug("######(class PlotMPL, def save())")
+
         return name
 
     def show(self):

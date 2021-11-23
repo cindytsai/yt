@@ -574,6 +574,10 @@ class PlotContainer:
         >>> slc.save(mpl_kwargs={"bbox_inches": "tight"})
 
         """
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/visualization/plot_container.py (class PlotContainer, def save())")
+
         names = []
         if mpl_kwargs is None:
             mpl_kwargs = {}
@@ -599,8 +603,15 @@ class PlotContainer:
         new_name = validate_image_name(name, suffix)
         if new_name == name:
             for v in self.plots.values():
+
+                mylog.debug("v = %s", v)
+                mylog.debug("type(v) = %s", type(v))
+
                 out_name = v.save(name, mpl_kwargs)
                 names.append(out_name)
+
+            mylog.debug("###### (class PlotContainer, def save()) ")
+
             return names
 
         name = new_name
@@ -619,6 +630,10 @@ class PlotContainer:
         if "Cutting" in self.data_source.__class__.__name__:
             plot_type = "OffAxisSlice"
         for k, v in self.plots.items():
+
+            mylog.debug("v = %s", v)
+            mylog.debug("type(v) = %s", type(v))
+
             if isinstance(k, tuple):
                 k = k[1]
 
@@ -631,6 +646,9 @@ class PlotContainer:
 
             name = "_".join(name_elements) + suffix
             names.append(v.save(name, mpl_kwargs))
+
+        mylog.debug("###### (class PlotContainer, def save()) ")
+
         return names
 
     @invalidate_data
