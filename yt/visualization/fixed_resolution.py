@@ -122,7 +122,14 @@ class FixedResolutionBuffer:
         del self.data[item]
 
     def __getitem__(self, item):
+
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/visualization/fixed_resolution.py (class FixedResolutionBuffer, def __getitem__)")
+
         if item in self.data:
+
+            mylog.debug("###### (class FixedResolutionBuffer, def __getitem__)")
+
             return self.data[item]
         mylog.info(
             "Making a fixed resolution buffer of (%s) %d by %d",
@@ -144,6 +151,8 @@ class FixedResolutionBuffer:
             self.buff_size,
             int(self.antialias),
         )
+
+        mylog.debug("#flag1 , in (class FixedResolutionBuffer, def __getitem__)")
 
         for name, (args, kwargs) in self._filters:
             buff = filter_registry[name](*args[1:], **kwargs).apply(buff)
