@@ -46,6 +46,11 @@ class IOHandlerlibyt(BaseIOHandler):
 
         chunks = list(chunks)
 
+        mylog.debug("chunks = %s" % chunks)
+        for chunk in chunks:
+            for g in chunk.objs:
+                mylog.debug("g = %s" % g)
+
         # Get position (coordinate) label.
         ptf_new = {}
         for ptype in ptf.keys():
@@ -88,6 +93,11 @@ class IOHandlerlibyt(BaseIOHandler):
         mylog.debug("yt/frontends/libyt/io.py (class IOHandlerlibyt, def _read_particle_fields) ")
 
         chunks = list(chunks)
+
+        mylog.debug("chunks = %s" % chunks)
+        for chunk in chunks:
+            for g in chunk.objs:
+                mylog.debug("g = %s" % g)
 
         # Get position (coordinate) label and append particle attribute to get after them.
         ptf_new = {}
@@ -154,6 +164,11 @@ class IOHandlerlibyt(BaseIOHandler):
         #       Since we don't need to load data from file. Although we do need
         #       to get data from remote rank.
         rv = {}
+
+        mylog.debug("chunks = %s" % chunk.objs)
+        for g in chunk.objs:
+            mylog.debug("g = %s" % g)
+
         if len(chunk.objs) == 0:
             return rv
         for g in chunk.objs:
@@ -195,6 +210,11 @@ class IOHandlerlibyt(BaseIOHandler):
         rv = {}
         chunks = list(chunks)
 
+        mylog.debug("chunks = %s" % chunks)
+        for chunk in chunks:
+            for g in chunk.objs:
+                mylog.debug("g = %s, g.count = %s" % (g, g.count(selector)))
+
         # Prepare nonlocal data
         nonlocal_data = self._prepare_remote_field_from_libyt(chunks, fields)
 
@@ -212,6 +232,8 @@ class IOHandlerlibyt(BaseIOHandler):
 
         if size is None:
             size = sum((g.count(selector) for chunk in chunks for g in chunk.objs))
+
+        mylog.debug("size = %s", size)
 
         for field in fields:
             rv[field] = np.empty(size, dtype=self._field_dtype)
