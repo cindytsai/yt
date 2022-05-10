@@ -284,9 +284,6 @@ class IOHandlerlibyt(BaseIOHandler):
             # Get nonlocal_data, libyt will perform RMA operation in this step.
             # Every rank must call this libyt method.
             mylog.debug("Getting nonlocal data through libyt ...")
-            mylog.debug("fname_list = %s" % fname_list)
-            mylog.debug("length = %d, to_prepare = %s" % (len(to_prepare), to_prepare))
-            mylog.debug("length = %d, nonlocal_id = %s" % (len(nonlocal_id), nonlocal_id))
             nonlocal_data = self.libyt.get_field_remote(fname_list, len(fname_list), to_prepare, len(to_prepare),
                                                         nonlocal_id, nonlocal_rank, len(nonlocal_id))
         else:
