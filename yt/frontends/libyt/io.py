@@ -180,9 +180,6 @@ class IOHandlerlibyt(BaseIOHandler):
         return rv
 
     def _read_fluid_selection(self, chunks, selector, fields, size):
-        mylog.debug("#FLAG#")
-        mylog.debug("yt/frontends/libyt/io.py (class IOHandlerlibyt, def _read_fluid_selection)")
-
         rv = {}
         chunks = list(chunks)
 
@@ -211,17 +208,6 @@ class IOHandlerlibyt(BaseIOHandler):
         mylog.debug("Reading %s cells of %s fields in %s grids",
                     size, [f2 for f1, f2 in fields], ng)
 
-        # For debug usage, distinguish length of local grids and nonlocal grids
-        num_local, num_nonlocal = 0, 0
-        for chunk in chunks:
-            for g in chunk.objs:
-                if g.MPI_rank == self.myrank:
-                    num_local += 1
-                else:
-                    num_nonlocal += 1
-        mylog.debug("num_local = %d" % num_local)
-        mylog.debug("num_nonlocal = %d" % num_nonlocal)
-
         # Get grid data
         for field in fields:
             offset = 0
@@ -234,8 +220,6 @@ class IOHandlerlibyt(BaseIOHandler):
                         data_view = self._get_field_from_libyt(g, fname, nonlocal_data=nonlocal_data)
                     offset += g.select(selector, data_view, rv[field], offset)
             assert (offset == size)
-
-        mylog.debug("###### (class IOHandlerlibyt, def _read_fluid_selection)")
         return rv
 
     @staticmethod
@@ -284,9 +268,6 @@ class IOHandlerlibyt(BaseIOHandler):
         return rma, to_prepare, nonlocal_id, nonlocal_rank
 
     def _prepare_remote_field_from_libyt(self, chunks, fields):
-        mylog.debug("#FLAG#")
-        mylog.debug("yt/frontends/libyt/io.py (class IOHandlerlibyt, def _prepare_remote_field_from_libyt)")
-
         # Wrapper for the RMA operation at libyt C library code.
         # Each rank must call this method, in order to get nonlocal grids.
 
@@ -311,7 +292,6 @@ class IOHandlerlibyt(BaseIOHandler):
         else:
             nonlocal_data = None
 
-        mylog.debug("###### (class IOHandlerlibyt, def _prepare_remote_field_from_libyt)")
         return nonlocal_data
 
     def _prepare_remote_particle_from_libyt(self, chunks, ptf):
