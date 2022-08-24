@@ -122,6 +122,8 @@ class libytHierarchy(GridIndex):
             grid._setup_dx()
 
     def _chunk_io(self, dobj, cache=True, local_only=False):
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/libyt/data_structures.py (class libytHierarchy, def _chunk_io)")
         gfiles = defaultdict(list)
         gobjs = getattr(dobj._current_chunk, "objs", dobj._chunk_info)
         for g in gobjs:
@@ -133,6 +135,10 @@ class libytHierarchy(GridIndex):
                 gfiles[fn] = gobjs
             gs = gfiles[fn]
             count = self._count_selection(dobj, gs)
+
+            mylog.debug("count = %d" % count)
+            mylog.debug("###### yield (class libytHierarchy, def _chunk_io)")
+
             yield YTDataChunk(dobj, "io", gs, count, cache=cache)
 
 

@@ -5,6 +5,7 @@ import numpy as np
 from yt.geometry.selection_routines import AlwaysSelector
 from yt.utilities.io_handler import BaseIOHandler
 from yt.utilities.logger import ytLogger as mylog
+import sys
 
 # -----------------------------------------------------------------------------
 # GAMER shares a similar HDF5 format, and thus io.py as well, with FLASH
@@ -92,6 +93,8 @@ class IOHandlerGAMER(BaseIOHandler):
                     yield (ptype, field), data[mask]
 
     def _read_fluid_selection(self, chunks, selector, fields, size):
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/gamer/io.py (class IOHandlerGAMER, def _read_fluid_selection)")
         chunks = list(chunks)  # generator --> list
 
         if any((ftype != "gamer" for ftype, fname in fields)):
@@ -108,6 +111,12 @@ class IOHandlerGAMER(BaseIOHandler):
             [f2 for f1, f2 in fields],
             ng,
         )
+
+        asked_grid = []
+        for chunk in chunks:
+            for g in chunk.objs:
+                asked_grid.append(g.id)
+        mylog.debug("asked_grid = %s" % asked_grid)
 
         # shortcuts
         ps2 = self.patch_size
@@ -136,9 +145,11 @@ class IOHandlerGAMER(BaseIOHandler):
                         data[g, ps1:ps2, ps1:ps2, ps1:ps2] = buf[pid0 + 7, :, :, :]
 
                     data = data.transpose()
-
+                    mylog.debug("refcount(data) = %d" % (sys.getrefcount(data)))
                     for i, g in enumerate(gs):
                         offset += g.select(selector, data[..., i], rv[field], offset)
+
+        mylog.debug("###### (class IOHandlerGAMER, def _read_fluid_selection)")
         return rv
 
     def _read_chunk_data(self, chunk, fields):

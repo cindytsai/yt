@@ -249,7 +249,13 @@ class YTDataContainer:
         """
         Returns a single field.  Will add if necessary.
         """
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/data_containers.py (class YTDataContainer, def __getitem__)")
+
         f = self._determine_fields([key])[0]
+
+        mylog.debug("f in self._container_fields = %s" % ( f in self._container_fields))
+
         if f not in self.field_data and key not in self.field_data:
             if f in self._container_fields:
                 self.field_data[f] = self.ds.arr(self._generate_container_field(f))
@@ -268,6 +274,8 @@ class YTDataContainer:
             elif isinstance(f, bytes):
                 fi = self.ds._get_field_info("unknown", f)
             rv = self.ds.arr(self.field_data[key], fi.units)
+
+        mylog.debug("###### (class YTDataContainer, def __getitem__)")
         return rv
 
     def _ipython_key_completions_(self):

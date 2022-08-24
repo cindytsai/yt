@@ -19,6 +19,7 @@ from yt.utilities.io_handler import BaseIOHandler
 from yt.funcs import mylog
 from yt.geometry.selection_routines import AlwaysSelector
 
+import sys
 
 class IOHandlerlibyt(BaseIOHandler):
     _particle_reader = False
@@ -41,6 +42,8 @@ class IOHandlerlibyt(BaseIOHandler):
 #                        slice(ghost_zones,-ghost_zones))
 
     def _read_particle_coords(self, chunks, ptf):
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/libyt/io.py (class IOHandlerlibyt, def _read_particle_coords)")
         chunks = list(chunks)
 
         # Get position (coordinate) label.
@@ -68,11 +71,18 @@ class IOHandlerlibyt(BaseIOHandler):
                         x = self.libyt.get_attr(g.id, ptype, coor_label[0])
                         y = self.libyt.get_attr(g.id, ptype, coor_label[1])
                         z = self.libyt.get_attr(g.id, ptype, coor_label[2])
+                        mylog.debug("Local get_attr ref count:")
+                        mylog.debug("  refcount(x) = %d" % (sys.getrefcount(x)))
+                        mylog.debug("  refcount(y) = %d" % (sys.getrefcount(y)))
+                        mylog.debug("  refcount(z) = %d" % (sys.getrefcount(z)))
                     else:
                         x = nonlocal_data[g.id][ptype][coor_label[0]]
                         y = nonlocal_data[g.id][ptype][coor_label[1]]
                         z = nonlocal_data[g.id][ptype][coor_label[2]]
-
+                        mylog.debug("Nonlocal get_attr ref count:")
+                        mylog.debug("  refcount(x) = %d" % (sys.getrefcount(x)))
+                        mylog.debug("  refcount(y) = %d" % (sys.getrefcount(y)))
+                        mylog.debug("  refcount(z) = %d" % (sys.getrefcount(z)))
                     # g.id ptype particle number is 0, libyt.get_attr will return None, so continue.
                     # Else, yield position.
                     if x is None or y is None or z is None:
@@ -144,6 +154,8 @@ class IOHandlerlibyt(BaseIOHandler):
         #       Although it's be use for caching, I wonder do libyt need this.
         #       Since we don't need to load data from file. Although we do need
         #       to get data from remote rank.
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/libyt/io.py (class IOHandlerlibyt, def _read_chunk_data)")
         rv = {}
         if len(chunk.objs) == 0:
             return rv
@@ -175,11 +187,17 @@ class IOHandlerlibyt(BaseIOHandler):
             for g in chunk.objs:
                 if g.MPI_rank == self.myrank:
                     rv[g.id][field] = self._get_field_from_libyt(g, fname)
+                    mylog.debug("refcount(Local rv[%d][%s]) = %d" % (g.id, field, sys.getrefcount(rv[g.id][field])))
+
                 else:
                     rv[g.id][field] = self._get_field_from_libyt(g, fname, nonlocal_data=nonlocal_data)
+                    mylog.debug("refcount(Nonlocal rv[%d][%s]) = %d" % (g.id, field, sys.getrefcount(rv[g.id][field])))
+        mylog.debug("###### (class IOHandlerlibyt, def _read_chunk_data)")
         return rv
 
     def _read_fluid_selection(self, chunks, selector, fields, size):
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/libyt/io.py (class IOHandlerlibyt, def _read_fluid_selection)")
         rv = {}
         chunks = list(chunks)
 
@@ -208,6 +226,12 @@ class IOHandlerlibyt(BaseIOHandler):
         mylog.debug("Reading %s cells of %s fields in %s grids",
                     size, [f2 for f1, f2 in fields], ng)
 
+        asked_grid = []
+        for chunk in chunks:
+            for g in chunk.objs:
+                asked_grid.append(g.id)
+        mylog.debug("asked_grid = %s" % asked_grid)
+
         # Get grid data
         for field in fields:
             offset = 0
@@ -218,8 +242,11 @@ class IOHandlerlibyt(BaseIOHandler):
                         data_view = self._get_field_from_libyt(g, fname)
                     else:
                         data_view = self._get_field_from_libyt(g, fname, nonlocal_data=nonlocal_data)
+                    mylog.debug("refcount(data_view) = %d" % sys.getrefcount(data_view))
                     offset += g.select(selector, data_view, rv[field], offset)
             assert (offset == size)
+
+        mylog.debug("###### (class IOHandlerlibyt, def _read_fluid_selection)")
         return rv
 
     @staticmethod
@@ -268,11 +295,16 @@ class IOHandlerlibyt(BaseIOHandler):
         return rma, to_prepare, nonlocal_id, nonlocal_rank
 
     def _prepare_remote_field_from_libyt(self, chunks, fields):
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/libyt/io.py (class IOHandlerlibyt, def _prepare_remote_field_from_libyt)")
         # Wrapper for the RMA operation at libyt C library code.
         # Each rank must call this method, in order to get nonlocal grids.
 
         # Distinguish local and non-local grid, and what should this rank prepared.
         rma, to_prepare, nonlocal_id, nonlocal_rank = self._distinguish_nonlocal_grids(chunks)
+
+        mylog.debug("to_prepare = %s" % to_prepare)
+        mylog.debug("nonlocal_id = %s" % nonlocal_id)
 
         if rma is True:
             # Encode field name to UTF-8
@@ -286,12 +318,22 @@ class IOHandlerlibyt(BaseIOHandler):
             mylog.debug("Getting nonlocal data through libyt ...")
             nonlocal_data = self.libyt.get_field_remote(fname_list, len(fname_list), to_prepare, len(to_prepare),
                                                         nonlocal_id, nonlocal_rank, len(nonlocal_id))
+            mylog.debug("Get nonlocal_data ref count:")
+            mylog.debug("refcount(nonlocal_data) = %d" % sys.getrefcount(nonlocal_data))
+            for key in nonlocal_data.keys():
+                mylog.debug("  refcount(nonlocal_data[%d]) = %d" % (int(key), sys.getrefcount(nonlocal_data[int(key)])))
+                for ftype, fname in fields:
+                    mylog.debug("    refcount(nonlocal_data[%d][%s]) = %d" % (int(key), fname, sys.getrefcount(nonlocal_data[int(key)][fname])))
+
         else:
             nonlocal_data = None
 
+        mylog.debug("###### (class IOHandlerlibyt, def _prepare_remote_field_from_libyt)")
         return nonlocal_data
 
     def _prepare_remote_particle_from_libyt(self, chunks, ptf):
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/frontends/libyt/io.py (class IOHandlerlibyt, def _prepare_remote_particle_from_libyt)")
         # Wrapper for the RMA operation at libyt C library code.
         # For supporting particles. Each rank must call this method.
 
@@ -325,9 +367,22 @@ class IOHandlerlibyt(BaseIOHandler):
             mylog.debug("Getting nonlocal data through libyt ...")
             nonlocal_data = self.libyt.get_attr_remote(ptf_c, ptf_c.keys(), to_prepare, len(to_prepare),
                                                        nonlocal_id, nonlocal_rank, len(nonlocal_id))
+
+            mylog.debug("Get nonlocal_data ref count:")
+            mylog.debug("refcount(nonlocal_data) = %d" % sys.getrefcount(nonlocal_data))
+            for g in nonlocal_data.keys():
+                mylog.debug("  refcount(nonlocal_data[%d]) = %d" % (int(g), sys.getrefcount(nonlocal_data[int(g)])))
+                for p in ptf.keys():
+                    mylog.debug("    refcount(nonlocal_data[%d][%s]) = %d" % (int(g), p, sys.getrefcount(nonlocal_data[int(g)][p])))
+                    for a in ptf[p]:
+                        mylog.debug("      refcount(nonlocal_data[%d][%s][%s]) = %d" % (
+                            int(g), p, a, sys.getrefcount(nonlocal_data[int(g)][p][a])
+                        ))
+
         else:
             nonlocal_data = None
 
+        mylog.debug("###### (class IOHandlerlibyt, def _prepare_remote_particle_from_libyt)")
         return nonlocal_data
 
     def _get_field_from_libyt(self, grid, fname, nonlocal_data=None):

@@ -493,6 +493,8 @@ def parallel_objects(objects, njobs=0, storage=None, barrier=True, dynamic=False
     ...
 
     """
+    mylog.debug("#FLAG#")
+    mylog.debug("yt/utilities/parallel_tools/parallel_analysis_interface.py (def parallel_objects)")
     if dynamic:
         from .task_queue import dynamic_parallel_objects
 
@@ -525,6 +527,7 @@ def parallel_objects(objects, njobs=0, storage=None, barrier=True, dynamic=False
     # this will prevent intermediate objects from being created.
     oiter = itertools.islice(enumerate(objects), my_new_id, None, njobs)
     for result_id, obj in oiter:
+        mylog.debug("rank:%d, obj = %s" % (my_rank, obj))
         if storage is not None:
             rstore = ResultsStorage()
             rstore.result_id = result_id
@@ -543,6 +546,7 @@ def parallel_objects(objects, njobs=0, storage=None, barrier=True, dynamic=False
     if barrier:
         my_communicator.barrier()
 
+    mylog.debug("###### (def parallel_objects)")
 
 def parallel_ring(objects, generator_func, mutable=False):
     r"""This function loops in a ring around a set of objects, yielding the

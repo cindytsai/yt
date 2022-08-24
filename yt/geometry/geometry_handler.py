@@ -54,7 +54,10 @@ class Index(ParallelAnalysisInterface, abc.ABC):
         self.num_grids = None
 
     def _initialize_data_storage(self):
+        mylog.debug("#FLAG# yt/geometry/geometry_handler.py (class Index, def _initialize_data_storage)")
         if not ytcfg.get("yt", "serialize"):
+            mylog.debug("ytcfg.get('yt', 'serialize') is False")
+            mylog.debug("###### (class Index, def _initialize_data_storage)")
             return
         fn = self.ds.storage_filename
         if fn is None:

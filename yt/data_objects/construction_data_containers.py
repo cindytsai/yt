@@ -628,6 +628,8 @@ class YTCoveringGrid(YTSelectionContainer3D):
         use_pbar=True,
         field_parameters=None,
     ):
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/construction_data_containers.py (class YTCoveringGrid, def __init__)")
         if field_parameters is None:
             center = None
         else:
@@ -656,6 +658,8 @@ class YTCoveringGrid(YTSelectionContainer3D):
         )
         self._setup_data_source()
         self.get_data(fields)
+
+        mylog.debug("###### (class YTCoveringGrid, def __init__)")
 
     def get_global_startindex(self):
         r"""Get the global start index of the covering grid."""
@@ -786,15 +790,22 @@ class YTCoveringGrid(YTSelectionContainer3D):
         return tuple(self.ActiveDimensions.tolist())
 
     def _setup_data_source(self):
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/construction_data_containers.py (class YTCoveringGrid, def _setup_data_source)")
         self._data_source = self.ds.region(self.center, self.left_edge, self.right_edge)
+        mylog.debug("type(self._data_source) = %s" % type(self._data_source))
         self._data_source.min_level = 0
         self._data_source.max_level = self.level
         # This triggers "special" behavior in the RegionSelector to ensure we
         # select *cells* whose bounding boxes overlap with our region, not just
         # their cell centers.
         self._data_source.loose_selection = True
+        mylog.debug("###### (class YTCoveringGrid, def _setup_data_source)")
 
     def get_data(self, fields=None):
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/construction_data_containers.py (class YTCoveringGrid, def get_data)")
+
         if fields is None:
             return
         fields = self._determine_fields(fields)
@@ -804,6 +815,10 @@ class YTCoveringGrid(YTSelectionContainer3D):
             return
         try:
             fill, gen, part, alias = self._split_fields(fields_to_get)
+            mylog.debug("len(fill) = %d" % len(fill))
+            mylog.debug("len(gen) = %d" % len(gen))
+            mylog.debug("len(part) = %d" % len(part))
+            mylog.debug("len(alias) = %d" % len(alias))
         except NeedsGridType as e:
             if self._num_ghost_zones == 0:
                 raise RuntimeError(
@@ -850,6 +865,8 @@ class YTCoveringGrid(YTSelectionContainer3D):
             self._generate_fields(cell_gen)
             for p in part_gen:
                 self[p] = self._data_source[p]
+
+        mylog.debug("###### (class YTCoveringGrid, def get_data)")
 
     def _split_fields(self, fields_to_get):
         fill, gen = self.index._split_fields(fields_to_get)
@@ -980,9 +997,14 @@ class YTCoveringGrid(YTSelectionContainer3D):
                 self[field] = self.ds.arr(buff, fi.units)
 
     def _fill_fields(self, fields):
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/data_objects/construction_data_containers.py (class YTCoveringGrid, def _fill_fields)")
         fields = [f for f in fields if f not in self.field_data]
         if len(fields) == 0:
             return
+
+        mylog.debug("self.ActiveDimensions = %s" % self.ActiveDimensions)
+
         output_fields = [
             np.zeros(self.ActiveDimensions, dtype="float64") for field in fields
         ]
@@ -993,7 +1015,11 @@ class YTCoveringGrid(YTSelectionContainer3D):
         if not is_sequence(self.ds.refine_by):
             refine_by = [refine_by, refine_by, refine_by]
         refine_by = np.array(refine_by, dtype="i8")
+        #for chunk in parallel_objects(self._data_source.chunks(fields, "io", local_only=True)):
         for chunk in parallel_objects(self._data_source.chunks(fields, "io")):
+            mylog.debug("chunk = %s" % chunk)
+            mylog.debug("chunk.icoords = %s" % chunk.icoords)
+            mylog.debug("chunk.ires = %s" % chunk.ires)
             input_fields = [chunk[field] for field in fields]
             # NOTE: This usage of "refine_by" is actually *okay*, because it's
             # being used with respect to iref, which is *already* scaled!
@@ -1009,10 +1035,13 @@ class YTCoveringGrid(YTSelectionContainer3D):
             )
         if self.comm.size > 1:
             for i in range(len(fields)):
+                np.savez("rank{}_B4_OutputFields.npz".format("%d" % self.comm.rank), data=output_fields[i])
+            for i in range(len(fields)):
                 output_fields[i] = self.comm.mpi_allreduce(output_fields[i], op="sum")
         for name, v in zip(fields, output_fields):
             fi = self.ds._get_field_info(*name)
             self[name] = self.ds.arr(v, fi.units)
+        mylog.debug("###### (class YTCoveringGrid, def _fill_fields)")
 
     def _generate_container_field(self, field):
         rv = self.ds.arr(np.ones(self.ActiveDimensions, dtype="float64"), "")

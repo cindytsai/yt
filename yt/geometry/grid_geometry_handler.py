@@ -368,6 +368,8 @@ class GridIndex(Index, abc.ABC):
         yield YTDataChunk(dobj, "all", gobjs, dobj.size, cache, fast_index=fast_index)
 
     def _chunk_spatial(self, dobj, ngz, sort=None, preload_fields=None):
+        mylog.debug("#FLAG#")
+        mylog.debug("yt/geometry/grid_geometry_handler.py (class GridIndex, def _chunk_spatial)")
         gobjs = getattr(dobj._current_chunk, "objs", dobj._chunk_info)
         if sort in ("+level", "level"):
             giter = sorted(gobjs, key=lambda g: g.Level)
