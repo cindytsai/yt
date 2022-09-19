@@ -1,5 +1,7 @@
 import os
+import sys
 from collections import defaultdict
+from typing import Tuple
 
 import numpy as np
 
@@ -11,12 +13,21 @@ from yt.utilities.on_demand_imports import _h5py as h5py
 
 from .definitions import SNAP_FORMAT_2_OFFSET, gadget_hdf5_ptypes
 
+if sys.version_info >= (3, 8):
+    from functools import cached_property
+else:
+    from yt._maintenance.backports import cached_property
+
 
 class IOHandlerGadgetHDF5(IOHandlerSPH):
     _dataset_type = "gadget_hdf5"
-    _vector_fields = ("Coordinates", "Velocity", "Velocities", "MagneticField")
+    _vector_fields = {
+        "Coordinates": 3,
+        "Velocity": 3,
+        "Velocities": 3,
+        "MagneticField": 3,
+    }
     _known_ptypes = gadget_hdf5_ptypes
-    _var_mass = None
     _element_names = (
         "Hydrogen",
         "Helium",
@@ -31,15 +42,13 @@ class IOHandlerGadgetHDF5(IOHandlerSPH):
 
     _coord_name = "Coordinates"
 
-    @property
-    def var_mass(self):
-        if self._var_mass is None:
-            vm = []
-            for i, v in enumerate(self.ds["Massarr"]):
-                if v == 0:
-                    vm.append(self._known_ptypes[i])
-            self._var_mass = tuple(vm)
-        return self._var_mass
+    @cached_property
+    def var_mass(self) -> Tuple[str, ...]:
+        vm = []
+        for i, v in enumerate(self.ds["Massarr"]):
+            if v == 0:
+                vm.append(self._known_ptypes[i])
+        return tuple(vm)
 
     def _read_fluid_selection(self, chunks, selector, fields, size):
         raise NotImplementedError
@@ -207,6 +216,9 @@ class IOHandlerGadgetHDF5(IOHandlerSPH):
                 elif field.startswith("PassiveScalars_"):
                     col = int(field.rsplit("_", 1)[-1])
                     data = g["PassiveScalars"][si:ei, col][mask]
+                elif field.startswith("GFM_StellarPhotometrics_"):
+                    col = int(field.rsplit("_", 1)[-1])
+                    data = g["GFM_StellarPhotometrics"][si:ei, col][mask]
                 elif field == "smoothing_length":
                     # This is for frontends which do not store
                     # the smoothing length on-disk, so we do not
@@ -273,7 +285,13 @@ class IOHandlerGadgetHDF5(IOHandlerSPH):
                         kk = j
                         fields.append((ptype, str(kk)))
                 elif (
-                    k in ["Metallicity", "GFM_Metals", "PassiveScalars"]
+                    k
+                    in (
+                        "Metallicity",
+                        "GFM_Metals",
+                        "PassiveScalars",
+                        "GFM_StellarPhotometrics",
+                    )
                     and len(g[k].shape) > 1
                 ):
                     # Vector of metallicity or passive scalar
@@ -303,14 +321,14 @@ ZeroMass = object()
 
 class IOHandlerGadgetBinary(IOHandlerSPH):
     _dataset_type = "gadget_binary"
-    _vector_fields = (  # type: ignore
-        ("Coordinates", 3),
-        ("Velocity", 3),
-        ("Velocities", 3),
-        ("MagneticField", 3),
-        ("FourMetalFractions", 4),
-        ("ElevenMetalMasses", 11),
-    )
+    _vector_fields = {
+        "Coordinates": 3,
+        "Velocity": 3,
+        "Velocities": 3,
+        "MagneticField": 3,
+        "FourMetalFractions": 4,
+        "ElevenMetalMasses": 11,
+    }
 
     # Particle types (Table 3 in GADGET-2 user guide)
     #
@@ -328,11 +346,9 @@ class IOHandlerGadgetBinary(IOHandlerSPH):
     #   ENDT    (only if enabled in makefile)
     #   TSTP    (only if enabled in makefile)
 
-    _var_mass = None
     _format = None
 
     def __init__(self, ds, *args, **kwargs):
-        self._vector_fields = dict(self._vector_fields)
         self._fields = ds._field_spec
         self._ptypes = ds._ptype_spec
         self.data_files = set()
@@ -342,15 +358,13 @@ class IOHandlerGadgetBinary(IOHandlerSPH):
         self._endian = endianswap
         super().__init__(ds, *args, **kwargs)
 
-    @property
-    def var_mass(self):
-        if self._var_mass is None:
-            vm = []
-            for i, v in enumerate(self.ds["Massarr"]):
-                if v == 0:
-                    vm.append(self._ptypes[i])
-            self._var_mass = tuple(vm)
-        return self._var_mass
+    @cached_property
+    def var_mass(self) -> Tuple[str, ...]:
+        vm = []
+        for i, v in enumerate(self.ds["Massarr"]):
+            if v == 0:
+                vm.append(self._ptypes[i])
+        return tuple(vm)
 
     def _read_fluid_selection(self, chunks, selector, fields, size):
         raise NotImplementedError

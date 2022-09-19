@@ -59,7 +59,7 @@ The functionality requires the package `ratarmount <https://github.com/mxmlnkn/r
 Under the hood, yt will mount the archive as a (read-only) filesystem. Note that this requires the
 entire archive to be read once to compute the location of each file in the archive; subsequent accesses
 will be much faster.
-All archive formats supported by `ratarmount <https://github.com/mxmlnkn/ratarmount>`_ should be loadable, provided
+All archive formats supported by `ratarmount <https://github.com/mxmlnkn/ratarmount>`__ should be loadable, provided
 the dependencies are installed; this includes ``tar``, ``tar.gz`` and tar.bz2`` formats.
 
 .. _loading-amrvac-data:
@@ -164,8 +164,11 @@ Appropriate errors are thrown for other combinations.
 * particle data: currently not supported (but might come later)
 * staggered grids (AMRVAC 2.2 and later): yt logs a warning if you load
   staggered datasets, but the flag is currently ignored.
-* "stretched grids" as defined in AMRVAC have no correspondence in yt,
-  hence will never be supported.
+* "stretched grids" are being implemented in yt, but are not yet
+  fully-supported.  (Previous versions of this file suggested they would
+  "never" be supported, which we hope to prove incorrect once we finish
+  implementing stretched grids in AMR.  At present, stretched grids are
+  only supported on a single level of refinement.)
 
 .. note::
 
@@ -1383,6 +1386,12 @@ box and units.
 
    ds = yt.load("snap_004", unit_base=unit_base, bounding_box=bbox)
 
+.. warning::
+
+    If a ``bounding_box`` argument is supplied and the original dataset
+    has periodic boundaries, it will no longer have periodic boundaries
+    after the bounding box is applied.
+
 In addition, you can use ``UnitLength_in_cm``, ``UnitVelocity_in_cm_per_s``,
 ``UnitMass_in_g``, and ``UnitMagneticField_in_gauss`` as keys for the
 ``unit_base`` dictionary. These name come from the names used in the Gadget
@@ -1890,6 +1899,17 @@ zero.
 Semi-Structured Grid Data
 -------------------------
 
+.. note::
+
+   With the release of yt-4.1, functionality has been added to allow loading
+   "stretched" grids that are operated on in a more efficient way.  This is done
+   via the :func:`~yt.frontends.stream.data_structures.load_uniform_grid`
+   operation, supplying the ``cell_widths`` argument.  Using the hexahedral mesh
+   is no longer suggested for situations where the mesh can be adequately
+   described with three arrays of cell widths.
+
+   See :ref:`loading-stretched-grids` for more information.
+
 See :ref:`loading-numpy-array`,
 :func:`~yt.frontends.stream.data_structures.hexahedral_connectivity`,
 :func:`~yt.frontends.stream.data_structures.load_hexahedral_mesh` for
@@ -1944,6 +1964,62 @@ have assumed your data is stored in the three-dimensional array
 * Integration is not implemented.
 * Some functions may behave oddly or not work at all.
 * Data must already reside in memory.
+
+.. _loading-stretched-grids:
+
+Stretched Grid Data
+-------------------
+
+.. warning::
+
+   API consistency for loading stretched grids is not guaranteed until at least
+   yt 4.2!  There may be changes in between then and now, as this is a
+   preliminary feature.
+
+With version 4.1, yt has the ability to specify cell widths for grids.  This
+allows situations where a grid has a functional form for cell widths, or where
+widths are provided in advance.
+
+.. note::
+
+   At present, support is available for a single grid with varying cell-widths,
+   loaded through the stream handler.  Future versions of yt will have more
+   complete and flexible support!
+
+To load a stretched grid, you use the standard (and now rather-poorly named)
+``load_uniform_grid`` function, but supplying a ``cell_widths`` argument.  This
+argument should be a list of three arrays, corresponding to the first, second
+and third index-direction cell widths.  (For instance, in a "standard"
+cartesian dataset, this would be x, y, z.)
+
+This script,
+demonstrates loading a simple "random" dataset with a random set of cell-widths.
+
+.. code:: python
+
+   import yt
+   import numpy as np
+
+   N = 8
+
+   data = {"density": np.random.random((N, N, N))}
+
+   cell_widths = []
+   for i in range(3):
+       widths = np.random.random(N)
+       widths /= widths.sum()  # Normalize to span 0 .. 1.
+       cell_widths.append(widths)
+
+   ds = yt.load_uniform_grid(
+       data,
+       [N, N, N],
+       bbox=np.array([[0.0, 1.0], [0.0, 1.0], [0.0, 1.0]]),
+       cell_widths=cell_widths,
+   )
+
+
+This can be modified to load data from a file, as well as to use more (or
+fewer) cells.
 
 Unstructured Grid Data
 ----------------------
@@ -3082,3 +3158,44 @@ non-default cosmological parameters, you may pass an empty dictionary.
    import yt
 
    ds = yt.load(filename, cosmology_parameters={})
+
+.. _loading-cfradial-data:
+
+CfRadial Data
+-------------
+
+Cf/Radial is a CF compliant netCDF convention for radial data from radar and
+lidar platforms that supports both airborne and ground-based sensors. Because
+of its CF-compliance, CfRadial will allow researchers familiar with CF to read
+the data into a wide variety of analysis tools, models etc. For more see:
+https://www.eol.ucar.edu/system/files/CfRadialDoc.v1.4.20160801.pdf
+
+yt provides support for loading cartesian-gridded CfRadial netcdf-4 files as
+well as polar coordinate Cfradial netcdf-4 files. When loading a standard
+CfRadial dataset in polar coordinates, yt will first build a sample on a
+cartesian grid (see :ref:`cfradial_gridding`). To load a CfRadial data file:
+
+.. code-block:: python
+
+   import yt
+
+   ds = yt.load("CfRadialGrid/grid1.nc")
+
+.. _cfradial_gridding:
+
+Gridding Behavior
+^^^^^^^^^^^^^^^^^
+
+When you load a CfRadial dataset in polar coordinates (elevation, azimuth and
+range), yt will first build a sample by mapping the data onto a cartesian grid
+using the Python-ARM Radar Toolkit (`pyart <https://github.com/ARM-DOE/pyart>`_).
+Grid points are found by interpolation of all data points within a specified radius of influence.
+This data, now in x, y, z coordiante domain is then saved as a new dataset and subsequent
+loads of the original native CfRadial dataset will use the gridded file.
+Mapping the data from spherical to Cartesian coordinates is useful for 3D volume
+rendering the data using yt.
+
+See the documentation for the
+:class:`~yt.frontends.cf_radial.data_structures.CFRadialDataset` class for a
+description of how to adjust the gridding parameters and storage of the gridded
+file.

@@ -125,13 +125,54 @@ def test_projection(pf):
             v1 = proj[("gas", "density")].sum()
             v2 = (dd[("gas", "density")] * dd[("index", f"d{an}")]).sum()
             assert_rel_equal(v1, v2.in_units(v1.units), 10)
+
+        # Test moment projections
+        def make_vsq_field(aname):
+            def _vsquared(field, data):
+                return data["gas", f"velocity_{aname}"] ** 2
+
+            return _vsquared
+
+        for ax, an in enumerate("xyz"):
+            ds.add_field(
+                ("gas", f"velocity_{an}_squared"),
+                make_vsq_field(an),
+                sampling_type="local",
+                units="cm**2/s**2",
+            )
+            proj1 = ds.proj(
+                [("gas", f"velocity_{an}"), ("gas", f"velocity_{an}_squared")],
+                ax,
+                weight_field=("gas", "density"),
+                moment=1,
+            )
+            proj2 = ds.proj(
+                ("gas", f"velocity_{an}"), ax, weight_field=("gas", "density"), moment=2
+            )
+            assert_rel_equal(
+                np.sqrt(
+                    proj1["gas", f"velocity_{an}_squared"]
+                    - proj1["gas", f"velocity_{an}"] ** 2
+                ),
+                proj2["gas", f"velocity_{an}"],
+                10,
+            )
     teardown_func(fns)
 
 
 def test_max_level():
     ds = fake_amr_ds(fields=[("gas", "density")], units=["mp/cm**3"])
-    proj = ds.proj(("gas", "density"), 2, method="mip", max_level=2)
+    proj = ds.proj(("gas", "density"), 2, method="max", max_level=2)
     assert proj[("index", "grid_level")].max() == 2
 
-    proj = ds.proj(("gas", "density"), 2, method="mip")
+    proj = ds.proj(("gas", "density"), 2, method="max")
     assert proj[("index", "grid_level")].max() == ds.index.max_level
+
+
+def test_min_level():
+    ds = fake_amr_ds(fields=[("gas", "density")], units=["mp/cm**3"])
+    proj = ds.proj(("gas", "density"), 2, method="min")
+    assert proj[("index", "grid_level")].min() == 0
+
+    proj = ds.proj(("gas", "density"), 2, method="max")
+    assert proj[("index", "grid_level")].min() == ds.index.min_level

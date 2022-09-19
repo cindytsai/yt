@@ -5,7 +5,6 @@ AMRVAC data structures
 
 """
 import os
-import stat
 import struct
 import sys
 import warnings
@@ -54,9 +53,6 @@ class AMRVACGrid(AMRGridPatch):
         self.Parent = None
         self.Children = []
         self.Level = level
-
-    def __repr__(self):
-        return "AMRVACGrid_%04i (%s)" % (self.id, self.ActiveDimensions)
 
     def get_global_startindex(self):
         """Refresh and retrieve the starting index for each dimension at current level.
@@ -317,7 +313,6 @@ class AMRVACDataset(Dataset):
     def _parse_parameter_file(self):
         """Parse input datfile's header. Apply geometry_override if specified."""
         # required method
-        self.unique_identifier = int(os.stat(self.parameter_filename)[stat.ST_CTIME])
 
         # populate self.parameters with header data
         with open(self.parameter_filename, "rb") as istream:

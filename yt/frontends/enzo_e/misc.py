@@ -121,3 +121,26 @@ def nested_dict_get(pdict, keys, default=None):
         except KeyError:
             return default
     return val
+
+
+def get_listed_subparam(pdict, parent_param, subparam, default=None):
+    """
+    Returns nested_dict_get(pdict, (parent_param,subparam), default) if
+    subparam is an entry in nested_dict_get(pdict, (parent_param, 'list'), [])
+
+    This is a common idiom in Enzo-E's parameter parsing
+    """
+    if subparam in nested_dict_get(pdict, (parent_param, "list"), []):
+        return nested_dict_get(pdict, (parent_param, subparam), default)
+    return default
+
+
+def get_particle_mass_correction(ds):
+    """
+    Normalize particle masses by the root grid cell volume.
+
+    This correction is used for Enzo-E datasets where particle
+    masses are stored as densities.
+    """
+
+    return (ds.domain_width / ds.domain_dimensions).prod() / ds.length_unit**3

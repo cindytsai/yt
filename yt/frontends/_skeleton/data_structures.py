@@ -20,9 +20,6 @@ class SkeletonGrid(AMRGridPatch):
         self.Children = []
         self.Level = level
 
-    def __repr__(self):
-        return "SkeletonGrid_%04i (%s)" % (self.id, self.ActiveDimensions)
-
 
 class SkeletonHierarchy(GridIndex):
     grid = SkeletonGrid
@@ -150,8 +147,6 @@ class SkeletonDataset(Dataset):
         #   self.hubble_constant            <= float
 
         # optional (the following have default implementations)
-        #   self.unique_identifier      <= unique identifier for the dataset
-        #                                  being read (e.g., UUID or ST_CTIME) (int)
         #
         #   self.geometry  <= a lower case string
         #                     ("cartesian", "polar", "cylindrical"...)

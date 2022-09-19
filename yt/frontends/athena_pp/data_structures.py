@@ -75,7 +75,7 @@ class AthenaPPLogarithmicIndex(UnstructuredIndex):
         nb = np.array([nbx, nby, nbz], dtype="int64")
         self.mesh_factors = np.ones(3, dtype="int64") * ((nb > 1).astype("int") + 1)
 
-        block_grid = -np.ones((nbx, nby, nbz, nlevel), dtype=np.int)
+        block_grid = -np.ones((nbx, nby, nbz, nlevel), dtype="int64")
         block_grid[log_loc[:, 0], log_loc[:, 1], log_loc[:, 2], levels[:]] = np.arange(
             num_blocks
         )
@@ -159,9 +159,6 @@ class AthenaPPGrid(AMRGridPatch):
         if self.ds.dimensionality < 3:
             self.dds[2] = 1.0
         self.field_data["dx"], self.field_data["dy"], self.field_data["dz"] = self.dds
-
-    def __repr__(self):
-        return "AthenaPPGrid_%04i (%s)" % (self.id, self.ActiveDimensions)
 
 
 class AthenaPPHierarchy(GridIndex):
@@ -331,7 +328,6 @@ class AthenaPPDataset(Dataset):
             dimensionality = 1
         self.dimensionality = dimensionality
         self.current_time = self._handle.attrs["Time"]
-        self.unique_identifier = self.parameter_filename.__hash__()
         self.cosmological_simulation = False
         self.num_ghost_zones = 0
         self.field_ordering = "fortran"

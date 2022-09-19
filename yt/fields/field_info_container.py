@@ -1,4 +1,5 @@
-from collections import defaultdict
+from collections import UserDict
+from collections.abc import Callable
 from numbers import Number as numeric_type
 from typing import Optional, Tuple
 
@@ -8,7 +9,7 @@ from unyt.exceptions import UnitConversionError
 from yt._typing import KnownFieldsT
 from yt.config import ytcfg
 from yt.fields.field_exceptions import NeedsConfiguration
-from yt.funcs import mylog, only_on_root
+from yt.funcs import mylog, obj_length, only_on_root
 from yt.geometry.geometry_handler import is_curvilinear
 from yt.units.dimensions import dimensionless  # type: ignore
 from yt.units.unit_object import Unit  # type: ignore
@@ -30,18 +31,7 @@ from .particle_fields import (
 )
 
 
-def tupleize(inp):
-    if isinstance(inp, tuple):
-        return inp
-    # prepending with a '?' ensures that the sort order is the same in py2 and
-    # py3, since names of field types shouldn't begin with punctuation
-    return (
-        "?",
-        inp,
-    )
-
-
-class FieldInfoContainer(dict):
+class FieldInfoContainer(UserDict):
     """
     This is a generic field container.  It contains a list of potential derived
     fields, all of which know how to act on a data object and return a value.
@@ -56,6 +46,7 @@ class FieldInfoContainer(dict):
     extra_union_fields: Tuple[Tuple[str, str], ...] = ()
 
     def __init__(self, ds, field_list, slice_info=None):
+        super().__init__()
         self._show_field_errors = []
         self.ds = ds
         # Now we start setting things up.
@@ -63,7 +54,6 @@ class FieldInfoContainer(dict):
         self.slice_info = slice_info
         self.field_aliases = {}
         self.species_names = []
-        self._ambiguous_field_names = defaultdict(set)
         if ds is not None and is_curvilinear(ds.geometry):
             self.curvilinear = True
         else:
@@ -314,8 +304,15 @@ class FieldInfoContainer(dict):
         return sampling_type
 
     def add_field(
-        self, name, function, sampling_type, *, force_override=False, **kwargs
-    ):
+        self,
+        name: Tuple[str, str],
+        function: Callable,
+        sampling_type: str,
+        *,
+        alias: Optional[DerivedField] = None,
+        force_override: bool = False,
+        **kwargs,
+    ) -> None:
         """
         Add a new field, along with supplemental metadata, to the list of
         available fields.  This respects a number of arguments, all of which
@@ -325,8 +322,8 @@ class FieldInfoContainer(dict):
         Parameters
         ----------
 
-        name : str
-           is the name of the field.
+        name : tuple[str, str]
+           field (or particle) type, field name
         function : callable
            A function handle that defines the field.  Should accept
            arguments (field, data)
@@ -334,6 +331,8 @@ class FieldInfoContainer(dict):
            "cell" or "particle" or "local"
         force_override: bool
            If False (default), an error will be raised if a field of the same name already exists.
+        alias: DerivedField (optional):
+           existing field to be aliased
         units : str
            A plain text string encoding the unit.  Powers must be in
            python syntax (** instead of ^). If set to "auto" the units
@@ -350,48 +349,22 @@ class FieldInfoContainer(dict):
         """
         # Handle the case where the field has already been added.
         if not force_override and name in self:
-            # See below.
-            if function is None:
-
-                def create_function(f):
-                    return f
-
-                return create_function
             return
-        # add_field can be used in two different ways: it can be called
-        # directly, or used as a decorator (as yt.derived_field). If called directly,
-        # the function will be passed in as an argument, and we simply create
-        # the derived field and exit. If used as a decorator, function will
-        # be None. In that case, we return a function that will be applied
-        # to the function that the decorator is applied to.
+
         kwargs.setdefault("ds", self.ds)
-        if function is None:
-
-            def create_function(f):
-                self[name] = DerivedField(name, sampling_type, f, **kwargs)
-                return f
-
-            return create_function
-
-        if isinstance(name, tuple):
-            self[name] = DerivedField(name, sampling_type, function, **kwargs)
-            return
 
         sampling_type = self._sanitize_sampling_type(sampling_type)
 
-        if sampling_type == "particle":
-            ftype = "all"
-        else:
-            ftype = self.ds.default_fluid_type
-
-        if (ftype, name) not in self:
-            tuple_name = (ftype, name)
-            self[tuple_name] = DerivedField(
-                tuple_name, sampling_type, function, **kwargs
+        if (
+            not isinstance(name, str)
+            and obj_length(name) == 2
+            and all(isinstance(e, str) for e in name)
+        ):
+            self[name] = DerivedField(
+                name, sampling_type, function, alias=alias, **kwargs
             )
-            self.alias(name, tuple_name)
         else:
-            self[name] = DerivedField(name, sampling_type, function, **kwargs)
+            raise ValueError(f"Expected name to be a tuple[str, str], got {name}")
 
     def load_all_plugins(self, ftype: Optional[str] = "gas"):
         if ftype is None:
@@ -418,41 +391,40 @@ class FieldInfoContainer(dict):
         self.ds.field_dependencies.update(deps)
         # Note we may have duplicated
         dfl = set(self.ds.derived_field_list).union(deps.keys())
-        self.ds.derived_field_list = list(sorted(dfl, key=tupleize))
+        self.ds.derived_field_list = sorted(dfl)
         return loaded, unavailable
 
     def add_output_field(self, name, sampling_type, **kwargs):
+        if name[1] == "density":
+            if name in self:
+                # this should not happen, but it does
+                # it'd be best to raise an error here but
+                # it may take a while to cleanup internal issues
+                return
         kwargs.setdefault("ds", self.ds)
         self[name] = DerivedField(name, sampling_type, NullFunc, **kwargs)
 
-    def __setitem__(self, key, value):
-        ftype, fname = key
-        # Mark fields with same `fname`s (but difference `ftype`s) as ambiguous
-        if any((fname == _fname) and (ftype != _ftype) for _ftype, _fname in self):
-            self._ambiguous_field_names[fname].add(ftype)
-        super().__setitem__(key, value)
-
     def alias(
         self,
-        alias_name,
-        original_name,
-        units=None,
-        deprecate: Optional[Tuple[str, str]] = None,
+        alias_name: Tuple[str, str],
+        original_name: Tuple[str, str],
+        units: Optional[str] = None,
+        deprecate: Optional[Tuple[str, Optional[str]]] = None,
     ):
         """
         Alias one field to another field.
 
         Parameters
         ----------
-        alias_name : Tuple[str]
+        alias_name : Tuple[str, str]
             The new field name.
-        original_name : Tuple[str]
+        original_name : Tuple[str, str]
             The field to be aliased.
         units : str
            A plain text string encoding the unit.  Powers must be in
            python syntax (** instead of ^). If set to "auto" the units
            will be inferred from the return value of the field function.
-        deprecate : Tuple[str], optional
+        deprecate : tuple[str, str | None] | None
             If this is set, then the tuple contains two string version
             numbers: the first marking the version when the field was
             deprecated, and the second marking when the field will be
@@ -463,11 +435,19 @@ class FieldInfoContainer(dict):
         if units is None:
             # We default to CGS here, but in principle, this can be pluggable
             # as well.
-            u = Unit(self[original_name].units, registry=self.ds.unit_registry)
-            if u.dimensions is not dimensionless:
-                units = str(self.ds.unit_system[u.dimensions])
+
+            # self[original_name].units may be set to `None` at this point
+            # to signal that units should be autoset later
+            oru = self[original_name].units
+            if oru is None:
+                units = None
             else:
-                units = self[original_name].units
+                u = Unit(oru, registry=self.ds.unit_registry)
+                if u.dimensions is not dimensionless:
+                    units = str(self.ds.unit_system[u.dimensions])
+                else:
+                    units = oru
+
         self.field_aliases[alias_name] = original_name
         function = TranslationFunc(original_name)
         if deprecate is not None:
@@ -488,10 +468,18 @@ class FieldInfoContainer(dict):
                 sampling_type=self[original_name].sampling_type,
                 display_name=self[original_name].display_name,
                 units=units,
+                alias=self[original_name],
             )
 
     def add_deprecated_field(
-        self, name, function, sampling_type, since, removal, ret_name=None, **kwargs
+        self,
+        name,
+        function,
+        sampling_type,
+        since,
+        removal=None,
+        ret_name=None,
+        **kwargs,
     ):
         """
         Add a new field which is deprecated, along with supplemental metadata,
@@ -558,19 +546,19 @@ class FieldInfoContainer(dict):
         return obj
 
     def __contains__(self, key):
-        if dict.__contains__(self, key):
+        if super().__contains__(key):
             return True
         if self.fallback is None:
             return False
         return key in self.fallback
 
     def __iter__(self):
-        yield from dict.__iter__(self)
+        yield from super().__iter__()
         if self.fallback is not None:
             yield from self.fallback
 
     def keys(self):
-        keys = dict.keys(self)
+        keys = super().keys()
         if self.fallback:
             keys += list(self.fallback.keys())
         return keys
@@ -642,7 +630,7 @@ class FieldInfoContainer(dict):
         # now populate the derived field list with results
         # this violates isolation principles and should be refactored
         dfl = set(self.ds.derived_field_list).union(deps.keys())
-        dfl = list(sorted(dfl, key=tupleize))
+        dfl = sorted(dfl)
 
         if not hasattr(self.ds.index, "meshes"):
             # the meshes attribute characterizes an unstructured-mesh data structure
