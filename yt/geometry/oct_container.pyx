@@ -171,7 +171,7 @@ cdef class OctreeContainer:
                 pos[2] = self.DLE[2] + dds[2]/2.0
                 for k in range(self.nn[2]):
                     if self.root_mesh[i][j][k] == NULL:
-                        raise RuntimeError
+                        raise KeyError(i,j,k)
                     visitor.pos[0] = i
                     visitor.pos[1] = j
                     visitor.pos[2] = k
@@ -184,6 +184,16 @@ cdef class OctreeContainer:
 
     cdef np.int64_t get_domain_offset(self, int domain_id):
         return 0
+
+    def check_root_mesh(self):
+        cdef count = 0
+        for i in range(self.nn[0]):
+            for j in range(self.nn[1]):
+                for k in range(self.nn[2]):
+                    if self.root_mesh[i][j][k] == NULL:
+                        print("Missing ", i, j, k)
+                        count += 1
+        print("Missing total of %s out of %s" % (count, self.nn[0] * self.nn[1] * self.nn[2]))
 
     cdef int get_root(self, int ind[3], Oct **o) nogil:
         cdef int i
@@ -567,7 +577,11 @@ cdef class OctreeContainer:
     def add(self, int curdom, int curlevel,
             np.ndarray[np.float64_t, ndim=2] pos,
             int skip_boundary = 1,
-            int count_boundary = 0):
+            int count_boundary = 0,
+            np.ndarray[np.uint64_t, ndim=1, cast=True] levels = None
+            ):
+        # In this function, if we specify curlevel = -1, then we query the
+        # (optional) levels array for the oct level.
         cdef int no, p, i
         cdef int ind[3]
         cdef int nb = 0
@@ -582,6 +596,12 @@ cdef class OctreeContainer:
         cdef int in_boundary = 0
         # How do we bootstrap ourselves?
         for p in range(no):
+            # We allow specifying curlevel = -1 to query from the levels array
+            # instead.
+            if curlevel == -1:
+                this_level = levels[p]
+            else:
+                this_level = curlevel
             #for every oct we're trying to add find the
             #floating point unitary position on this level
             in_boundary = 0
@@ -599,7 +619,7 @@ cdef class OctreeContainer:
             if cur == NULL: raise RuntimeError
             # Now we find the location we want
             # Note that RAMSES I think 1-findiceses levels, but we don't.
-            for _ in range(curlevel):
+            for _ in range(this_level):
                 # At every level, find the cell this oct
                 # lives inside
                 for i in range(3):
