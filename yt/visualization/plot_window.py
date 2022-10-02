@@ -332,7 +332,7 @@ class PlotWindow(ImagePlotContainer, abc.ABC):
         if old_fields is not None:
             # Restore the old fields
             for key, units in zip(old_fields, old_units):
-                self._frb[key]
+                self._frb.render(key)
                 equiv = self._equivalencies[key]
                 if equiv[0] is None:
                     self._frb[key].convert_to_units(units)
@@ -341,7 +341,7 @@ class PlotWindow(ImagePlotContainer, abc.ABC):
 
         # Restore the override fields
         for key in self.override_fields:
-            self._frb[key]
+            self._frb.render(key)
 
     @property
     def _has_swapped_axes(self):
@@ -1628,7 +1628,7 @@ class SlicePlot(NormalPlot):
             else:
                 cls = OffAxisSlicePlot
         self = object.__new__(cls)
-        return self
+        return self  # type: ignore [return-value]
 
 
 class ProjectionPlot(NormalPlot):
@@ -1692,7 +1692,7 @@ class ProjectionPlot(NormalPlot):
             else:
                 cls = OffAxisProjectionPlot
         self = object.__new__(cls)
-        return self
+        return self  # type: ignore [return-value]
 
 
 class AxisAlignedSlicePlot(SlicePlot, PWViewerMPL):
