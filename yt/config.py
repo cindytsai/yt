@@ -18,6 +18,7 @@ ytcfg_defaults["yt"] = dict(
     stdout_stream_logging=False,
     log_level=20,
     inline=False,
+    inline_interactive_mode=False,
     num_threads=-1,
     store_parameter_files=False,
     parameter_file_store="parameter_files.csv",
