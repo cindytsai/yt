@@ -68,6 +68,14 @@ def default_mpi_excepthook(exception_type, exception_value, tb):
     MPI.COMM_WORLD.Abort(1)
 
 
+def mpi_libyt_interactive_mode_excepthook(exception_type, exception_value, tb):
+    traceback.print_tb(tb)
+    mylog.error("%s: %s", exception_type.__name__, exception_value)
+    comm = yt.communication_system.communicators[-1]
+    if comm.size > 1:
+        mylog.error("Error occurred on rank %d.", comm.rank)
+
+
 def enable_parallelism(suppress_logging=False, communicator=None):
     """
     This method is used inside a script to turn on MPI parallelism, via
@@ -112,6 +120,8 @@ def enable_parallelism(suppress_logging=False, communicator=None):
     ytcfg["yt", "internals", "parallel"] = True
     if exe_name == "embed_enzo" or ("_parallel" in dir(sys) and sys._parallel):
         ytcfg["yt", "inline"] = True
+        if "_interactive_mode" in dir(sys) and sys._interactive_mode :
+            ytcfg["yt", "inline_interactive_mode"] = True
     yt.utilities.logger.uncolorize_logging()
     # Even though the uncolorize function already resets the format string,
     # we reset it again so that it includes the processor.
@@ -123,6 +133,8 @@ def enable_parallelism(suppress_logging=False, communicator=None):
 
     if ytcfg.get("yt", "parallel_traceback"):
         sys.excepthook = traceback_writer_hook("_%03i" % communicator.rank)
+    elif ytcfg.get("yt", "inline_interactive_mode"):
+        sys.excepthook = mpi_libyt_interactive_mode_excepthook
     else:
         sys.excepthook = default_mpi_excepthook
 

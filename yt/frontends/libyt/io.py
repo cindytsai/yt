@@ -57,20 +57,20 @@ class IOHandlerlibyt(BaseIOHandler):
 
                     # Get particle count in ptype, continue if it is zero
                     index_label = self.param_yt['particle_list'][ptype]["label"]
-                    if self.hierarchy["particle_count_list"][g.id][index_label] == 0:
+                    if self.hierarchy["par_count_list"][g.id][index_label] == 0:
                         continue
 
                     coor_label = self.param_yt['particle_list'][ptype]['particle_coor_label']
                     if g.MPI_rank == self.myrank:
-                        x = self.libyt.get_attr(g.id, ptype, coor_label[0])
-                        y = self.libyt.get_attr(g.id, ptype, coor_label[1])
-                        z = self.libyt.get_attr(g.id, ptype, coor_label[2])
+                        x = self.libyt.get_particle(g.id, ptype, coor_label[0])
+                        y = self.libyt.get_particle(g.id, ptype, coor_label[1])
+                        z = self.libyt.get_particle(g.id, ptype, coor_label[2])
                     else:
                         x = nonlocal_data[g.id][ptype][coor_label[0]]
                         y = nonlocal_data[g.id][ptype][coor_label[1]]
                         z = nonlocal_data[g.id][ptype][coor_label[2]]
 
-                    # g.id ptype particle number is 0, libyt.get_attr will return None,
+                    # g.id ptype particle number is 0, libyt.get_particle will return None,
                     # It will not happen unless something went wrong when passing particle count to libyt.
                     if x is None or y is None or z is None:
                         raise ValueError("Particle position should not be None.")
@@ -102,7 +102,7 @@ class IOHandlerlibyt(BaseIOHandler):
 
                     # get particle count in ptype, continue if it is zero
                     index_label = self.param_yt['particle_list'][ptype]["label"]
-                    if self.hierarchy["particle_count_list"][g.id][index_label] == 0:
+                    if self.hierarchy["par_count_list"][g.id][index_label] == 0:
                         continue
 
                     # fetch the position x/y/z of particle by ptype
@@ -110,15 +110,15 @@ class IOHandlerlibyt(BaseIOHandler):
                     if None in coor_label:
                         raise ValueError("Particle label representing postion X/Y/Z not set!")
                     if g.MPI_rank == self.myrank:
-                        x = self.libyt.get_attr(g.id, ptype, coor_label[0])
-                        y = self.libyt.get_attr(g.id, ptype, coor_label[1])
-                        z = self.libyt.get_attr(g.id, ptype, coor_label[2])
+                        x = self.libyt.get_particle(g.id, ptype, coor_label[0])
+                        y = self.libyt.get_particle(g.id, ptype, coor_label[1])
+                        z = self.libyt.get_particle(g.id, ptype, coor_label[2])
                     else:
                         x = nonlocal_data[g.id][ptype][coor_label[0]]
                         y = nonlocal_data[g.id][ptype][coor_label[1]]
                         z = nonlocal_data[g.id][ptype][coor_label[2]]
 
-                    # g.id ptype particle number is 0, libyt.get_attr will return None.
+                    # g.id ptype particle number is 0, libyt.get_particle will return None.
                     # It will not happen unless something went wrong when passing particle count to libyt.
                     if x is None or y is None or z is None:
                         raise ValueError("Particle position should not be None.")
@@ -129,11 +129,11 @@ class IOHandlerlibyt(BaseIOHandler):
 
                     for field in ptf[ptype]:
                         if g.MPI_rank == self.myrank:
-                            data = self.libyt.get_attr(g.id, ptype, field)
+                            data = self.libyt.get_particle(g.id, ptype, field)
                         else:
                             data = nonlocal_data[g.id][ptype][field]
 
-                        # if ptype particle num in grid g.id = 0, get_attr will return None.
+                        # if ptype particle num in grid g.id = 0, get_particle will return None.
                         # It will not happen unless something went wrong when passing particle count to libyt.
                         if data is None:
                             raise ValueError("Particle data should not be None.")
@@ -326,8 +326,8 @@ class IOHandlerlibyt(BaseIOHandler):
 
             # Call libyt RMA
             mylog.debug("Getting nonlocal data through libyt ...")
-            nonlocal_data = self.libyt.get_attr_remote(ptf_c, ptf_c.keys(), to_prepare, len(to_prepare),
-                                                       nonlocal_id, nonlocal_rank, len(nonlocal_id))
+            nonlocal_data = self.libyt.get_particle_remote(ptf_c, ptf_c.keys(), to_prepare, len(to_prepare),
+                                                           nonlocal_id, nonlocal_rank, len(nonlocal_id))
         else:
             nonlocal_data = None
 
@@ -339,7 +339,7 @@ class IOHandlerlibyt(BaseIOHandler):
         # Otherwise, read the nonlocal data in nonlocal_data.
         field_list = self.param_yt["field_list"]
         ghost_cell = field_list[fname]["ghost_cell"]
-        if field_list[fname]["field_define_type"] == "cell-centered":
+        if field_list[fname]["field_type"] == "cell-centered":
             # Read data from grid_data, or nonlocal_data.
             # We don't create key-value pair if no data pass in from user.
             try:
@@ -358,7 +358,7 @@ class IOHandlerlibyt(BaseIOHandler):
                                         ghost_cell[2]:(data_shape[1]-ghost_cell[3]),
                                         ghost_cell[4]:(data_shape[2]-ghost_cell[5])]
 
-        elif field_list[fname]["field_define_type"] == "face-centered":
+        elif field_list[fname]["field_type"] == "face-centered":
             # Read data from grid_data, or nonlocal_data.
             # We don't create key-value pair if no data pass in from user.
             try:
@@ -379,7 +379,7 @@ class IOHandlerlibyt(BaseIOHandler):
 
             # Convert to cell-centered
             grid_dim = self.hierarchy["grid_dimensions"][grid.id]
-            if field_list[fname]["swap_axes"] is True:
+            if field_list[fname]["contiguous_in_x"] is True:
                 grid_dim = np.flip(grid_dim)
             axis = np.argwhere(grid_dim != data_temp.shape).flatten()
             if len(axis) != 1 or data_temp.shape[axis[0]] - 1 != grid_dim[axis[0]]:
@@ -394,7 +394,7 @@ class IOHandlerlibyt(BaseIOHandler):
             elif axis == 2:
                 data_convert = 0.5 * (data_temp[:, :, :-1] + data_temp[:, :, 1:])
 
-        elif field_list[fname]["field_define_type"] == "derived_func":
+        elif field_list[fname]["field_type"] == "derived_func":
             # Read data
             try:
                 if nonlocal_data is None:
@@ -408,11 +408,11 @@ class IOHandlerlibyt(BaseIOHandler):
         else:
             # Since we only supports "cell-centered", "face-centered", "derived_func" tags for now
             # Raise an error if enter this block.
-            raise ValueError("libyt does not have field_define_type [ %s ]" %
-                             (field_list[fname]["field_define_type"]))
+            raise ValueError("libyt does not have field_type [ %s ]" %
+                             (field_list[fname]["field_type"]))
 
         # Swap axes or not, then return
-        if field_list[fname]["swap_axes"] is True:
+        if field_list[fname]["contiguous_in_x"] is True:
             return data_convert.swapaxes(0, 2)
         else:
             return data_convert
