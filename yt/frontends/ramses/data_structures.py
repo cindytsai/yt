@@ -45,7 +45,6 @@ class RAMSESFileSanitizer:
     group_name = None  # str | None: name of the first group folder (if any)
 
     def __init__(self, filename):
-
         # Make the resolve optional, so that it works with symlinks
         paths_to_try = (Path(filename), Path(filename).resolve())
 
@@ -111,7 +110,6 @@ class RAMSESFileSanitizer:
     def _match_output_and_group(
         path: Path,
     ) -> Tuple[Path, Optional[Path], Optional[str]]:
-
         # Make sure we work with a directory of the form `output_XXXXX`
         for p in (path, path.parent):
             match = OUTPUT_DIR_RE.match(p.name)
@@ -335,7 +333,6 @@ class RAMSESDomainFile:
 
 
 class RAMSESDomainSubset(OctreeSubset):
-
     _domain_offset = 1
     _block_order = "F"
 
@@ -684,8 +681,7 @@ class RAMSESIndex(OctreeIndex):
         except Exception:
             pass
         print(
-            "t = %0.8e = %0.8e s = %0.8e years"
-            % (
+            "t = {:0.8e} = {:0.8e} s = {:0.8e} years".format(
                 self.ds.current_time.in_units("code_time"),
                 self.ds.current_time.in_units("s"),
                 self.ds.current_time.in_units("yr"),
@@ -746,7 +742,7 @@ class RAMSESDataset(Dataset):
 
         file_handler = RAMSESFileSanitizer(filename)
 
-        # ensure validation happens even if the class is instanciated
+        # ensure validation happens even if the class is instantiated
         # directly rather than from yt.load
         file_handler.validate()
 
@@ -1028,7 +1024,9 @@ class RAMSESDataset(Dataset):
                     nml = f90nml.read(f)
             except ImportError as e:
                 nml = f"An error occurred when reading the namelist: {str(e)}"
-            except (ValueError, StopIteration) as err:
+            except (ValueError, StopIteration, AssertionError) as err:
+                # Note: f90nml may raise a StopIteration, a ValueError or an AssertionError if
+                # the namelist is not valid.
                 mylog.warning(
                     "Could not parse `namelist.txt` file as it was malformed:",
                     exc_info=err,

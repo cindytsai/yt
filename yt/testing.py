@@ -24,18 +24,9 @@ from yt.funcs import is_sequence
 from yt.loaders import load
 from yt.units.yt_array import YTArray, YTQuantity
 
-# we import this in a weird way from numpy.testing to avoid triggering
-# flake8 errors from the unused imports. These test functions are imported
-# elsewhere in yt from here so we want them to be imported here.
-from numpy.testing import assert_array_equal, assert_almost_equal  # NOQA isort:skip
-from numpy.testing import assert_equal, assert_array_less  # NOQA isort:skip
-from numpy.testing import assert_string_equal  # NOQA isort:skip
-from numpy.testing import assert_array_almost_equal_nulp  # isort:skip
-from numpy.testing import assert_allclose, assert_raises  # NOQA isort:skip
-from numpy.testing import assert_approx_equal  # NOQA isort:skip
-from numpy.testing import assert_array_almost_equal  # NOQA isort:skip
-
 ANSWER_TEST_TAG = "answer_test"
+
+
 # Expose assert_true and assert_less_equal from unittest.TestCase
 # this is adopted from nose. Doing this here allows us to avoid importing
 # nose at the top level.
@@ -51,6 +42,8 @@ assert_less_equal = _t.assertLessEqual
 
 
 def assert_rel_equal(a1, a2, decimals, err_msg="", verbose=True):
+    from numpy.testing import assert_almost_equal
+
     # We have nan checks in here because occasionally we have fields that get
     # weighted without non-zero weights.  I'm looking at you, particle fields!
     if isinstance(a1, np.ndarray):
@@ -299,6 +292,7 @@ _geom_transforms = {
     "polar": ((0.0, 0.0, 0.0), (1.0, 2.0 * np.pi, 1.0)),  # rtz
     "geographic": ((-90.0, -180.0, 0.0), (90.0, 180.0, 1000.0)),  # latlonalt
     "internal_geographic": ((-90.0, -180.0, 0.0), (90.0, 180.0, 1000.0)),  # latlondep
+    "spectral_cube": ((0.0, 0.0, 0.0), (1.0, 1.0, 1.0)),
 }
 
 
@@ -925,15 +919,9 @@ def requires_module_pytest(*module_names):
 
     So that it can be later renamed to `requires_module`.
     """
-    from yt.utilities import on_demand_imports as odi
 
     def deco(func):
-        missing = [
-            name
-            for name in module_names
-            if not getattr(odi, f"_{name}").__is_available__
-            for name in module_names
-        ]
+        missing = [name for name in module_names if find_spec(name) is None]
 
         # note that order between these two decorators matters
         @pytest.mark.skipif(
@@ -975,6 +963,8 @@ def disable_dataset_cache(func):
 
 @disable_dataset_cache
 def units_override_check(fn):
+    from numpy.testing import assert_equal
+
     units_list = ["length", "time", "mass", "velocity", "magnetic", "temperature"]
     ds1 = load(fn)
     units_override = {}
@@ -1116,7 +1106,9 @@ def check_results(func):
 
         return _func
 
-    from yt.mods import unparsed_args
+    import yt.startup_tasks as _startup_tasks
+
+    unparsed_args = _startup_tasks.unparsed_args
 
     if "--answer-reference" in unparsed_args:
         return compute_results(func)
@@ -1124,6 +1116,8 @@ def check_results(func):
     def compare_results(func):
         @wraps(func)
         def _func(*args, **kwargs):
+            from numpy.testing import assert_allclose, assert_equal
+
             name = kwargs.pop("result_basename", func.__name__)
             rv = func(*args, **kwargs)
             if hasattr(rv, "convert_to_base"):
@@ -1254,6 +1248,8 @@ def assert_allclose_units(actual, desired, rtol=1e-7, atol=0, **kwargs):
     function for details.
 
     """
+    from numpy.testing import assert_allclose
+
     # Create a copy to ensure this function does not alter input arrays
     act = YTArray(actual)
     des = YTArray(desired)
@@ -1262,8 +1258,8 @@ def assert_allclose_units(actual, desired, rtol=1e-7, atol=0, **kwargs):
         des = des.in_units(act.units)
     except UnitOperationError as e:
         raise AssertionError(
-            "Units of actual (%s) and desired (%s) do not have "
-            "equivalent dimensions" % (act.units, des.units)
+            f"Units of actual ({act.units}) and desired ({des.units}) "
+            "do not have equivalent dimensions"
         ) from e
 
     rt = YTArray(rtol)
@@ -1277,8 +1273,8 @@ def assert_allclose_units(actual, desired, rtol=1e-7, atol=0, **kwargs):
         at = at.in_units(act.units)
     except UnitOperationError as e:
         raise AssertionError(
-            "Units of atol (%s) and actual (%s) do not have "
-            "equivalent dimensions" % (at.units, act.units)
+            f"Units of atol ({at.units}) and actual ({act.units}) "
+            "do not have equivalent dimensions"
         ) from e
 
     # units have been validated, so we strip units before calling numpy
@@ -1317,12 +1313,9 @@ def assert_fname(fname):
 
     extension = os.path.splitext(fname)[1]
 
-    assert (
-        image_type == extension
-    ), "Expected an image of type '{}' but '{}' is an image of type '{}'".format(
-        extension,
-        fname,
-        image_type,
+    assert image_type == extension, (
+        f"Expected an image of type {extension!r} but {fname!r} "
+        "is an image of type {image_type!r}"
     )
 
 
@@ -1402,6 +1395,8 @@ class ParticleSelectionComparison:
         self.hsml = hsml
 
     def compare_dobj_selection(self, dobj):
+        from numpy.testing import assert_array_almost_equal_nulp
+
         for ptype in sorted(self.particles):
             x, y, z = self.particles[ptype].T
             # Set our radii to zero for now, I guess?
@@ -1498,3 +1493,73 @@ class ParticleSelectionComparison:
             (0.0 + LE[2], "unitary") : (0.1 + LE[2], "unitary"),
         ]
         self.compare_dobj_selection(reg3)
+
+
+def _deprecated_numpy_testing_reexport(func):
+    import numpy.testing as npt
+
+    npt_func = getattr(npt, func.__name__)
+
+    @wraps(npt_func)
+    def retf(*args, **kwargs):
+        __tracebackhide__ = True  # Hide traceback for pytest
+        issue_deprecation_warning(
+            f"yt.testing.{func.__name__} is a pure re-export of "
+            f"numpy.testing.{func.__name__}, it will stop working in the future. "
+            "Please import this function directly from numpy instead.",
+            since="4.2",
+            stacklevel=3,
+        )
+        return npt_func(*args, **kwargs)
+
+    return retf
+
+
+@_deprecated_numpy_testing_reexport
+def assert_array_equal():
+    ...
+
+
+@_deprecated_numpy_testing_reexport
+def assert_almost_equal():
+    ...
+
+
+@_deprecated_numpy_testing_reexport
+def assert_equal():
+    ...
+
+
+@_deprecated_numpy_testing_reexport
+def assert_array_less():
+    ...
+
+
+@_deprecated_numpy_testing_reexport
+def assert_string_equal():
+    ...
+
+
+@_deprecated_numpy_testing_reexport
+def assert_array_almost_equal_nulp():
+    ...
+
+
+@_deprecated_numpy_testing_reexport
+def assert_allclose():
+    ...
+
+
+@_deprecated_numpy_testing_reexport
+def assert_raises():
+    ...
+
+
+@_deprecated_numpy_testing_reexport
+def assert_approx_equal():
+    ...
+
+
+@_deprecated_numpy_testing_reexport
+def assert_array_almost_equal():
+    ...
