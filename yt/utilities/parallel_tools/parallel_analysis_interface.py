@@ -123,8 +123,6 @@ def enable_parallelism(suppress_logging: bool = False, communicator=None) -> boo
     ytcfg["yt", "internals", "parallel"] = True
     if exe_name == "embed_enzo" or ("_parallel" in dir(sys) and sys._parallel):  # type: ignore
         ytcfg["yt", "inline"] = True
-        if "_interactive_mode" in dir(sys) and sys._interactive_mode :
-            ytcfg["yt", "inline_interactive_mode"] = True
     yt.utilities.logger.uncolorize_logging()
     # Even though the uncolorize function already resets the format string,
     # we reset it again so that it includes the processor.
@@ -136,8 +134,6 @@ def enable_parallelism(suppress_logging: bool = False, communicator=None) -> boo
 
     if ytcfg.get("yt", "parallel_traceback"):
         sys.excepthook = traceback_writer_hook("_%03i" % communicator.rank)
-    elif ytcfg.get("yt", "inline_interactive_mode"):
-        sys.excepthook = mpi_libyt_interactive_mode_excepthook
     else:
         sys.excepthook = default_mpi_excepthook
 
