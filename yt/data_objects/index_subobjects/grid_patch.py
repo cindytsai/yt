@@ -1,10 +1,10 @@
-import warnings
 import weakref
-from typing import List, Tuple
+from typing import List
 
 import numpy as np
 
 import yt.geometry.particle_deposit as particle_deposit
+from yt._typing import FieldKey
 from yt.config import ytcfg
 from yt.data_objects.selection_objects.data_selection_objects import (
     YTSelectionContainer,
@@ -19,8 +19,6 @@ from yt.utilities.exceptions import (
 from yt.utilities.lib.interpolators import ghost_zone_interpolate
 from yt.utilities.lib.mesh_utilities import clamp_edges
 from yt.utilities.nodal_data_utils import get_nodal_slices
-
-RECONSTRUCT_INDEX = bool(ytcfg.get("yt", "reconstruct_index"))
 
 
 class AMRGridPatch(YTSelectionContainer):
@@ -80,7 +78,7 @@ class AMRGridPatch(YTSelectionContainer):
             fields = self._determine_fields(key)
         except YTFieldTypeNotFound:
             return tr
-        finfo = self.ds._get_field_info(*fields[0])
+        finfo = self.ds._get_field_info(fields[0])
         if not finfo.sampling_type == "particle":
             num_nodes = 2 ** sum(finfo.nodal_flag)
             new_shape = list(self.ActiveDimensions)
@@ -144,7 +142,8 @@ class AMRGridPatch(YTSelectionContainer):
         self.dds.units = self.index.grid_left_edge.units
 
     def __repr__(self):
-        return "AMRGridPatch_%04i" % (self.id)
+        cls_name = self.__class__.__name__
+        return f"{cls_name}_{self.id:04d} ({self.ActiveDimensions})"
 
     def __int__(self):
         return self.id
@@ -170,7 +169,7 @@ class AMRGridPatch(YTSelectionContainer):
         self.RightEdge = h.grid_right_edge[my_ind]
         # This can be expensive so we allow people to disable this behavior
         # via a config option
-        if RECONSTRUCT_INDEX:
+        if ytcfg.get("yt", "reconstruct_index"):
             if is_sequence(self.Parent) and len(self.Parent) > 0:
                 p = self.Parent[0]
             else:
@@ -193,7 +192,7 @@ class AMRGridPatch(YTSelectionContainer):
     def _fill_child_mask(self, child, mask, tofill, dlevel=1):
         rf = self.ds.refine_by
         if dlevel != 1:
-            rf = rf ** dlevel
+            rf = rf**dlevel
         gi, cgi = self.get_global_startindex(), child.get_global_startindex()
         startIndex = np.maximum(0, cgi // rf - gi)
         endIndex = np.minimum(
@@ -271,19 +270,10 @@ class AMRGridPatch(YTSelectionContainer):
 
     def get_vertex_centered_data(
         self,
-        fields: List[Tuple[str, str]],
+        fields: List[FieldKey],
         smoothed: bool = True,
         no_ghost: bool = False,
     ):
-        _old_api = isinstance(fields, (str, tuple))
-        if _old_api:
-            message = (
-                "get_vertex_centered_data() requires list of fields, rather than "
-                "a single field as an argument."
-            )
-            warnings.warn(message, DeprecationWarning, stacklevel=2)
-            fields = [fields]
-
         # Make sure the field list has only unique entries
         fields = list(set(fields))
         new_fields = {}
@@ -320,8 +310,6 @@ class AMRGridPatch(YTSelectionContainer):
                 np.add(dest, src[:-1, :-1, :-1], dest)
                 np.multiply(dest, 0.125, dest)
 
-        if _old_api:
-            return new_fields[fields[0]]
         return new_fields
 
     def select_icoords(self, dobj):
@@ -338,8 +326,8 @@ class AMRGridPatch(YTSelectionContainer):
             return np.empty((0, 3), dtype="float64")
         coords = convert_mask_to_indices(mask, self._last_count).astype("float64")
         coords += 0.5
-        coords *= self.dds[None, :]
-        coords += self.LeftEdge[None, :]
+        coords *= self.dds.d[None, :]
+        coords += self.LeftEdge.d[None, :]
         return coords
 
     def select_fwidth(self, dobj):
@@ -348,7 +336,7 @@ class AMRGridPatch(YTSelectionContainer):
             return np.empty((0, 3), dtype="float64")
         coords = np.empty((count, 3), dtype="float64")
         for axis in range(3):
-            coords[:, axis] = self.dds[axis]
+            coords[:, axis] = self.dds.d[axis]
         return coords
 
     def select_ires(self, dobj):
@@ -383,7 +371,8 @@ class AMRGridPatch(YTSelectionContainer):
         # one grid
         op = cls(nvals + (1,), kernel_name)
         op.initialize()
-        op.process_grid(self, positions, fields)
+        if positions.size > 0:
+            op.process_grid(self, positions, fields)
         vals = op.finalize()
         if vals is None:
             return
@@ -400,7 +389,7 @@ class AMRGridPatch(YTSelectionContainer):
         if self._cache_mask and hash(selector) == self._last_selector_id:
             mask = self._last_mask
         else:
-            mask = selector.fill_mask(self)
+            mask = selector.fill_mask_regular_grid(self)
             if self._cache_mask:
                 self._last_mask = mask
             self._last_selector_id = hash(selector)

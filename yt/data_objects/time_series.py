@@ -3,12 +3,13 @@ import glob
 import inspect
 import os
 import weakref
+from abc import ABC, abstractmethod
 from functools import wraps
+from typing import Optional, Type
 
 import numpy as np
 from more_itertools import always_iterable
 
-from yt._maintenance.deprecation import issue_deprecation_warning
 from yt.config import ytcfg
 from yt.data_objects.analyzer_objects import AnalysisTask, create_quantity_proxy
 from yt.data_objects.particle_trajectories import ParticleTrajectories
@@ -142,6 +143,10 @@ class DatasetSeries:
     ...     SlicePlot(ds, "x", ("gas", "density")).save()
 
     """
+    # this annotation should really be Optional[Type[Dataset]]
+    # but we cannot import the yt.data_objects.static_output.Dataset
+    # class here without creating a circular import for now
+    _dataset_cls: Optional[Type] = None
 
     def __init_subclass__(cls, *args, **kwargs):
         super().__init_subclass__(*args, **kwargs)
@@ -354,58 +359,6 @@ class DatasetSeries:
         return [v for k, v in sorted(return_values.items())]
 
     @classmethod
-    def from_filenames(cls, filenames, parallel=True, setup_function=None, **kwargs):
-        r"""Create a time series from either a filename pattern or a list of
-        filenames.
-
-        This method provides an easy way to create a
-        :class:`~yt.data_objects.time_series.DatasetSeries`, given a set of
-        filenames or a pattern that matches them.  Additionally, it can set the
-        parallelism strategy.
-
-        Parameters
-        ----------
-        filenames : list or pattern
-            This can either be a list of filenames (such as ["DD0001/DD0001",
-            "DD0002/DD0002"]) or a pattern to match, such as
-            "DD*/DD*.index").  If it's the former, they will be loaded in
-            order.  The latter will be identified with the glob module and then
-            sorted.
-        parallel : True, False or int
-            This parameter governs the behavior when .piter() is called on the
-            resultant DatasetSeries object.  If this is set to False, the time
-            series will not iterate in parallel when .piter() is called.  If
-            this is set to either True or an integer, it will be iterated with
-            1 or that integer number of processors assigned to each parameter
-            file provided to the loop.
-        setup_function : callable, accepts a ds
-            This function will be called whenever a dataset is loaded.
-
-        Examples
-        --------
-
-        >>> def print_time(ds):
-        ...     print(ds.current_time)
-        ...
-        >>> ts = DatasetSeries.from_filenames(
-        ...     "GasSloshingLowRes/sloshing_low_res_hdf5_plt_cnt_0[0-6][0-9]0",
-        ...     setup_function=print_time,
-        ... )
-        ...
-        >>> for ds in ts:
-        ...     SlicePlot(ds, "x", ("gas", "density")).save()
-
-        """
-        issue_deprecation_warning(
-            "DatasetSeries.from_filenames() is deprecated and will be removed "
-            "in a future version of yt. Use DatasetSeries() directly.",
-            since="4.0.0",
-            removal="4.1.0",
-        )
-        obj = cls(filenames, parallel=parallel, setup_function=setup_function, **kwargs)
-        return obj
-
-    @classmethod
     def from_output_log(cls, output_log, line_prefix="DATASET WRITTEN", parallel=True):
         filenames = []
         for line in open(output_log):
@@ -417,16 +370,14 @@ class DatasetSeries:
         obj = cls(filenames, parallel=parallel)
         return obj
 
-    _dataset_cls = None
-
-    def _load(self, output_fn, **kwargs):
+    def _load(self, output_fn, *, hint: Optional[str] = None, **kwargs):
         from yt.loaders import load
 
         if self._dataset_cls is not None:
             return self._dataset_cls(output_fn, **kwargs)
         elif self._mixed_dataset_types:
-            return load(output_fn, **kwargs)
-        ds = load(output_fn, **kwargs)
+            return load(output_fn, hint=hint, **kwargs)
+        ds = load(output_fn, hint=hint, **kwargs)
         self._dataset_cls = ds.__class__
         return ds
 
@@ -528,7 +479,7 @@ class DatasetSeriesObject:
         return cls(*self._args, **self._kwargs)
 
 
-class SimulationTimeSeries(DatasetSeries):
+class SimulationTimeSeries(DatasetSeries, ABC):
     def __init__(self, parameter_filename, find_outputs=False):
         """
         Base class for generating simulation time series types.
@@ -556,19 +507,23 @@ class SimulationTimeSeries(DatasetSeries):
 
         self.print_key_parameters()
 
-    def _set_parameter_defaults(self):
+    def _set_parameter_defaults(self):  # noqa: B027
         pass
 
+    @abstractmethod
     def _parse_parameter_file(self):
         pass
 
+    @abstractmethod
     def _set_units(self):
         pass
 
+    @abstractmethod
     def _calculate_simulation_bounds(self):
         pass
 
-    def _get_all_outputs(**kwargs):
+    @abstractmethod
+    def _get_all_outputs(self, *, find_outputs=False):
         pass
 
     def __repr__(self):
@@ -667,7 +622,7 @@ class SimulationTimeSeries(DatasetSeries):
         if not outputs:
             return my_outputs
         for value in values:
-            outputs.sort(key=lambda obj: np.abs(value - obj[key]))
+            outputs.sort(key=lambda obj, value=value: np.abs(value - obj[key]))
             if (
                 tolerance is None or np.abs(value - outputs[0][key]) <= tolerance
             ) and outputs[0] not in my_outputs:

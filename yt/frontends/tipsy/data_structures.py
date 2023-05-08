@@ -71,8 +71,7 @@ class TipsyDataset(SPHDataset):
         if not success:
             print("SOMETHING HAS GONE WRONG.  NBODIES != SUM PARTICLES.")
             print(
-                "%s != (sum == %s + %s + %s)"
-                % (
+                "{} != (sum == {} + {} + {})".format(
                     self.parameters["nbodies"],
                     self.parameters["nsph"],
                     self.parameters["ndark"],
@@ -115,7 +114,6 @@ class TipsyDataset(SPHDataset):
         return os.path.basename(self.parameter_filename)
 
     def _parse_parameter_file(self):
-
         # Parsing the header of the tipsy file, from this we obtain
         # the snapshot time and particle counts.
 
@@ -278,14 +276,14 @@ class TipsyDataset(SPHDataset):
             mu = (
                 cosmo.critical_density(0.0)
                 * (1 + self.current_redshift) ** 3
-                * self.length_unit ** 3
+                * self.length_unit**3
             )
             self.mass_unit = self.quan(mu.in_units("Msun"), "Msun")
             density_unit = self.mass_unit / (self.length_unit / self.scale_factor) ** 3
             # need to do this again because we've modified the hubble constant
             self.unit_registry.modify("h", self.hubble_constant)
         else:
-            density_unit = self.mass_unit / self.length_unit ** 3
+            density_unit = self.mass_unit / self.length_unit**3
 
         if not hasattr(self, "time_unit"):
             self.time_unit = 1.0 / np.sqrt(density_unit * G)

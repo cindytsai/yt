@@ -119,10 +119,15 @@ def test_unit_cosmo():
     for force_cosmo in [True, None]:
         ds = yt.load(ramsesCosmo, cosmological=force_cosmo)
 
-        expected_raw_time = 1.119216564055017  # in ramses unit
+        # NOTE: these are the old test values, which used 3.08e24 as
+        # the Mpc to cm conversion factor
+        # expected_raw_time = 1.119216564055017 # in ramses unit
+        # expected_time = 3.756241729312462e17 # in seconds
+
+        expected_raw_time = 1.121279694787743  # in ramses unit
         assert_equal(ds.current_time.value, expected_raw_time)
 
-        expected_time = 3.756241729312462e17  # in seconds
+        expected_time = 3.7631658742904595e17  # in seconds
         assert_equal(ds.current_time.in_units("s").value, expected_time)
 
 
@@ -431,7 +436,6 @@ def test_formation_time():
 
 @requires_file(ramses_new_format)
 def test_cooling_fields():
-
     # Test the field is being loaded correctly
     ds = yt.load(ramses_new_format)
 
@@ -519,7 +523,6 @@ def test_namelist_reading():
 @requires_file(output_00080)
 @requires_module("f90nml")
 def test_namelist_reading_should_not_fail():
-
     for ds_name in (ramses_empty_record, output_00080):
         # Test that the reading does not fail for malformed namelist.txt files
         ds = data_dir_load(ds_name)
@@ -585,6 +588,7 @@ def test_ghost_zones():
             fname,
             gen_dummy(ngz),
             sampling_type="cell",
+            units="",
             validators=[yt.ValidateSpatial(ghost_zones=ngz)],
         )
         fields.append(fname)

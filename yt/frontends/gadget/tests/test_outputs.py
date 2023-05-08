@@ -7,7 +7,7 @@ from itertools import product
 import yt
 from yt.frontends.gadget.api import GadgetDataset, GadgetHDF5Dataset
 from yt.frontends.gadget.testing import fake_gadget_binary
-from yt.testing import ParticleSelectionComparison, requires_file
+from yt.testing import ParticleSelectionComparison, requires_file, requires_module
 from yt.utilities.answer_testing.framework import data_dir_load, requires_ds, sph_answer
 
 isothermal_h5 = "IsothermalCollapse/snap_505.hdf5"
@@ -31,6 +31,7 @@ iso_fields = OrderedDict(
 iso_kwargs = dict(bounding_box=[[-3, 3], [-3, 3], [-3, 3]])
 
 
+@requires_module("h5py")
 def test_gadget_binary():
     header_specs = ["default", "default+pad32", ["default", "pad32"]]
     curdir = os.getcwd()
@@ -55,6 +56,7 @@ def test_gadget_binary():
     shutil.rmtree(tmpdir)
 
 
+@requires_module("h5py")
 @requires_file(isothermal_h5)
 def test_gadget_hdf5():
     assert isinstance(
@@ -77,7 +79,7 @@ def test_non_cosmo_dataset():
 @requires_ds(isothermal_h5)
 def test_iso_collapse():
     ds = data_dir_load(isothermal_h5, kwargs=iso_kwargs)
-    for test in sph_answer(ds, "snap_505", 2 ** 17, iso_fields):
+    for test in sph_answer(ds, "snap_505", 2**17, iso_fields):
         test_iso_collapse.__name__ = test.description
         yield test
 

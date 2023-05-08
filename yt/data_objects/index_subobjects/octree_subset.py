@@ -1,17 +1,18 @@
 from contextlib import contextmanager
+from functools import cached_property
 from itertools import product, repeat
+from typing import Tuple
 
 import numpy as np
+from unyt import unyt_array
 
 import yt.geometry.particle_deposit as particle_deposit
 import yt.geometry.particle_smooth as particle_smooth
-from yt._maintenance.deprecation import issue_deprecation_warning
 from yt.data_objects.selection_objects.data_selection_objects import (
     YTSelectionContainer,
 )
 from yt.geometry.particle_oct_container import ParticleOctreeContainer
-from yt.units.dimensions import length
-from yt.units.yt_array import YTArray
+from yt.units.dimensions import length  # type: ignore
 from yt.utilities.exceptions import (
     YTFieldTypeNotFound,
     YTInvalidPositionArray,
@@ -38,18 +39,15 @@ class OctreeSubset(YTSelectionContainer):
     _num_ghost_zones = 0
     _type_name = "octree_subset"
     _skip_add = True
-    _con_args = ("base_region", "domain", "ds")
+    _con_args: Tuple[str, ...] = ("base_region", "domain", "ds")
     _domain_offset = 0
     _cell_count = -1
     _block_order = "C"
 
-    def __init__(
-        self, base_region, domain, ds, over_refine_factor=1, num_ghost_zones=0
-    ):
+    def __init__(self, base_region, domain, ds, num_zones=2, num_ghost_zones=0):
         super().__init__(ds, None)
-        self._num_zones = 1 << (over_refine_factor)
+        self._num_zones = num_zones
         self._num_ghost_zones = num_ghost_zones
-        self._oref = over_refine_factor
         self.domain = domain
         self.domain_id = domain.domain_id
         self.ds = domain.ds
@@ -66,7 +64,7 @@ class OctreeSubset(YTSelectionContainer):
             fields = self._determine_fields(key)
         except YTFieldTypeNotFound:
             return tr
-        finfo = self.ds._get_field_info(*fields[0])
+        finfo = self.ds._get_field_info(fields[0])
         if not finfo.sampling_type == "particle":
             # We may need to reshape the field, if it is being queried from
             # field_data.  If it's already cached, it just passes through.
@@ -82,7 +80,7 @@ class OctreeSubset(YTSelectionContainer):
     def _reshape_vals(self, arr):
         nz = self.nz
         if len(arr.shape) <= 2:
-            n_oct = arr.shape[0] // (nz ** 3)
+            n_oct = arr.shape[0] // (nz**3)
         elif arr.shape[-1] == 3:
             n_oct = arr.shape[-2]
         else:
@@ -99,8 +97,6 @@ class OctreeSubset(YTSelectionContainer):
         # resultant array viewed in Fortran order.
         arr = arr.reshape(new_shape, order="F")
         return arr
-
-    _domain_ind = None
 
     def mask_refinement(self, selector):
         mask = self.oct_handler.mask(selector, domain_id=self.domain_id)
@@ -125,12 +121,9 @@ class OctreeSubset(YTSelectionContainer):
             return np.empty(0, "f8"), np.empty(0, "f8")
         return np.concatenate(dts), np.concatenate(ts)
 
-    @property
+    @cached_property
     def domain_ind(self):
-        if self._domain_ind is None:
-            di = self.oct_handler.domain_ind(self.selector)
-            self._domain_ind = di
-        return self._domain_ind
+        return self.oct_handler.domain_ind(self.selector)
 
     def deposit(self, positions, fields=None, method=None, kernel_name="cubic"):
         r"""Operate on the mesh, in a particle-against-mesh fashion, with
@@ -336,7 +329,7 @@ class OctreeSubset(YTSelectionContainer):
                 [1, 1, 1],
                 self.ds.domain_left_edge,
                 self.ds.domain_right_edge,
-                over_refine=self._oref,
+                num_zones=self._nz,
             )
             # This should ensure we get everything within one neighbor of home.
             particle_octree.n_ref = nneighbors * 2
@@ -443,7 +436,7 @@ class OctreeSubset(YTSelectionContainer):
             [1, 1, 1],
             self.ds.domain_left_edge,
             self.ds.domain_right_edge,
-            over_refine=1,
+            num_zones=2,
         )
         particle_octree.n_ref = nneighbors * 2
         particle_octree.add(morton)
@@ -526,15 +519,6 @@ class OctreeSubset(YTSelectionContainer):
         return mask
 
     def get_vertex_centered_data(self, fields):
-        _old_api = isinstance(fields, (str, tuple))
-        if _old_api:
-            message = (
-                "get_vertex_centered_data() requires list of fields, rather than "
-                "a single field as an argument."
-            )
-            issue_deprecation_warning(message, since="4.0.0", removal="4.1.0")
-            fields = [fields]
-
         # Make sure the field list has only unique entries
         fields = list(set(fields))
         new_fields = {}
@@ -550,8 +534,6 @@ class OctreeSubset(YTSelectionContainer):
             np.add(new_fields[field], cg[field][:-1, :-1, :-1], new_fields[field])
             np.multiply(new_fields[field], 0.125, new_fields[field])
 
-        if _old_api:
-            return new_fields[fields[0]]
         return new_fields
 
 
@@ -670,7 +652,7 @@ class OctreeSubsetBlockSlice:
             yield i, OctreeSubsetBlockSlicePosition(i, self)
 
 
-class YTPositionArray(YTArray):
+class YTPositionArray(unyt_array):
     @property
     def morton(self):
         self.validate()
@@ -682,7 +664,7 @@ class YTPositionArray(YTArray):
         morton = compute_morton(self[:, 0], self[:, 1], self[:, 2], LE, RE)
         return morton
 
-    def to_octree(self, over_refine_factor=1, dims=(1, 1, 1), n_ref=64):
+    def to_octree(self, num_zones=2, dims=(1, 1, 1), n_ref=64):
         mi = self.morton
         mi.sort()
         eps = np.finfo(self.dtype).eps
@@ -690,7 +672,7 @@ class YTPositionArray(YTArray):
         LE -= np.abs(LE) * eps
         RE = self.max(axis=0)
         RE += np.abs(RE) * eps
-        octree = ParticleOctreeContainer(dims, LE, RE, over_refine=over_refine_factor)
+        octree = ParticleOctreeContainer(dims, LE, RE, num_zones=num_zones)
         octree.n_ref = n_ref
         octree.add(mi)
         octree.finalize()

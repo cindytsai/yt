@@ -1,5 +1,8 @@
 import abc
+import warnings
 from functools import wraps
+from types import ModuleType
+from typing import Literal, Optional, Union
 
 import numpy as np
 
@@ -9,6 +12,7 @@ from yt.funcs import ensure_numpy_array, is_sequence, mylog
 from yt.geometry.grid_geometry_handler import GridIndex
 from yt.geometry.oct_geometry_handler import OctreeIndex
 from yt.utilities.amr_kdtree.api import AMRKDTree
+from yt.utilities.configure import YTConfig, configuration_callbacks
 from yt.utilities.lib.bounding_volume_hierarchy import BVH
 from yt.utilities.lib.misc_utilities import zlines, zpoints
 from yt.utilities.lib.octree_raytracing import OctreeRayTracing
@@ -35,18 +39,67 @@ from .utils import (
 )
 from .zbuffer_array import ZBuffer
 
-try:
-    from yt.utilities.lib.embree_mesh import mesh_traversal
-# Catch ValueError in case size of objects in Cython change
-except (ImportError, ValueError):
-    mesh_traversal = NotAModule("pyembree")
-    ytcfg["yt", "ray_tracing_engine"] = "yt"
-try:
-    from yt.utilities.lib.embree_mesh import mesh_construction
-# Catch ValueError in case size of objects in Cython change
-except (ImportError, ValueError):
-    mesh_construction = NotAModule("pyembree")
-    ytcfg["yt", "ray_tracing_engine"] = "yt"
+OptionalModule = Union[ModuleType, NotAModule]
+mesh_traversal: OptionalModule = NotAModule("pyembree")
+mesh_construction: OptionalModule = NotAModule("pyembree")
+
+
+def set_raytracing_engine(
+    engine: Literal["yt", "embree"],
+) -> None:
+    """
+    Safely switch raytracing engines at runtime.
+
+    Parameters
+    ----------
+
+    engine: 'yt' or 'embree'
+      - 'yt' selects the default engine.
+      - 'embree' requires extra installation steps, see
+        https://yt-project.org/doc/visualizing/unstructured_mesh_rendering.html?highlight=pyembree#optional-embree-installation
+
+    Raises
+    ------
+
+    UserWarning
+      Raised if the required engine is not available.
+      In this case, the default engine is restored.
+
+    """
+    from yt.config import ytcfg
+
+    global mesh_traversal, mesh_construction
+
+    if engine == "embree":
+        try:
+            from yt.utilities.lib.embree_mesh import (  # type: ignore
+                mesh_construction,
+                mesh_traversal,
+            )
+        except (ImportError, ValueError) as exc:
+            # Catch ValueError in case size of objects in Cython change
+            warnings.warn(
+                "Failed to switch to embree raytracing engine. "
+                f"The following error was raised:\n{exc}",
+                stacklevel=2,
+            )
+            mesh_traversal = NotAModule("pyembree")
+            mesh_construction = NotAModule("pyembree")
+            ytcfg["yt", "ray_tracing_engine"] = "yt"
+        else:
+            ytcfg["yt", "ray_tracing_engine"] = "embree"
+    else:
+        mesh_traversal = NotAModule("pyembree")
+        mesh_construction = NotAModule("pyembree")
+        ytcfg["yt", "ray_tracing_engine"] = "yt"
+
+
+def _init_raytracing_engine(ytcfg: YTConfig) -> None:
+    # validate option from configuration file or fall back to default engine
+    set_raytracing_engine(engine=ytcfg["yt", "ray_tracing_engine"])
+
+
+configuration_callbacks.append(_init_raytracing_engine)
 
 
 def invalidate_volume(f):
@@ -84,15 +137,14 @@ def validate_volume(f):
     return wrapper
 
 
-class RenderSource(ParallelAnalysisInterface):
-
+class RenderSource(ParallelAnalysisInterface, abc.ABC):
     """Base Class for Render Sources.
 
     Will be inherited for volumes, streamlines, etc.
 
     """
 
-    volume_method = None
+    volume_method: Optional[str] = None
 
     def __init__(self):
         super().__init__()
@@ -182,7 +234,6 @@ class VolumeSource(RenderSource, abc.ABC):
 
     _image = None
     data_source = None
-    volume_method = None
 
     def __init__(self, data_source, field):
         r"""Initialize a new volumetric source for rendering."""
@@ -701,26 +752,23 @@ class MeshSource(OpaqueSource):
                 "Invalid ray-tracing engine selected. Choices are 'embree' and 'yt'."
             )
 
-    def cmap():
+    @property
+    def cmap(self):
         """
         This is the name of the colormap that will be used when rendering
-        this MeshSource object. Should be a string, like 'arbre', or 'dusk'.
+        this MeshSource object. Should be a string, like 'cmyt.arbre', or 'cmyt.dusk'.
 
         """
+        return self._cmap
 
-        def fget(self):
-            return self._cmap
+    @cmap.setter
+    def cmap(self, cmap_name):
+        self._cmap = cmap_name
+        if hasattr(self, "data"):
+            self.current_image = self.apply_colormap()
 
-        def fset(self, cmap_name):
-            self._cmap = cmap_name
-            if hasattr(self, "data"):
-                self.current_image = self.apply_colormap()
-
-        return locals()
-
-    cmap = property(**cmap())
-
-    def color_bounds():
+    @property
+    def color_bounds(self):
         """
         These are the bounds that will be used with the colormap to the display
         the rendered image. Should be a (vmin, vmax) tuple, like (0.0, 2.0). If
@@ -728,18 +776,13 @@ class MeshSource(OpaqueSource):
         the rendered data.
 
         """
+        return self._color_bounds
 
-        def fget(self):
-            return self._color_bounds
-
-        def fset(self, bounds):
-            self._color_bounds = bounds
-            if hasattr(self, "data"):
-                self.current_image = self.apply_colormap()
-
-        return locals()
-
-    color_bounds = property(**color_bounds())
+    @color_bounds.setter
+    def color_bounds(self, bounds):
+        self._color_bounds = bounds
+        if hasattr(self, "data"):
+            self.current_image = self.apply_colormap()
 
     def _validate(self):
         """Make sure that all dependencies have been met"""
@@ -1009,6 +1052,9 @@ class PointSource(OpaqueSource):
         self.color_stride = color_stride
         self.radii = radii
 
+    def _validate(self):
+        pass
+
     def render(self, camera, zbuffer=None):
         """Renders an image using the provided camera
 
@@ -1131,6 +1177,9 @@ class LineSource(OpaqueSource):
         self.colors = colors
         self.color_stride = color_stride
 
+    def _validate(self):
+        pass
+
     def render(self, camera, zbuffer=None):
         """Renders an image using the provided camera
 
@@ -1238,7 +1287,6 @@ class BoxSource(LineSource):
     """
 
     def __init__(self, left_edge, right_edge, color=None):
-
         assert left_edge.shape == (3,)
         assert right_edge.shape == (3,)
 
@@ -1257,6 +1305,9 @@ class BoxSource(LineSource):
         vertices = vertices.reshape((12, 2, 3))
 
         super().__init__(vertices, color, color_stride=24)
+
+    def _validate(self):
+        pass
 
 
 class GridSource(LineSource):
@@ -1417,6 +1468,9 @@ class CoordinateVectorSource(OpaqueSource):
             colors[2, 2] = 1.0  # z is blue
             colors[:, 3] = alpha
         self.colors = colors
+
+    def _validate(self):
+        pass
 
     def render(self, camera, zbuffer=None):
         """Renders an image using the provided camera

@@ -1,5 +1,3 @@
-from uuid import uuid4
-
 import numpy as np
 
 from yt.data_objects.static_output import ParticleFile
@@ -10,10 +8,14 @@ from yt.utilities.logger import ytLogger as mylog
 from yt.utilities.on_demand_imports import _h5py as h5py
 
 
+class SwiftParticleFile(ParticleFile):
+    pass
+
+
 class SwiftDataset(SPHDataset):
     _index_class = SPHParticleIndex
     _field_info_class = SPHFieldInfo
-    _file_class = ParticleFile
+    _file_class = SwiftParticleFile
 
     _particle_mass_name = "Masses"
     _particle_coordinates_name = "Coordinates"
@@ -30,9 +32,6 @@ class SwiftDataset(SPHDataset):
         unit_system="cgs",
         default_species_fields=None,
     ):
-
-        self.filename = filename
-
         super().__init__(
             filename,
             dataset_type,
@@ -94,9 +93,6 @@ class SwiftDataset(SPHDataset):
         The header information from the HDF5 file is stored in an un-parsed
         format in self.parameters should users wish to use it.
         """
-
-        self.unique_identifier = uuid4()
-
         # Read from the HDF5 file, this gives us all the info we need. The rest
         # of this function is just parsing.
         header = self._get_info_attributes("Header")

@@ -2,17 +2,15 @@ import builtins
 
 import numpy as np
 
-from yt._maintenance.deprecation import issue_deprecation_warning
 from yt.config import ytcfg
-from yt.funcs import get_brewer_cmap, mylog
+from yt.funcs import mylog
 from yt.units.yt_array import YTQuantity
 from yt.utilities import png_writer as pw
 from yt.utilities.exceptions import YTNotInsideNotebook
 from yt.utilities.lib import image_utilities as au
+from yt.visualization.color_maps import get_colormap_lut
 
-from . import _colormap_data as cmd
 from ._commons import get_canvas, validate_image_name
-from .color_maps import mcm
 
 
 def scale_image(image, mi=None, ma=None):
@@ -253,22 +251,7 @@ def apply_colormap(image, color_bounds=None, cmap_name=None, func=lambda x: x):
 
 
 def map_to_colors(buff, cmap_name):
-    try:
-        lut = cmd.color_map_luts[cmap_name]
-    except KeyError as e:
-        try:
-            # if cmap is tuple, then we're using palettable or brewer2mpl cmaps
-            if isinstance(cmap_name, tuple):
-                cmap = get_brewer_cmap(cmap_name)
-            else:
-                cmap = mcm.get_cmap(cmap_name)
-            cmap(0.0)
-            lut = cmap._lut.T
-        except ValueError:
-            raise KeyError(
-                "Your color map (%s) was not found in either the extracted"
-                " colormap file or matplotlib colormaps" % cmap_name
-            ) from e
+    lut = get_colormap_lut(cmap_name)
 
     if isinstance(cmap_name, tuple):
         # If we are using the colorbrewer maps, don't interpolate
@@ -283,45 +266,6 @@ def map_to_colors(buff, cmap_name):
         x = np.mgrid[0.0 : 1.0 : lut[0].shape[0] * 1j]
         mapped = np.dstack([(np.interp(buff, x, v) * 255).astype("uint8") for v in lut])
     return mapped.copy("C")
-
-
-def strip_colormap_data(
-    fn="color_map_data.py",
-    cmaps=(
-        "jet",
-        "algae",
-        "hot",
-        "gist_stern",
-        "RdBu",
-        "kamae",
-        "kelp",
-        "arbre",
-        "octarine",
-        "dusk",
-    ),
-):
-    import pprint
-
-    from . import color_maps as rcm
-
-    f = open(fn, "w")
-    f.write("### Auto-generated colormap tables, taken from Matplotlib ###\n\n")
-    f.write("from numpy import array\n")
-    f.write("color_map_luts = {}\n\n\n")
-    if cmaps is None:
-        cmaps = rcm.ColorMaps
-    if isinstance(cmaps, str):
-        cmaps = [cmaps]
-    for cmap_name in sorted(cmaps):
-        vals = rcm._extract_lookup_table(cmap_name)
-        f.write(f"### {cmap_name} ###\n\n")
-        f.write(f"color_map_luts['{cmap_name}'] = \\\n")
-        f.write("   (\n")
-        for v in vals:
-            f.write(pprint.pformat(v, indent=3))
-            f.write(",\n")
-        f.write("   )\n\n")
-    f.close()
 
 
 def splat_points(image, points_x, points_y, contribution=None, transposed=False):
@@ -344,7 +288,6 @@ def write_projection(
     title=None,
     vmin=None,
     vmax=None,
-    limits=None,
     take_log=True,
     figsize=(8, 6),
     dpi=100,
@@ -406,20 +349,6 @@ def write_projection(
         cmap_name = ytcfg.get("yt", "default_colormap")
     import matplotlib.colors
     import matplotlib.figure
-
-    if limits is not None:
-        if vmin is not None or vmax is not None:
-            raise ValueError(
-                "The `limits` keyword argument is deprecated and can not "
-                "be used simultaneously with `vmin` or `vmax`."
-            )
-        issue_deprecation_warning(
-            "The `limits` keyword argument is deprecated and will "
-            "be removed in a future version of yt. Use `vmin` and `vmax` instead.",
-            since="4.0.0",
-            removal="4.1.0",
-        )
-        vmin, vmax = limits
 
     # If this is rendered as log, then apply now.
     if take_log:

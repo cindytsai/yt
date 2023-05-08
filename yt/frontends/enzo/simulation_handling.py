@@ -122,7 +122,6 @@ class EnzoSimulation(SimulationTimeSeries):
         parallel=True,
         setup_function=None,
     ):
-
         """
         Instantiate a DatasetSeries object for a set of outputs.
 
@@ -495,7 +494,7 @@ class EnzoSimulation(SimulationTimeSeries):
             self.all_time_outputs.append(output)
             index += 1
 
-    def _get_all_outputs(self, find_outputs=False):
+    def _get_all_outputs(self, *, find_outputs=False):
         """
         Get all potential datasets and combine into a time-sorted list.
         """
@@ -719,7 +718,7 @@ class EnzoCosmology(Cosmology):
             (
                 1.5
                 * self.omega_matter
-                * self.hubble_constant ** 2
+                * self.hubble_constant**2
                 * (1 + self.initial_redshift) ** 3
             )
             ** -0.5

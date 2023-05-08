@@ -77,7 +77,7 @@ class Keyframes:
         else:
             Nz = 1
             ndims = 2
-        if Nx * Ny * Nz != Nx ** ndims:
+        if Nx * Ny * Nz != Nx**ndims:
             print("Need Nx (%d) == Ny (%d) == Nz (%d)" % (Nx, Ny, Nz))
             raise RuntimeError
         self.nframes = Nx
@@ -320,8 +320,7 @@ class Keyframes:
         )
         for i in range(self.npoints):
             fp.write(
-                "%.12f %.12f %.12f %.12f %.12f %.12f %.12f %.12f %.12f\n"
-                % (
+                "{:.12f} {:.12f} {:.12f} {:.12f} {:.12f} {:.12f} {:.12f} {:.12f} {:.12f}\n".format(
                     self.path["position"][i, 0],
                     self.path["position"][i, 1],
                     self.path["position"][i, 2],

@@ -1,7 +1,8 @@
 import numpy as np
+from numpy.testing import assert_equal
 
 import yt
-from yt.testing import assert_equal, fake_random_ds
+from yt.testing import fake_random_ds
 
 
 def setup():
@@ -58,7 +59,7 @@ def test_domain_point():
 
 
 def test_fast_find_field_values_at_points():
-    ds = fake_random_ds(64, nprocs=8, particles=16 ** 3)
+    ds = fake_random_ds(64, nprocs=8, particles=16**3)
     ad = ds.all_data()
     # right now this is slow for large numbers of particles, so randomly
     # sample 100 particles

@@ -1,7 +1,12 @@
 import numpy as np
 
-from yt.testing import assert_allclose_units, fake_random_ds, requires_file
-from yt.units import cm, s
+from yt.testing import (
+    assert_allclose_units,
+    fake_random_ds,
+    requires_file,
+    requires_module,
+)
+from yt.units import cm, s  # type: ignore
 from yt.utilities.answer_testing.framework import data_dir_load
 from yt.visualization.volume_rendering.off_axis_projection import off_axis_projection
 
@@ -10,7 +15,7 @@ def random_unit_vector(prng):
     v = prng.random_sample(3)
     while (v == 0).all():
         v = prng.random_sample(3)
-    return v / np.sqrt((v ** 2).sum())
+    return v / np.sqrt((v**2).sum())
 
 
 def random_velocity_vector(prng):
@@ -149,6 +154,7 @@ def test_vector_component_conversions_fake():
 g30 = "IsolatedGalaxy/galaxy0030/galaxy0030"
 
 
+@requires_module("h5py")
 @requires_file(g30)
 def test_vector_component_conversions_real():
     ds = data_dir_load(g30)

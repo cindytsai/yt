@@ -1,12 +1,13 @@
 import os
 
 import numpy as np
+from numpy.testing import assert_array_equal, assert_equal
 
 import yt.units.dimensions as dimensions
 from yt.geometry.oct_container import _ORDER_MAX
 from yt.geometry.particle_oct_container import ParticleBitmap, ParticleOctreeContainer
 from yt.geometry.selection_routines import RegionSelector
-from yt.testing import assert_array_equal, assert_equal, assert_true
+from yt.testing import assert_true, requires_module
 from yt.units.unit_registry import UnitRegistry
 from yt.units.yt_array import YTArray
 from yt.utilities.lib.geometry_utils import (
@@ -16,12 +17,12 @@ from yt.utilities.lib.geometry_utils import (
     get_morton_points,
 )
 
-NPART = 32 ** 3
+NPART = 32**3
 DLE = np.array([0.0, 0.0, 0.0])
 DRE = np.array([10.0, 10.0, 10.0])
 DW = DRE - DLE
 PER = np.array([0, 0, 0], "bool")
-dx = DW / (2 ** _ORDER_MAX)
+dx = DW / (2**_ORDER_MAX)
 
 
 def test_add_particles_random():
@@ -276,6 +277,7 @@ def test_bitmap_collisions():
     assert_equal(nr, 2 ** (3 * (order1 + order2)), "%d collisions" % nr)
 
 
+@requires_module("h5py")
 def test_bitmap_save_load():
     # Test init for slabs of points in x
     left_edge = np.array([0.0, 0.0, 0.0])
@@ -294,7 +296,7 @@ def test_bitmap_save_load():
         fname = fname_fmt.format(i)
     # Create bitmap and save to file
     reg0 = FakeBitmap(npart, nfiles, order1, order2, left_edge, right_edge, periodicity)
-    reg0.save_bitmasks(fname)
+    reg0.save_bitmasks(fname, 0.0)
     # Attempt to load bitmap
     reg1 = ParticleBitmap(
         left_edge, right_edge, periodicity, file_hash, nfiles, order1, order2
@@ -318,7 +320,7 @@ def test_bitmap_select():
             exact_division = nfiles == (1 << order1)
             div = float(nfiles) / float(1 << order1)
             reg = FakeBitmap(
-                nfiles ** 3,
+                nfiles**3,
                 nfiles,
                 order1,
                 order2,
@@ -399,7 +401,7 @@ def test_bitmap_select():
 
 def cell_centers(order, left_edge, right_edge):
     ndim = left_edge.size
-    ncells = 2 ** order
+    ncells = 2**order
     dx = (right_edge - left_edge) / (2 * ncells)
     d = [
         np.linspace(left_edge[i] + dx[i], right_edge[i] - dx[i], ncells)
@@ -487,7 +489,7 @@ def makeall_decomp_hilbert_gaussian(
     npart_rnd = int(frac_random * npart)
     npart_gau = npart - npart_rnd
     dim_hilbert = 1 << order
-    nH = dim_hilbert ** 3
+    nH = dim_hilbert**3
     if nH < nfiles:
         raise ValueError("Fewer hilbert cells than files.")
     nHPF = nH / nfiles
@@ -531,7 +533,7 @@ def fake_decomp_hilbert_gaussian(
     np.random.seed(int(0x4D3D3D3))
     DW = DRE - DLE
     dim_hilbert = 1 << order
-    nH = dim_hilbert ** 3
+    nH = dim_hilbert**3
     if nH < nfiles:
         raise Exception("Fewer hilbert cells than files.")
     nHPF = nH / nfiles
@@ -569,7 +571,7 @@ def fake_decomp_hilbert_uniform(
     np.random.seed(int(0x4D3D3D3) + ifile)
     DW = DRE - DLE
     dim_hilbert = 1 << order
-    nH = dim_hilbert ** 3
+    nH = dim_hilbert**3
     if nH < nfiles:
         raise Exception("Fewer hilbert cells than files.")
     nHPF = nH / nfiles
@@ -610,7 +612,7 @@ def fake_decomp_morton(
     np.random.seed(int(0x4D3D3D3) + ifile)
     DW = DRE - DLE
     dim_morton = 1 << order
-    nH = dim_morton ** 3
+    nH = dim_morton**3
     if nH < nfiles:
         raise Exception("Fewer morton cells than files.")
     nHPF = nH / nfiles

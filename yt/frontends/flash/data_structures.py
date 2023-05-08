@@ -1,11 +1,14 @@
 import os
 import weakref
+from typing import Type
 
 import numpy as np
 
 from yt.data_objects.index_subobjects.grid_patch import AMRGridPatch
-from yt.data_objects.static_output import Dataset, ParticleFile, validate_index_order
+from yt.data_objects.static_output import Dataset, ParticleFile
 from yt.funcs import mylog, setdefaultattr
+from yt.geometry.api import Geometry
+from yt.geometry.geometry_handler import Index
 from yt.geometry.grid_geometry_handler import GridIndex
 from yt.geometry.particle_geometry_handler import ParticleIndex
 from yt.utilities.file_handler import HDF5FileHandler, warn_h5py
@@ -24,12 +27,8 @@ class FLASHGrid(AMRGridPatch):
         self.Children = []
         self.Level = level
 
-    def __repr__(self):
-        return "FLASHGrid_%04i (%s)" % (self.id, self.ActiveDimensions)
-
 
 class FLASHHierarchy(GridIndex):
-
     grid = FLASHGrid
     _preload_implemented = True
 
@@ -99,6 +98,9 @@ class FLASHHierarchy(GridIndex):
         self.grid_dimensions[:] *= (nxb, nyb, nzb)
         try:
             self.grid_particle_count[:] = f_part["/localnp"][:][:, None]
+            self._blockless_particle_count = (
+                f_part["/tracer particles"].shape[0] - self.grid_particle_count.sum()
+            )
         except KeyError:
             self.grid_particle_count[:] = 0.0
         self._particle_indices = np.zeros(self.num_grids + 1, dtype="int64")
@@ -121,7 +123,7 @@ class FLASHHierarchy(GridIndex):
         nlevels = self.grid_levels.max()
         dxs = np.ones((nlevels + 1, 3), dtype="float64")
         for i in range(nlevels + 1):
-            dxs[i, :ND] = rdx[:ND] / self.dataset.refine_by ** i
+            dxs[i, :ND] = rdx[:ND] / self.dataset.refine_by**i
 
         if ND < 3:
             dxs[:, ND:] = rdx[ND:]
@@ -141,7 +143,7 @@ class FLASHHierarchy(GridIndex):
     def _populate_grid_objects(self):
         ii = np.argsort(self.grid_levels.flat)
         gid = self._handle["/gid"][:]
-        first_ind = -(self.dataset.refine_by ** self.dataset.dimensionality)
+        first_ind = -(self.dataset.refine_by**self.dataset.dimensionality)
         for g in self.grids[ii].flat:
             gi = g.id - g._id_offset
             # FLASH uses 1-indexed group info
@@ -162,7 +164,7 @@ class FLASHHierarchy(GridIndex):
 
 
 class FLASHDataset(Dataset):
-    _index_class = FLASHHierarchy
+    _index_class: Type[Index] = FLASHHierarchy
     _field_info_class = FLASHFieldInfo
     _handle = None
 
@@ -176,7 +178,6 @@ class FLASHDataset(Dataset):
         unit_system="cgs",
         default_species_fields=None,
     ):
-
         self.fluid_types += ("flash",)
         if self._handle is not None:
             return
@@ -232,7 +233,6 @@ class FLASHDataset(Dataset):
         self.parameters["Time"] = 1.0  # default unit is 1...
 
     def _set_code_unit_attributes(self):
-
         if "unitsystem" in self.parameters:
             # Some versions of FLASH inject quotes in the runtime parameters
             # See issue #1721
@@ -377,7 +377,7 @@ class FLASHDataset(Dataset):
 
         self.dimensionality = dimensionality
 
-        self.geometry = self.parameters["geometry"]
+        self.geometry = Geometry(self.parameters["geometry"])
         # Determine base grid parameters
         if "lrefine_min" in self.parameters.keys():  # PARAMESH
             nblockx = self.parameters["nblockx"]
@@ -398,7 +398,7 @@ class FLASHDataset(Dataset):
         dle = np.array([self.parameters[f"{ax}min"] for ax in "xyz"]).astype("float64")
         dre = np.array([self.parameters[f"{ax}max"] for ax in "xyz"]).astype("float64")
         if self.dimensionality < 3:
-            for d in [dimensionality] + list(range(3 - dimensionality)):
+            for d in range(self.dimensionality, 3):
                 if dle[d] == dre[d]:
                     mylog.warning(
                         "Identical domain left edge and right edges "
@@ -496,7 +496,7 @@ class FLASHParticleDataset(FLASHDataset):
         index_filename=None,
         unit_system="cgs",
     ):
-        self.index_order = validate_index_order(index_order)
+        self.index_order = index_order
         self.index_filename = index_filename
 
         if self._handle is not None:

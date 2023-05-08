@@ -4,13 +4,12 @@ import tempfile
 import unittest
 
 import numpy as np
+from numpy.testing import assert_equal, assert_raises
 
 import yt
 from yt.data_objects.particle_filters import add_particle_filter
 from yt.data_objects.profiles import Profile1D, Profile2D, Profile3D, create_profile
 from yt.testing import (
-    assert_equal,
-    assert_raises,
     assert_rel_equal,
     fake_random_ds,
     fake_sph_orientation_ds,
@@ -155,7 +154,7 @@ def test_profiles():
             weight_field=None,
         )
         p2d.add_fields(("index", "ones"))
-        av = nv / nb ** 2
+        av = nv / nb**2
         assert_equal(p2d["index", "ones"], np.ones((nb, nb)) * av)
 
         # We re-bin ones with a weight now
@@ -196,7 +195,7 @@ def test_profiles():
             weight_field=None,
         )
         p3d.add_fields(("index", "ones"))
-        av = nv / nb ** 3
+        av = nv / nb**3
         assert_equal(p3d["index", "ones"], np.ones((nb, nb, nb)) * av)
 
         # We re-bin ones with a weight now
@@ -253,14 +252,14 @@ logs_t = {("all", "particle_position_x"): False}
 
 def test_particle_profiles():
     for nproc in [1, 2, 4, 8]:
-        ds = fake_random_ds(32, nprocs=nproc, particles=32 ** 3)
+        ds = fake_random_ds(32, nprocs=nproc, particles=32**3)
         dd = ds.all_data()
 
         p1d = Profile1D(
             dd, ("all", "particle_position_x"), 128, 0.0, 1.0, False, weight_field=None
         )
         p1d.add_fields([("all", "particle_ones")])
-        assert_equal(p1d[("all", "particle_ones")].sum(), 32 ** 3)
+        assert_equal(p1d[("all", "particle_ones")].sum(), 32**3)
 
         p1d = create_profile(
             dd,
@@ -271,7 +270,7 @@ def test_particle_profiles():
             extrema=extrema_s,
             logs=logs_s,
         )
-        assert_equal(p1d[("all", "particle_ones")].sum(), 32 ** 3)
+        assert_equal(p1d[("all", "particle_ones")].sum(), 32**3)
 
         p1d = create_profile(
             dd,
@@ -282,7 +281,7 @@ def test_particle_profiles():
             extrema=extrema_t,
             logs=logs_t,
         )
-        assert_equal(p1d[("all", "particle_ones")].sum(), 32 ** 3)
+        assert_equal(p1d[("all", "particle_ones")].sum(), 32**3)
 
         p2d = Profile2D(
             dd,
@@ -299,7 +298,7 @@ def test_particle_profiles():
             weight_field=None,
         )
         p2d.add_fields([("all", "particle_ones")])
-        assert_equal(p2d[("all", "particle_ones")].sum(), 32 ** 3)
+        assert_equal(p2d[("all", "particle_ones")].sum(), 32**3)
 
         p3d = Profile3D(
             dd,
@@ -321,7 +320,7 @@ def test_particle_profiles():
             weight_field=None,
         )
         p3d.add_fields([("all", "particle_ones")])
-        assert_equal(p3d[("all", "particle_ones")].sum(), 32 ** 3)
+        assert_equal(p3d[("all", "particle_ones")].sum(), 32**3)
 
 
 def test_mixed_particle_mesh_profiles():
@@ -578,7 +577,6 @@ def test_profile_override_limits():
 
 
 class TestBadProfiles(unittest.TestCase):
-
     tmpdir = None
     curdir = None
 
@@ -707,6 +705,15 @@ def test_export_astropy():
     assert "velocity_x" not in at2.colnames
     assert_equal(prof.x.d[prof.used], at2["radius"].value)
     assert_equal(prof[("gas", "density")].d[prof.used], at2["density"].value)
+    at3 = prof.to_astropy_table(fields=("gas", "density"), include_std=True)
+    assert_equal(prof[("gas", "density")].d, at3["density"].value)
+    assert_equal(
+        prof.standard_deviation[("gas", "density")].d, at3["density_stddev"].value
+    )
+    assert (
+        prof.standard_deviation[("gas", "density")].units
+        == YTArray.from_astropy(at3["density_stddev"]).units
+    )
 
 
 @requires_module("pandas")
@@ -732,3 +739,8 @@ def test_export_pandas():
     assert "velocity_x" not in df2.columns
     assert_equal(prof.x.d[prof.used], df2["radius"])
     assert_equal(prof[("gas", "density")].d[prof.used], df2["density"])
+    df3 = prof.to_dataframe(fields=("gas", "density"), include_std=True)
+    assert_equal(
+        prof.standard_deviation[("gas", "density")].d,
+        np.nan_to_num(df3["density_stddev"]),
+    )

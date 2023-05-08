@@ -1,6 +1,7 @@
 import numpy as np
+from numpy.testing import assert_equal
 
-from yt.testing import assert_equal, fake_amr_ds, fake_random_ds
+from yt.testing import fake_amr_ds, fake_random_ds
 
 
 def setup():
@@ -123,11 +124,19 @@ def test_min_max():
         )
 
         p = ad.max(("gas", "density"), axis=1)
-        p1 = ds.proj(("gas", "density"), 1, data_source=ad, method="mip")
+        p1 = ds.proj(("gas", "density"), 1, data_source=ad, method="max")
+        assert_equal(p[("gas", "density")], p1[("gas", "density")])
+
+        p = ad.min(("gas", "density"), axis=1)
+        p1 = ds.proj(("gas", "density"), 1, data_source=ad, method="min")
         assert_equal(p[("gas", "density")], p1[("gas", "density")])
 
         p = ad.max(("gas", "density"), axis="y")
-        p1 = ds.proj(("gas", "density"), 1, data_source=ad, method="mip")
+        p1 = ds.proj(("gas", "density"), 1, data_source=ad, method="max")
+        assert_equal(p[("gas", "density")], p1[("gas", "density")])
+
+        p = ad.min(("gas", "density"), axis="y")
+        p1 = ds.proj(("gas", "density"), 1, data_source=ad, method="min")
         assert_equal(p[("gas", "density")], p1[("gas", "density")])
 
         # Test that we can get multiple in a single pass

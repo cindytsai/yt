@@ -2,11 +2,11 @@ import os
 
 import numpy as np
 import pyx
-from matplotlib import cm, pyplot as plt
+from matplotlib import pyplot as plt
+from matplotlib.colors import LogNorm, Normalize
 
-from yt._maintenance.deprecation import issue_deprecation_warning
 from yt.config import ytcfg
-from yt.units.unit_object import Unit
+from yt.units.unit_object import Unit  # type: ignore
 from yt.units.yt_array import YTQuantity
 from yt.utilities.logger import ytLogger as mylog
 
@@ -745,7 +745,7 @@ class DualEPS:
 
         # Convert the colormap into a string
         x = np.linspace(1, 0, 256)
-        cm_string = cm.get_cmap(name)(x, bytes=True)[:, 0:3].tobytes()
+        cm_string = plt.get_cmap(name)(x, bytes=True)[:, 0:3].tobytes()
 
         cmap_im = pyx.bitmap.image(imsize[0], imsize[1], "RGB", cm_string)
         if orientation == "top" or orientation == "bottom":
@@ -862,7 +862,7 @@ class DualEPS:
         if field is not None:
             self.field = plot.data_source._determine_fields(field)[0]
         if isinstance(plot, (PlotWindow, PhasePlot)):
-            _cmap = plot._colormap_config[self.field]
+            _cmap = plot[self.field].colorbar_handler.cmap
         else:
             if plot.cmap is not None:
                 _cmap = plot.cmap.name
@@ -886,16 +886,21 @@ class DualEPS:
                 _, _, z_title = plot._get_field_title(self.field, plot.profile)
                 _zlabel = pyxize_label(z_title)
             _zlabel = _zlabel.replace("_", r"\;")
-            _zlog = plot.get_log(self.field)[self.field]
-            if plot.plots[self.field].zmin is None:
-                zmin = plot.plots[self.field].image._A.min()
+
+            _p = plot.plots[self.field]
+            _norm = _p.norm_handler.get_norm(plot.frb[self.field])
+            norm_type = type(_norm)
+            if norm_type is LogNorm:
+                _zlog = True
+            elif norm_type is Normalize:
+                # linear scaling
+                _zlog = False
             else:
-                zmin = plot.plots[self.field].zmin
-            if plot.plots[self.field].zmax is None:
-                zmax = plot.plots[self.field].image._A.max()
-            else:
-                zmax = plot.plots[self.field].zmax
-            _zrange = (zmin, zmax)
+                raise RuntimeError(
+                    "eps_writer is not compatible with scalings other than linear and log, "
+                    f"received {norm_type}"
+                )
+            _zrange = (_norm.vmin, _norm.vmax)
         else:
             _zlabel = plot._z_label.replace("_", r"\;")
             _zlog = plot._log_z
@@ -1244,8 +1249,8 @@ def multiplot(
     --------
     >>> images = ["density.jpg", "hi_density.jpg", "entropy.jpg", "special.jpg"]
     >>> cbs = []
-    >>> cbs.append(return_colormap("arbre", "Density [cm$^{-3}$]", (0, 10), False))
-    >>> cbs.append(return_colormap("kelp", "HI Density", (0, 5), False))
+    >>> cbs.append(return_colormap("cmyt.arbre", "Density [cm$^{-3}$]", (0, 10), False))
+    >>> cbs.append(return_colormap("cmyt.kelp", "HI Density", (0, 5), False))
     >>> cbs.append(return_colormap("hot", r"Entropy [K cm$^2$]", (1e-2, 1e6), True))
     >>> cbs.append(return_colormap("Spectral", "Stuff$_x$!", (1, 300), True))
     >>> mp = multiplot(
@@ -1606,11 +1611,6 @@ def single_plot(
 
 
 # =============================================================================
-def return_cmap(cmap=None, label="", range=(0, 1), log=False):
-    issue_deprecation_warning(
-        "Deprecated alias. Use return_colormap instead.", removal="4.1.0"
-    )
-    return return_colormap(cmap=cmap, label=label, crange=range, log=log)
 
 
 def return_colormap(cmap=None, label="", range=(0, 1), log=False):
@@ -1630,7 +1630,7 @@ def return_colormap(cmap=None, label="", range=(0, 1), log=False):
 
     Examples
     --------
-    >>> cb = return_colormap("arbre", "Density [cm$^{-3}$]", (0, 10), False)
+    >>> cb = return_colormap("cmyt.arbre", "Density [cm$^{-3}$]", (0, 10), False)
     """
     if cmap is None:
         cmap = ytcfg.get("yt", "default_colormap")

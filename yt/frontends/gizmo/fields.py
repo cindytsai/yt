@@ -1,5 +1,5 @@
+from yt._typing import KnownFieldsT
 from yt.fields.field_info_container import FieldInfoContainer
-from yt.fields.magnetic_field import setup_magnetic_field_aliases
 from yt.fields.species_fields import add_species_field_by_density, setup_species_fields
 from yt.frontends.gadget.fields import GadgetFieldInfo
 from yt.frontends.sph.fields import SPHFieldInfo
@@ -10,7 +10,7 @@ metal_elements = ["He", "C", "N", "O", "Ne", "Mg", "Si", "S", "Ca", "Fe"]
 class GizmoFieldInfo(GadgetFieldInfo):
     # The known fields list is according to the GIZMO User Guide. See
     # http://www.tapir.caltech.edu/~phopkins/Site/GIZMO_files/gizmo_documentation.html#snaps-reading
-    known_particle_fields = (
+    known_particle_fields: KnownFieldsT = (
         ("Coordinates", ("code_length", ["particle_position"], None)),
         ("Velocities", ("code_velocity", ["particle_velocity"], None)),
         ("ParticleIDs", ("", ["particle_index"], None)),
@@ -49,6 +49,8 @@ class GizmoFieldInfo(GadgetFieldInfo):
         if ("PartType0", "Metallicity_00") in self.field_list:
             self.nuclei_names = metal_elements
             self.species_names = ["H_p0", "H_p1"] + metal_elements
+        else:
+            self.nuclei_names = []
 
     def setup_particle_fields(self, ptype):
         FieldInfoContainer.setup_particle_fields(self, ptype)
@@ -59,6 +61,8 @@ class GizmoFieldInfo(GadgetFieldInfo):
             self.setup_star_particle_fields(ptype)
 
     def setup_gas_particle_fields(self, ptype):
+        from yt.fields.magnetic_field import setup_magnetic_field_aliases
+
         super().setup_gas_particle_fields(ptype)
 
         def _h_p0_density(field, data):

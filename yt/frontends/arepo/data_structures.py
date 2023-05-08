@@ -41,6 +41,7 @@ class ArepoHDF5Dataset(GadgetHDF5Dataset):
         # to that of the Voronoi cell to create smoothing lengths.
         self.smoothing_factor = smoothing_factor
         self.gamma = 5.0 / 3.0
+        self.gamma_cr = self.parameters.get("GammaCR", 4.0 / 3.0)
 
     @classmethod
     def _is_valid(cls, filename, *args, **kwargs):
@@ -67,18 +68,19 @@ class ArepoHDF5Dataset(GadgetHDF5Dataset):
     def _get_uvals(self):
         handle = h5py.File(self.parameter_filename, mode="r")
         uvals = {}
-        missing = [False] * 3
+        missing = [True] * 3
         for i, unit in enumerate(
             ["UnitLength_in_cm", "UnitMass_in_g", "UnitVelocity_in_cm_per_s"]
         ):
-            if unit in handle["/Header"].attrs:
-                uvals[unit] = handle["/Header"].attrs[unit]
-                if unit == "UnitLength_in_cm":
-                    # We assume this is comoving, because in the absence of comoving
-                    # integration the redshift will be zero.
-                    uvals["cmcm"] = 1.0 / uvals[unit]
-            else:
-                missing[i] = True
+            for grp in ["Header", "Parameters", "Units"]:
+                if grp in handle and unit in handle[grp].attrs:
+                    uvals[unit] = handle[grp].attrs[unit]
+                    missing[i] = False
+                    break
+        if "UnitLength_in_cm" in uvals:
+            # We assume this is comoving, because in the absence of comoving
+            # integration the redshift will be zero.
+            uvals["cmcm"] = 1.0 / uvals["UnitLength_in_cm"]
         handle.close()
         if all(missing):
             uvals = None
@@ -111,7 +113,7 @@ class ArepoHDF5Dataset(GadgetHDF5Dataset):
                 if "cmcm" in arepo_unit_base:
                     self._unit_base["cmcm"] = arepo_unit_base["cmcm"]
         super()._set_code_unit_attributes()
-        munit = np.sqrt(self.mass_unit / (self.time_unit ** 2 * self.length_unit)).to(
+        munit = np.sqrt(self.mass_unit / (self.time_unit**2 * self.length_unit)).to(
             "gauss"
         )
         if self.cosmological_simulation:

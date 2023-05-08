@@ -1,6 +1,4 @@
-import functools
 import hashlib
-import importlib
 import itertools as it
 import os
 import pickle
@@ -8,46 +6,44 @@ import shutil
 import sys
 import tempfile
 import unittest
+from functools import wraps
+from importlib.util import find_spec
 from shutil import which
+from unittest import SkipTest
 
 import matplotlib
 import numpy as np
+import pytest
 from more_itertools import always_iterable
 from numpy.random import RandomState
 from unyt.exceptions import UnitOperationError
 
+from yt._maintenance.deprecation import issue_deprecation_warning
 from yt.config import ytcfg
 from yt.funcs import is_sequence
 from yt.loaders import load
 from yt.units.yt_array import YTArray, YTQuantity
 
-# we import this in a weird way from numpy.testing to avoid triggering
-# flake8 errors from the unused imports. These test functions are imported
-# elsewhere in yt from here so we want them to be imported here.
-from numpy.testing import assert_array_equal, assert_almost_equal  # NOQA isort:skip
-from numpy.testing import assert_equal, assert_array_less  # NOQA isort:skip
-from numpy.testing import assert_string_equal  # NOQA isort:skip
-from numpy.testing import assert_array_almost_equal_nulp  # isort:skip
-from numpy.testing import assert_allclose, assert_raises  # NOQA isort:skip
-from numpy.testing import assert_approx_equal  # NOQA isort:skip
-from numpy.testing import assert_array_almost_equal  # NOQA isort:skip
-
 ANSWER_TEST_TAG = "answer_test"
+
+
 # Expose assert_true and assert_less_equal from unittest.TestCase
 # this is adopted from nose. Doing this here allows us to avoid importing
 # nose at the top level.
 class _Dummy(unittest.TestCase):
-    def nop():
+    def nop(self):
         pass
 
 
 _t = _Dummy("nop")
 
-assert_true = getattr(_t, "assertTrue")  # noqa: B009
-assert_less_equal = getattr(_t, "assertLessEqual")  # noqa: B009
+assert_true = _t.assertTrue
+assert_less_equal = _t.assertLessEqual
 
 
 def assert_rel_equal(a1, a2, decimals, err_msg="", verbose=True):
+    from numpy.testing import assert_almost_equal
+
     # We have nan checks in here because occasionally we have fields that get
     # weighted without non-zero weights.  I'm looking at you, particle fields!
     if isinstance(a1, np.ndarray):
@@ -134,7 +130,7 @@ def amrspace(extent, levels=7, cells=8):
     dims_nonzero = ~dims_zero
     ndims_nonzero = dims_nonzero.sum()
 
-    npoints = (cells ** ndims_nonzero - 1) * maxlvl + 1
+    npoints = (cells**ndims_nonzero - 1) * maxlvl + 1
     left = np.empty((npoints, ndims), dtype="float64")
     right = np.empty((npoints, ndims), dtype="float64")
     level = np.empty(npoints, dtype="int32")
@@ -168,12 +164,12 @@ def amrspace(extent, levels=7, cells=8):
     level[0] = maxlvl
     left[0, :] = extent[::2]
     right[0, dims_zero] = extent[1::2][dims_zero]
-    right[0, dims_nonzero] = (dcell ** maxlvl) * dextent[dims_nonzero] + extent[::2][
+    right[0, dims_nonzero] = (dcell**maxlvl) * dextent[dims_nonzero] + extent[::2][
         dims_nonzero
     ]
     for i, lvl in enumerate(range(maxlvl, 0, -1)):
-        start = (cells ** ndims_nonzero - 1) * i + 1
-        stop = (cells ** ndims_nonzero - 1) * (i + 1) + 1
+        start = (cells**ndims_nonzero - 1) * i + 1
+        stop = (cells**ndims_nonzero - 1) * (i + 1) + 1
         dsize = dcell ** (lvl - 1) * dextent[dims_nonzero]
         level[start:stop] = lvl
         left[start:stop, dims_zero] = lng_zero
@@ -296,6 +292,7 @@ _geom_transforms = {
     "polar": ((0.0, 0.0, 0.0), (1.0, 2.0 * np.pi, 1.0)),  # rtz
     "geographic": ((-90.0, -180.0, 0.0), (90.0, 180.0, 1000.0)),  # latlonalt
     "internal_geographic": ((-90.0, -180.0, 0.0), (90.0, 180.0, 1000.0)),  # latlondep
+    "spectral_cube": ((0.0, 0.0, 0.0), (1.0, 1.0, 1.0)),
 }
 
 
@@ -366,7 +363,7 @@ def fake_particle_ds(
     fields=None,
     units=None,
     negative=None,
-    npart=16 ** 3,
+    npart=16**3,
     length_unit=1.0,
     data=None,
 ):
@@ -421,7 +418,7 @@ def fake_tetrahedral_ds():
 
     # the distance from the origin
     node_data = {}
-    dist = np.sum(_coordinates ** 2, 1)
+    dist = np.sum(_coordinates**2, 1)
     node_data[("connect1", "test")] = dist[_connectivity]
 
     # each element gets a random number
@@ -444,7 +441,7 @@ def fake_hexahedral_ds(fields=None):
     prng = RandomState(0x4D3D3D3)
     # the distance from the origin
     node_data = {}
-    dist = np.sum(_coordinates ** 2, 1)
+    dist = np.sum(_coordinates**2, 1)
     node_data[("connect1", "test")] = dist[_connectivity - 1]
 
     for field in always_iterable(fields):
@@ -479,11 +476,30 @@ def small_fake_hexahedral_ds():
 
     # the distance from the origin
     node_data = {}
-    dist = np.sum(_coordinates ** 2, 1)
+    dist = np.sum(_coordinates**2, 1)
     node_data[("connect1", "test")] = dist[_connectivity - 1]
 
     ds = load_unstructured_mesh(_connectivity - 1, _coordinates, node_data=node_data)
     return ds
+
+
+def fake_stretched_ds(N=16):
+    from yt.loaders import load_uniform_grid
+
+    np.random.seed(0x4D3D3D3)
+    data = {"density": np.random.random((N, N, N))}
+
+    cell_widths = []
+    for _ in range(3):
+        cw = np.random.random(N)
+        cw /= cw.sum()
+        cell_widths.append(cw)
+    return load_uniform_grid(
+        data,
+        [N, N, N],
+        bbox=np.array([[0.0, 1.0], [0.0, 1.0], [0.0, 1.0]]),
+        cell_widths=cell_widths,
+    )
 
 
 def fake_vr_orientation_test_ds(N=96, scale=1):
@@ -687,7 +703,7 @@ def fake_octree_ds(
     velocity_unit=None,
     magnetic_unit=None,
     periodicity=(True, True, True),
-    over_refine_factor=1,
+    num_zones=2,
     partial_coverage=1,
     unit_system="cgs",
 ):
@@ -717,7 +733,7 @@ def fake_octree_ds(
         magnetic_unit=magnetic_unit,
         periodicity=periodicity,
         partial_coverage=partial_coverage,
-        over_refine_factor=over_refine_factor,
+        num_zones=num_zones,
         unit_system=unit_system,
     )
     return ds
@@ -789,23 +805,23 @@ def expand_keywords(keywords, full=False):
 
     >>> keywords = {}
     >>> keywords["dpi"] = (50, 100, 200)
-    >>> keywords["cmap"] = ("arbre", "kelp")
+    >>> keywords["cmap"] = ("cmyt.arbre", "cmyt.kelp")
     >>> list_of_kwargs = expand_keywords(keywords)
     >>> print(list_of_kwargs)
 
-    array([{'cmap': 'arbre', 'dpi': 50},
-           {'cmap': 'kelp', 'dpi': 100},
-           {'cmap': 'arbre', 'dpi': 200}], dtype=object)
+    array([{'cmap': 'cmyt.arbre', 'dpi': 50},
+           {'cmap': 'cmyt.kelp', 'dpi': 100},
+           {'cmap': 'cmyt.arbre', 'dpi': 200}], dtype=object)
 
     >>> list_of_kwargs = expand_keywords(keywords, full=True)
     >>> print(list_of_kwargs)
 
-    array([{'cmap': 'arbre', 'dpi': 50},
-           {'cmap': 'arbre', 'dpi': 100},
-           {'cmap': 'arbre', 'dpi': 200},
-           {'cmap': 'kelp', 'dpi': 50},
-           {'cmap': 'kelp', 'dpi': 100},
-           {'cmap': 'kelp', 'dpi': 200}], dtype=object)
+    array([{'cmap': 'cmyt.arbre', 'dpi': 50},
+           {'cmap': 'cmyt.arbre', 'dpi': 100},
+           {'cmap': 'cmyt.arbre', 'dpi': 200},
+           {'cmap': 'cmyt.kelp', 'dpi': 50},
+           {'cmap': 'cmyt.kelp', 'dpi': 100},
+           {'cmap': 'cmyt.kelp', 'dpi': 200}], dtype=object)
 
     >>> for kwargs in list_of_kwargs:
     ...     write_projection(*args, **kwargs)
@@ -856,6 +872,29 @@ def expand_keywords(keywords, full=False):
     return list_of_kwarg_dicts
 
 
+def skip(reason: str):
+    # a drop-in replacement for pytest.mark.skip decorator with nose-compatibility
+    def dec(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            raise SkipTest(reason)
+
+        return wrapper
+
+    return dec
+
+
+def skipif(condition: bool, reason: str):
+    # a drop-in replacement for pytest.mark.skipif decorator with nose-compatibility
+    def dec(func):
+        if condition:
+            return skip(reason)(func)
+        else:
+            return func
+
+    return dec
+
+
 def requires_module(module):
     """
     Decorator that takes a module name as an argument and tries to import it.
@@ -864,28 +903,7 @@ def requires_module(module):
     being imported will not fail if the module is not installed on the testing
     platform.
     """
-    from nose import SkipTest
-
-    def ffalse(func):
-        @functools.wraps(func)
-        def false_wrapper(*args, **kwargs):
-            raise SkipTest
-
-        return false_wrapper
-
-    def ftrue(func):
-        @functools.wraps(func)
-        def true_wrapper(*args, **kwargs):
-            return func(*args, **kwargs)
-
-        return true_wrapper
-
-    try:
-        importlib.import_module(module)
-    except ImportError:
-        return ffalse
-    else:
-        return ftrue
+    return skipif(find_spec(module) is None, reason=f"Missing required module {module}")
 
 
 def requires_module_pytest(*module_names):
@@ -901,26 +919,16 @@ def requires_module_pytest(*module_names):
 
     So that it can be later renamed to `requires_module`.
     """
-    import pytest
-
-    from yt.utilities import on_demand_imports as odi
 
     def deco(func):
-        required_modules = {
-            name: getattr(odi, f"_{name}")._module for name in module_names
-        }
-        missing = [
-            name
-            for name, mod in required_modules.items()
-            if isinstance(mod, odi.NotAModule)
-        ]
+        missing = [name for name in module_names if find_spec(name) is None]
 
         # note that order between these two decorators matters
         @pytest.mark.skipif(
             missing,
             reason=f"missing requirement(s): {', '.join(missing)}",
         )
-        @functools.wraps(func)
+        @wraps(func)
         def inner_func(*args, **kwargs):
             return func(*args, **kwargs)
 
@@ -930,41 +938,21 @@ def requires_module_pytest(*module_names):
 
 
 def requires_file(req_file):
-    from nose import SkipTest
-
-    path = ytcfg.get("yt", "test_data_dir")
-
-    def ffalse(func):
-        @functools.wraps(func)
-        def false_wrapper(*args, **kwargs):
-            if ytcfg.get("yt", "internals", "strict_requires"):
-                raise FileNotFoundError(req_file)
-            raise SkipTest
-
-        return false_wrapper
-
-    def ftrue(func):
-        @functools.wraps(func)
-        def true_wrapper(*args, **kwargs):
-            return func(*args, **kwargs)
-
-        return true_wrapper
-
-    if os.path.exists(req_file):
-        return ftrue
-    else:
-        if os.path.exists(os.path.join(path, req_file)):
-            return ftrue
-        else:
-            return ffalse
+    condition = (
+        not os.path.exists(req_file)
+        and not os.path.exists(os.path.join(ytcfg.get("yt", "test_data_dir"), req_file))
+        and not ytcfg.get("yt", "internals", "strict_requires")
+    )
+    return skipif(condition, reason=f"Missing required file {req_file}")
 
 
 def disable_dataset_cache(func):
-    @functools.wraps(func)
+    @wraps(func)
     def newfunc(*args, **kwargs):
         restore_cfg_state = False
         if not ytcfg.get("yt", "skip_dataset_cache"):
             ytcfg["yt", "skip_dataset_cache"] = True
+            restore_cfg_state = True
         rv = func(*args, **kwargs)
         if restore_cfg_state:
             ytcfg["yt", "skip_dataset_cache"] = False
@@ -975,6 +963,8 @@ def disable_dataset_cache(func):
 
 @disable_dataset_cache
 def units_override_check(fn):
+    from numpy.testing import assert_equal
+
     units_list = ["length", "time", "mass", "velocity", "magnetic", "temperature"]
     ds1 = load(fn)
     units_override = {}
@@ -1094,7 +1084,7 @@ def check_results(func):
     """
 
     def compute_results(func):
-        @functools.wraps(func)
+        @wraps(func)
         def _func(*args, **kwargs):
             name = kwargs.pop("result_basename", func.__name__)
             rv = func(*args, **kwargs)
@@ -1116,14 +1106,18 @@ def check_results(func):
 
         return _func
 
-    from yt.mods import unparsed_args
+    import yt.startup_tasks as _startup_tasks
+
+    unparsed_args = _startup_tasks.unparsed_args
 
     if "--answer-reference" in unparsed_args:
         return compute_results(func)
 
     def compare_results(func):
-        @functools.wraps(func)
+        @wraps(func)
         def _func(*args, **kwargs):
+            from numpy.testing import assert_allclose, assert_equal
+
             name = kwargs.pop("result_basename", func.__name__)
             rv = func(*args, **kwargs)
             if hasattr(rv, "convert_to_base"):
@@ -1179,7 +1173,12 @@ def run_nose(
     call_pdb=False,
     module=None,
 ):
-    import sys
+    issue_deprecation_warning(
+        "yt.run_nose (aka yt.testing.run_nose) is deprecated. "
+        "Please do not rely on this function as it will be removed "
+        "in the process of migrating yt tests from nose to pytest.",
+        since="4.1.0",
+    )
 
     from yt.utilities.logger import ytLogger as mylog
     from yt.utilities.on_demand_imports import _nose
@@ -1249,6 +1248,8 @@ def assert_allclose_units(actual, desired, rtol=1e-7, atol=0, **kwargs):
     function for details.
 
     """
+    from numpy.testing import assert_allclose
+
     # Create a copy to ensure this function does not alter input arrays
     act = YTArray(actual)
     des = YTArray(desired)
@@ -1257,8 +1258,8 @@ def assert_allclose_units(actual, desired, rtol=1e-7, atol=0, **kwargs):
         des = des.in_units(act.units)
     except UnitOperationError as e:
         raise AssertionError(
-            "Units of actual (%s) and desired (%s) do not have "
-            "equivalent dimensions" % (act.units, des.units)
+            f"Units of actual ({act.units}) and desired ({des.units}) "
+            "do not have equivalent dimensions"
         ) from e
 
     rt = YTArray(rtol)
@@ -1272,8 +1273,8 @@ def assert_allclose_units(actual, desired, rtol=1e-7, atol=0, **kwargs):
         at = at.in_units(act.units)
     except UnitOperationError as e:
         raise AssertionError(
-            "Units of atol (%s) and actual (%s) do not have "
-            "equivalent dimensions" % (at.units, act.units)
+            f"Units of atol ({at.units}) and actual ({act.units}) "
+            "do not have equivalent dimensions"
         ) from e
 
     # units have been validated, so we strip units before calling numpy
@@ -1312,12 +1313,9 @@ def assert_fname(fname):
 
     extension = os.path.splitext(fname)[1]
 
-    assert (
-        image_type == extension
-    ), "Expected an image of type '{}' but '{}' is an image of type '{}'".format(
-        extension,
-        fname,
-        image_type,
+    assert image_type == extension, (
+        f"Expected an image of type {extension!r} but {fname!r} "
+        "is an image of type {image_type!r}"
     )
 
 
@@ -1334,59 +1332,18 @@ def requires_backend(backend):
     backend : String
         The value which is compared with the current matplotlib backend in use.
 
-    Returns
-    -------
-    Decorated function or null function
-
     """
-    import pytest
-
-    def ffalse(func):
-        # returning a lambda : None causes an error when using pytest. Having
-        # a function (skip) that returns None does work, but pytest marks the
-        # test as having passed, which seems bad, since it wasn't actually run.
-        # Using pytest.skip() means that a change to test_requires_backend was
-        # needed since None is no longer returned, so we check for the skip
-        # exception in the xfail case for that test
-        def skip(*args, **kwargs):
-            msg = f"`{backend}` backend not in use, skipping: `{func.__name__}`"
-            print(msg, file=sys.stderr)
-            pytest.skip(msg)
-
-        if ytcfg.get("yt", "internals", "within_pytest"):
-            return skip
-        else:
-            return lambda: None
-
-    def ftrue(func):
-        return func
-
-    if backend.lower() == matplotlib.get_backend().lower():
-        return ftrue
-    return ffalse
+    return skipif(
+        backend.lower() != matplotlib.get_backend().lower(),
+        reason=f"'{backend}' backend not in use",
+    )
 
 
 def requires_external_executable(*names):
-    import pytest
-
-    def deco(func):
-        missing = []
-        for name in names:
-            if which(name) is None:
-                missing.append(name)
-
-        # note that order between these two decorators matters
-        @pytest.mark.skipif(
-            missing,
-            reason=f"missing external executable(s): {', '.join(missing)}",
-        )
-        @functools.wraps(func)
-        def inner_func(*args, **kwargs):
-            return func(*args, **kwargs)
-
-        return inner_func
-
-    return deco
+    missing = [name for name in names if which(name) is None]
+    return skipif(
+        len(missing) > 0, reason=f"missing external executable(s): {', '.join(missing)}"
+    )
 
 
 class TempDirTest(unittest.TestCase):
@@ -1438,6 +1395,8 @@ class ParticleSelectionComparison:
         self.hsml = hsml
 
     def compare_dobj_selection(self, dobj):
+        from numpy.testing import assert_array_almost_equal_nulp
+
         for ptype in sorted(self.particles):
             x, y, z = self.particles[ptype].T
             # Set our radii to zero for now, I guess?
@@ -1534,3 +1493,73 @@ class ParticleSelectionComparison:
             (0.0 + LE[2], "unitary") : (0.1 + LE[2], "unitary"),
         ]
         self.compare_dobj_selection(reg3)
+
+
+def _deprecated_numpy_testing_reexport(func):
+    import numpy.testing as npt
+
+    npt_func = getattr(npt, func.__name__)
+
+    @wraps(npt_func)
+    def retf(*args, **kwargs):
+        __tracebackhide__ = True  # Hide traceback for pytest
+        issue_deprecation_warning(
+            f"yt.testing.{func.__name__} is a pure re-export of "
+            f"numpy.testing.{func.__name__}, it will stop working in the future. "
+            "Please import this function directly from numpy instead.",
+            since="4.2",
+            stacklevel=3,
+        )
+        return npt_func(*args, **kwargs)
+
+    return retf
+
+
+@_deprecated_numpy_testing_reexport
+def assert_array_equal():
+    ...
+
+
+@_deprecated_numpy_testing_reexport
+def assert_almost_equal():
+    ...
+
+
+@_deprecated_numpy_testing_reexport
+def assert_equal():
+    ...
+
+
+@_deprecated_numpy_testing_reexport
+def assert_array_less():
+    ...
+
+
+@_deprecated_numpy_testing_reexport
+def assert_string_equal():
+    ...
+
+
+@_deprecated_numpy_testing_reexport
+def assert_array_almost_equal_nulp():
+    ...
+
+
+@_deprecated_numpy_testing_reexport
+def assert_allclose():
+    ...
+
+
+@_deprecated_numpy_testing_reexport
+def assert_raises():
+    ...
+
+
+@_deprecated_numpy_testing_reexport
+def assert_approx_equal():
+    ...
+
+
+@_deprecated_numpy_testing_reexport
+def assert_array_almost_equal():
+    ...

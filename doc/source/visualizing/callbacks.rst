@@ -14,8 +14,10 @@ lines, text, markers, streamlines, velocity vectors, contours, and more.
 Callbacks can be applied to plots created with
 :class:`~yt.visualization.plot_window.SlicePlot`,
 :class:`~yt.visualization.plot_window.ProjectionPlot`,
+:class:`~yt.visualization.plot_window.AxisAlignedSlicePlot`,
+:class:`~yt.visualization.plot_window.AxisAlignedProjectionPlot`,
 :class:`~yt.visualization.plot_window.OffAxisSlicePlot`, or
-:class:`~yt.visualization.plot_window.OffAxisProjectionPlot` by calling
+:class:`~yt.visualization.plot_window.OffAxisProjectionPlot`, by calling
 one of the ``annotate_`` methods that hang off of the plot object.
 The ``annotate_`` methods are dynamically generated based on the list
 of available callbacks.  For example:
@@ -34,6 +36,10 @@ To clear one or more annotations from an existing plot, see the
 
 For a brief demonstration of a few of these callbacks in action together,
 see the cookbook recipe: :ref:`annotations-recipe`.
+
+Also note that new ``annotate_`` methods can be defined without modifying yt's
+source code, see :ref:`extend-annotations`.
+
 
 Coordinate Systems in Callbacks
 -------------------------------
@@ -79,7 +85,7 @@ of the x-plane (i.e. with axes in the y and z directions):
 
     # Plot marker and text in figure coords
     # N.B. marker will not render outside of axis bounds
-    s.annotate_marker((0.1, 0.2), coord_system="figure", plot_args={"color": "black"})
+    s.annotate_marker((0.1, 0.2), coord_system="figure", color="black")
     s.annotate_text(
         (0.1, 0.2),
         "figure: (0.1, 0.2)",
@@ -182,8 +188,7 @@ List Currently Applied Callbacks
 Overplot Arrow
 ~~~~~~~~~~~~~~
 
-.. function:: annotate_arrow(self, pos, length=0.03, coord_system='data', \
-                             plot_args=None)
+.. function:: annotate_arrow(self, pos, length=0.03, coord_system='data', **kwargs)
 
    (This is a proxy for
    :class:`~yt.visualization.plot_modifications.ArrowCallback`.)
@@ -198,7 +203,7 @@ Overplot Arrow
 
    ds = yt.load("IsolatedGalaxy/galaxy0030/galaxy0030")
    slc = yt.SlicePlot(ds, "z", ("gas", "density"), width=(10, "kpc"), center="c")
-   slc.annotate_arrow((0.5, 0.5, 0.5), length=0.06, plot_args={"color": "blue"})
+   slc.annotate_arrow((0.5, 0.5, 0.5), length=0.06, color="blue")
    slc.save()
 
 .. _annotate-clumps:
@@ -206,7 +211,7 @@ Overplot Arrow
 Clump Finder Callback
 ~~~~~~~~~~~~~~~~~~~~~
 
-.. function:: annotate_clumps(self, clumps, plot_args=None)
+.. function:: annotate_clumps(self, clumps, **kwargs)
 
    (This is a proxy for
    :class:`~yt.visualization.plot_modifications.ClumpContourCallback`.)
@@ -271,20 +276,23 @@ Overplot Quivers
 Axis-Aligned Data Sources
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. function:: annotate_quiver(self, field_x, field_y, factor=16, scale=None, \
-                              scale_units=None, normalize=False, plot_args=None)
+.. function:: annotate_quiver(self, field_x, field_y, field_c=None, *, factor=16, scale=None, \
+                              scale_units=None, normalize=False, **kwargs)
 
    (This is a proxy for
    :class:`~yt.visualization.plot_modifications.QuiverCallback`.)
 
    Adds a 'quiver' plot to any plot, using the ``field_x`` and ``field_y`` from
-   the associated data, skipping every ``factor`` datapoints in the
-   discretization. ``scale`` is the data units per arrow length unit using
+   the associated data, skipping every ``factor`` pixels in the
+   discretization. A third field, ``field_c``, can be used as color; which is the
+   counterpart of ``matplotlib.axes.Axes.quiver``'s final positional argument ``C``.
+   ``scale`` is the data units per arrow length unit using
    ``scale_units``. If ``normalize`` is ``True``, the fields will be scaled by
    their local (in-plane) length, allowing morphological features to be more
    clearly seen for fields with substantial variation in field strength.
-   Additional arguments can be passed to the ``plot_args`` dictionary, see
-   matplotlib.axes.Axes.quiver for more info.
+   All additional keyword arguments are passed down to ``matplotlib.Axes.axes.quiver``.
+
+   Example using a constant color
 
 .. python-script::
 
@@ -299,15 +307,45 @@ Axis-Aligned Data Sources
        weight_field="density",
        width=(20, "kpc"),
    )
-   p.annotate_quiver(("gas", "velocity_x"), ("gas", "velocity_y"), factor=16,
-                     plot_args={"color": "purple"})
+   p.annotate_quiver(
+      ("gas", "velocity_x"),
+      ("gas", "velocity_y"),
+      factor=16,
+      color="purple",
+   )
    p.save()
+
+
+And now using a continuous colormap
+
+.. python-script::
+
+   import yt
+
+   ds = yt.load("IsolatedGalaxy/galaxy0030/galaxy0030")
+   p = yt.ProjectionPlot(
+       ds,
+       "z",
+       ("gas", "density"),
+       center=[0.5, 0.5, 0.5],
+       weight_field="density",
+       width=(20, "kpc"),
+   )
+   p.annotate_quiver(
+      ("gas", "velocity_x"),
+      ("gas", "velocity_y"),
+      ("gas", "vorticity_z"),
+      factor=16,
+      cmap="inferno_r",
+   )
+   p.save()
+
 
 Off-Axis Data Sources
 ^^^^^^^^^^^^^^^^^^^^^
 
-.. function:: annotate_cquiver(self, field_x, field_y, factor=16, scale=None, \
-                               scale_units=None, normalize=False, plot_args=None)
+.. function:: annotate_cquiver(self, field_x, field_y, field_c=None, *, factor=16, scale=None, \
+                               scale_units=None, normalize=False, **kwargs)
 
    (This is a proxy for
    :class:`~yt.visualization.plot_modifications.CuttingQuiverCallback`.)
@@ -331,7 +369,7 @@ Off-Axis Data Sources
        ("gas", "cutting_plane_velocity_x"),
        ("gas", "cutting_plane_velocity_y"),
        factor=10,
-       plot_args={"color": "orange"},
+       color="orange",
    )
    s.zoom(1.5)
    s.save()
@@ -390,67 +428,13 @@ Overplot Cell Edges
    slc.annotate_cell_edges()
    slc.save()
 
-.. _annotate-halos:
-
-Overplot Halo Annotations
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. function:: annotate_halos(self, halo_catalog, circle_args=None, \
-                             width=None, annotate_field=None, \
-                             radius_field='virial_radius', \
-                             center_field_prefix="particle_position", \
-                             text_args=None, factor=1.0)
-
-   (This is a proxy for
-   :class:`~yt.visualization.plot_modifications.HaloCatalogCallback`.)
-
-   Accepts a :class:`~yt_astro_analysis.halo_analysis.halo_catalog.HaloCatalog`
-   and plots a circle at the location of each halo with the radius of the
-   circle corresponding to the virial radius of the halo. Also accepts a
-   :ref:`loaded halo catalog dataset <halo-catalog-data>` or a data
-   container from a halo catalog dataset. If ``width`` is set
-   to None (default) all halos are plotted, otherwise it accepts a tuple in
-   the form (1.0, ‘Mpc’) to only display halos that fall within a slab with
-   width ``width`` centered on the center of the plot data.  The appearance of
-   the circles can be changed with the circle_kwargs dictionary, which is
-   supplied to the Matplotlib patch Circle.  One can label each of the halos
-   with the annotate_field, which accepts a field contained in the halo catalog
-   to add text to the plot near the halo (example: ``annotate_field=
-   'particle_mass'`` will write the halo mass next to each halo, whereas
-   ``'particle_identifier'`` shows the halo number). The size of the circles is
-   found from the field ``radius_field`` which is ``'virial_radius'`` by
-   default. If another radius has been found as part of your halo analysis
-   workflow, you can save that field and use it as the ``radius_field`` to
-   change the size of the halos. The position of each halo is determined using
-   ``center_field_prefix`` in the following way. If ``'particle_position'``
-   is the value of ``center_field_prefix`` as is the default, the x value of
-   the halo position is stored in the field ``'particle_position_x'``, y is
-   ``'particle_position_y'``, and z is ``'particle_position_z'``. If you have
-   stored another set of coordinates for each halo as part of your halo
-   analysis as fields such as ``'halo_position_x'``, you can use these fields
-   to determine halo position by passing ``'halo_position'`` to
-   ``center_field_prefix``. font_kwargs contains the arguments controlling the
-   text appearance of the annotated field. Factor is the number the virial
-   radius is multiplied by for plotting the circles. Ex: ``factor=2.0`` will
-   plot circles with twice the radius of each halo virial radius.
-
-.. python-script::
-
-   import yt
-
-   data_ds = yt.load("Enzo_64/RD0006/RedshiftOutput0006")
-   halos_ds = yt.load("rockstar_halos/halos_0.0.bin")
-
-   prj = yt.ProjectionPlot(data_ds, "z", ("gas", "density"))
-   prj.annotate_halos(halos_ds, annotate_field="particle_identifier")
-   prj.save()
 
 .. _annotate-image-line:
 
 Overplot a Straight Line
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. function:: annotate_line(self, p1, p2, coord_system='data', plot_args=None)
+.. function:: annotate_line(self, p1, p2, *, coord_system='data', **kwargs)
 
    (This is a proxy for
    :class:`~yt.visualization.plot_modifications.LinePlotCallback`.)
@@ -473,9 +457,9 @@ Overplot a Straight Line
 Overplot Magnetic Field Quivers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. function:: annotate_magnetic_field(self, factor=16, scale=None, \
+.. function:: annotate_magnetic_field(self, factor=16, *, scale=None, \
                                       scale_units=None, normalize=False, \
-                                      plot_args=None)
+                                      **kwargs)
 
    (This is a proxy for
    :class:`~yt.visualization.plot_modifications.MagFieldCallback`.)
@@ -494,14 +478,14 @@ Overplot Magnetic Field Quivers
 
    ds = yt.load(
        "MHDSloshing/virgo_low_res.0054.vtk",
-       parameters={
+       units_override={
            "time_unit": (1, "Myr"),
            "length_unit": (1, "Mpc"),
            "mass_unit": (1e17, "Msun"),
        },
    )
    p = yt.ProjectionPlot(ds, "z", ("gas", "density"), center="c", width=(300, "kpc"))
-   p.annotate_magnetic_field(plot_args={"headlength": 3})
+   p.annotate_magnetic_field(headlength=3)
    p.save()
 
 .. _annotate-marker:
@@ -509,8 +493,7 @@ Overplot Magnetic Field Quivers
 Annotate a Point With a Marker
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. function:: annotate_marker(self, pos, marker='x', coord_system='data', \
-                              plot_args=None)
+.. function:: annotate_marker(self, pos, marker='x', *, coord_system='data', **kwargs)
 
     (This is a proxy for
     :class:`~yt.visualization.plot_modifications.MarkerAnnotateCallback`.)
@@ -523,7 +506,7 @@ Annotate a Point With a Marker
 
    ds = yt.load("IsolatedGalaxy/galaxy0030/galaxy0030")
    s = yt.SlicePlot(ds, "z", ("gas", "density"), center="c", width=(10, "kpc"))
-   s.annotate_marker((-2, -2), coord_system="plot", plot_args={"color": "blue", "s": 500})
+   s.annotate_marker((-2, -2), coord_system="plot", color="blue", s=500)
    s.save()
 
 .. _annotate-particles:
@@ -563,7 +546,7 @@ To plot only the central particles
 
    ds = yt.load("Enzo_64/DD0043/data0043")
    p = yt.ProjectionPlot(ds, "x", ("gas", "density"), center="m", width=(10, "Mpc"))
-   sp = ds.sphere([0.5, 0.5, 0.5], ds.quan(1, "Mpc"))
+   sp = ds.sphere(p.data_source.center, ds.quan(1, "Mpc"))
    p.annotate_particles((10, "Mpc"), data_source=sp)
    p.save()
 
@@ -594,9 +577,9 @@ Overplot a Circle on a Plot
 Overplot Streamlines
 ~~~~~~~~~~~~~~~~~~~~
 
-.. function:: annotate_streamlines(self, field_x, field_y, factor=16, \
+.. function:: annotate_streamlines(self, field_x, field_y, *, factor=16, \
                                    density=1, display_threshold=None, \
-                                   plot_args=None)
+                                   **kwargs)
 
    (This is a proxy for
    :class:`~yt.visualization.plot_modifications.StreamlineCallback`.)
@@ -697,8 +680,8 @@ Add a Title
 Overplot Quivers for the Velocity Field
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. function:: annotate_velocity(self, factor=16, scale=None, scale_units=None, \
-                                normalize=False, plot_args=None)
+.. function:: annotate_velocity(self, factor=16, *, scale=None, scale_units=None, \
+                                normalize=False, **kwargs)
 
    (This is a proxy for
    :class:`~yt.visualization.plot_modifications.VelocityCallback`.)
@@ -717,7 +700,7 @@ Overplot Quivers for the Velocity Field
 
    ds = yt.load("IsolatedGalaxy/galaxy0030/galaxy0030")
    p = yt.SlicePlot(ds, "z", ("gas", "density"), center="m", width=(10, "kpc"))
-   p.annotate_velocity(plot_args={"headwidth": 4})
+   p.annotate_velocity(headwidth=4)
    p.save()
 
 .. _annotate-timestamp:
@@ -797,7 +780,7 @@ Add a Physical Scale Bar
 Annotate Triangle Facets Callback
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. function:: annotate_triangle_facets(triangle_vertices, plot_args=None)
+.. function:: annotate_triangle_facets(triangle_vertices, **kwargs)
 
    (This is a proxy for
    :class:`~yt.visualization.plot_modifications.TriangleFacetsCallback`.)
@@ -832,7 +815,7 @@ Annotate Triangle Facets Callback
    points = coords[conn - 1]
 
    # Annotate slice-triangle intersection contours to the plot
-   s.annotate_triangle_facets(points, plot_args={"colors": "black"})
+   s.annotate_triangle_facets(points, colors="black")
    s.save()
 
 .. _annotate-mesh-lines:
@@ -840,7 +823,7 @@ Annotate Triangle Facets Callback
 Annotate Mesh Lines Callback
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. function:: annotate_mesh_lines(plot_args=None)
+.. function:: annotate_mesh_lines(**kwargs)
 
    (This is a proxy for
    :class:`~yt.visualization.plot_modifications.MeshLinesCallback`.)
@@ -855,7 +838,7 @@ Annotate Mesh Lines Callback
 
    ds = yt.load("MOOSE_sample_data/out.e")
    sl = yt.SlicePlot(ds, "z", ("connect1", "nodal_aux"))
-   sl.annotate_mesh_lines(plot_args={"color": "black"})
+   sl.annotate_mesh_lines(color="black")
    sl.save()
 
 .. _annotate-ray:
@@ -863,7 +846,7 @@ Annotate Mesh Lines Callback
 Overplot the Path of a Ray
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. function:: annotate_ray(ray, plot_args=None)
+.. function:: annotate_ray(ray, *, arrow=False, **kwargs)
 
    (This is a proxy for
    :class:`~yt.visualization.plot_modifications.RayCallback`.)
@@ -886,4 +869,79 @@ Overplot the Path of a Ray
    p = yt.ProjectionPlot(ds, "z", ("gas", "density"))
    p.annotate_ray(oray)
    p.annotate_ray(ray)
+   p.save()
+
+
+Applying filters on the final image
+-----------------------------------
+
+It is also possible to operate on the plotted image directly by using
+one of the fixed resolution buffer filter as described in
+:ref:`frb-filters`.
+Note that it is necessary to call the plot object's ``refresh`` method
+to apply filters.
+
+.. python-script::
+
+   import yt
+
+   ds = yt.load('IsolatedGalaxy/galaxy0030/galaxy0030')
+   p = yt.SlicePlot(ds, 'z', 'density')
+   p.frb.apply_gauss_beam(sigma=30)
+   p.refresh()
+   p.save()
+
+
+.. _extend-annotations:
+
+
+Extending annotations methods
+-----------------------------
+
+New ``annotate_`` methods can be added to plot objects at runtime (i.e., without
+modifying yt's source code) by subclassing the base ``PlotCallback`` class.
+This is the recommended way to add custom and unique annotations to yt plots,
+as it can be done through local plugins, individual scripts, or even external packages.
+
+Here's a minimal example:
+
+
+.. python-script::
+
+   import yt
+   from yt.visualization.api import PlotCallback
+
+
+   class TextToPositionCallback(PlotCallback):
+      # bind a new `annotate_text_to_position` plot method
+      _type_name = "text_to_position"
+
+      def __init__(self, text, x, y):
+         # this method can have arbitrary arguments
+         # and should store them without alteration,
+         # but not run expensive computations
+         self.text = text
+         self.position = (x, y)
+
+      def __call__(self, plot):
+         # this method's signature is required
+         # this is where we perform potentially expensive operations
+
+         # the plot argument exposes matplotlib objects:
+         # - plot._axes is a matplotlib.axes.Axes object
+         # - plot._figure is a matplotlib.figure.Figure object
+         plot._axes.annotate(
+               self.text,
+               xy=self.position,
+               xycoords="data",
+               xytext=(0.2, 0.6),
+               textcoords="axes fraction",
+               color="white",
+               fontsize=30,
+               arrowprops=dict(facecolor="black", shrink=0.05),
+         )
+
+   ds = yt.load("IsolatedGalaxy/galaxy0030/galaxy0030")
+   p = yt.SlicePlot(ds, "z", "density")
+   p.annotate_text_to_position("Galactic center !", x=0, y=0)
    p.save()

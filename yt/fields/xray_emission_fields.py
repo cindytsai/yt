@@ -81,7 +81,6 @@ class XrayEmissivityIntegrator:
     """
 
     def __init__(self, table_type, redshift=0.0, data_dir=None, use_metals=True):
-
         filename = _get_data_file(table_type, data_dir=data_dir)
         only_on_root(mylog.info, "Loading emissivity data from %s", filename)
         in_file = h5py.File(filename, mode="r")
@@ -92,8 +91,8 @@ class XrayEmissivityIntegrator:
         else:
             only_on_root(
                 mylog.info,
-                "X-ray '%s' emissivity data version: %s."
-                % (table_type, parse_h5_attr(in_file, "version")),
+                f"X-ray '{table_type}' emissivity data version: "
+                f"{parse_h5_attr(in_file, 'version')}.",
             )
 
         self.log_T = in_file["log_T"][:]
@@ -216,7 +215,7 @@ def add_xray_emissivity_field(
     """
     if not isinstance(metallicity, float) and metallicity is not None:
         try:
-            metallicity = ds._get_field_info(*metallicity)
+            metallicity = ds._get_field_info(metallicity)
         except YTFieldNotFound as e:
             raise RuntimeError(
                 f"Your dataset does not have a {metallicity} field! "
@@ -255,7 +254,7 @@ def add_xray_emissivity_field(
         my_emissivity = np.power(10, em_0(dd))
         if metallicity is not None:
             if isinstance(metallicity, DerivedField):
-                my_Z = data[metallicity.name].to("Zsun")
+                my_Z = data[metallicity.name].to_value("Zsun")
             else:
                 my_Z = metallicity
             my_emissivity += my_Z * np.power(10, em_Z(dd))
@@ -268,7 +267,7 @@ def add_xray_emissivity_field(
     ds.add_field(
         emiss_name,
         function=_emissivity_field,
-        display_name=fr"\epsilon_{{X}} ({e_min}-{e_max} keV)",
+        display_name=rf"\epsilon_{{X}} ({e_min}-{e_max} keV)",
         sampling_type="local",
         units="erg/cm**3/s",
     )
@@ -280,7 +279,7 @@ def add_xray_emissivity_field(
     ds.add_field(
         lum_name,
         function=_luminosity_field,
-        display_name=fr"\rm{{L}}_{{X}} ({e_min}-{e_max} keV)",
+        display_name=rf"\rm{{L}}_{{X}} ({e_min}-{e_max} keV)",
         sampling_type="local",
         units="erg/s",
     )
@@ -294,7 +293,7 @@ def add_xray_emissivity_field(
         my_emissivity = np.power(10, emp_0(dd))
         if metallicity is not None:
             if isinstance(metallicity, DerivedField):
-                my_Z = data[metallicity.name].to("Zsun")
+                my_Z = data[metallicity.name].to_value("Zsun")
             else:
                 my_Z = metallicity
             my_emissivity += my_Z * np.power(10, emp_Z(dd))
@@ -305,7 +304,7 @@ def add_xray_emissivity_field(
     ds.add_field(
         phot_name,
         function=_photon_emissivity_field,
-        display_name=fr"\epsilon_{{X}} ({e_min}-{e_max} keV)",
+        display_name=rf"\epsilon_{{X}} ({e_min}-{e_max} keV)",
         sampling_type="local",
         units="photons/cm**3/s",
     )
@@ -313,7 +312,6 @@ def add_xray_emissivity_field(
     fields = [emiss_name, lum_name, phot_name]
 
     if redshift > 0.0 or dist is not None:
-
         if dist is None:
             if cosmology is None:
                 if hasattr(ds, "cosmology"):
@@ -354,7 +352,7 @@ def add_xray_emissivity_field(
         ds.add_field(
             ei_name,
             function=_intensity_field,
-            display_name=fr"I_{{X}} ({e_min}-{e_max} keV)",
+            display_name=rf"I_{{X}} ({e_min}-{e_max} keV)",
             sampling_type="local",
             units="erg/cm**3/s/arcsec**2",
         )
@@ -368,7 +366,7 @@ def add_xray_emissivity_field(
         ds.add_field(
             i_name,
             function=_photon_intensity_field,
-            display_name=fr"I_{{X}} ({e_min}-{e_max} keV)",
+            display_name=rf"I_{{X}} ({e_min}-{e_max} keV)",
             sampling_type="local",
             units="photons/cm**3/s/arcsec**2",
         )

@@ -1,4 +1,5 @@
 import os
+from collections import UserDict
 from io import StringIO
 
 import numpy as np
@@ -13,7 +14,7 @@ def get_thingking_deps():
     except ImportError:
         raise ImportError(
             "This functionality requires the thingking package to be installed"
-        )
+        ) from None
     return HTTPArray, PageCacheURL
 
 
@@ -256,8 +257,7 @@ class HTTPDataStruct(DataStruct):
             self.data[k] = RedirectArray(self.handle, k)
 
 
-class SDFRead(dict):
-
+class SDFRead(UserDict):
     _eof = "SDF-EO"
     _data_struct = DataStruct
 
@@ -297,6 +297,7 @@ class SDFRead(dict):
         >>> print(sdf["x"])
 
         """
+        super().__init__()
         self.filename = filename
         if header is None:
             header = filename
@@ -438,7 +439,6 @@ class SDFRead(dict):
 
 
 class HTTPSDFRead(SDFRead):
-
     r"""Read an SDF file hosted on the internet.
 
     Given an SDF file (see https://bitbucket.org/JohnSalmon/sdf), parse the
@@ -610,13 +610,12 @@ class SDFIndex:
         self.set_bounds()
         self._midx_version = self.indexdata.parameters.get("midx_version", 0)
         if self._midx_version >= 1.0:
-            max_key = self.get_key(np.array([2 ** self.level - 1] * 3, dtype="int64"))
+            max_key = self.get_key(np.array([2**self.level - 1] * 3, dtype="int64"))
         else:
             max_key = self.indexdata["index"][-1]
         self._max_key = max_key
 
     def _fix_rexact(self, rmin, rmax):
-
         center = 0.5 * (rmax + rmin)
         mysize = rmax - rmin
         mysize *= 1.0 + 4.0 * np.finfo(np.float32).eps
@@ -1140,7 +1139,6 @@ class SDFIndex:
         return self.iter_data(inds, fields)
 
     def get_contiguous_chunk(self, left_key, right_key, fields):
-
         lbase = 0
         if left_key > self._max_key:
             raise RuntimeError(
@@ -1393,7 +1391,7 @@ class SDFIndex:
         return data
 
     def get_cell_width(self, level):
-        return self.domain_width / 2 ** level
+        return self.domain_width / 2**level
 
     def iter_padded_bbox_keys(self, level, cell_iarr, pad):
         """

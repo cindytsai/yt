@@ -1,5 +1,4 @@
 import numpy as np
-from unyt import udot, unorm
 
 from yt.data_objects.selection_objects.data_selection_objects import (
     YTSelectionContainer,
@@ -16,6 +15,7 @@ from yt.funcs import (
     validate_sequence,
 )
 from yt.units import YTArray, YTQuantity
+from yt.units._numpy_wrapper_functions import udot, unorm
 from yt.utilities.lib.pixelization_routines import SPHKernelInterpolationTable
 from yt.utilities.logger import ytLogger as mylog
 
@@ -218,10 +218,10 @@ class YTRay(YTSelectionContainer1D):
         mass = self[self.ds._sph_ptypes[0], "particle_mass"]
         dens = self[self.ds._sph_ptypes[0], "density"]
         # impact parameter from particle to ray
-        b = np.sqrt(np.sum(r ** 2, axis=1) - l ** 2)
+        b = np.sqrt(np.sum(r**2, axis=1) - l**2)
 
         # Use an interpolation table to evaluate the integrated 2D
         # kernel from the dimensionless impact parameter b/hsml.
         itab = SPHKernelInterpolationTable(self.ds.kernel_name)
-        dl = itab.interpolate_array(b / hsml) * mass / dens / hsml ** 2
+        dl = itab.interpolate_array(b / hsml) * mass / dens / hsml**2
         return dl / length

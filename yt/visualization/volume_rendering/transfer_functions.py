@@ -1,5 +1,4 @@
 import numpy as np
-from matplotlib.cm import get_cmap
 from more_itertools import always_iterable
 
 from yt.funcs import mylog
@@ -167,9 +166,9 @@ class TransferFunction:
         nu = nu[::-1]
 
         for i, logT in enumerate(self.x):
-            T = 10 ** logT
+            T = 10**logT
             # Black body at this nu, T
-            Bnu = ((2.0 * hcgs * nu ** 3) / clight ** 2.0) / (
+            Bnu = ((2.0 * hcgs * nu**3) / clight**2.0) / (
                 np.exp(hcgs * nu / (kboltz * T)) - 1.0
             )
             # transmission
@@ -239,8 +238,8 @@ class TransferFunction:
     def __repr__(self):
         disp = (
             "<Transfer Function Object>: "
-            "x_bounds:(%3.2g, %3.2g) nbins:%3.2g features:%s"
-            % (self.x_bounds[0], self.x_bounds[1], self.nbins, self.features)
+            f"x_bounds:({self.x_bounds[0]:3.2g}, {self.x_bounds[1]:3.2g}) "
+            f"nbins:{self.nbins:3.2g} features:{self.features}"
         )
         return disp
 
@@ -439,8 +438,7 @@ class ColorTransferFunction(MultiVariateTransferFunction):
                 "gaussian",
                 f"location(x):{location:3.2g}",
                 f"width(x):{width:3.2g}",
-                "height(y):(%3.2g, %3.2g, %3.2g, %3.2g)"
-                % (height[0], height[1], height[2], height[3]),
+                f"height(y):({height[0]:3.2g}, {height[1]:3.2g}, {height[2]:3.2g}, {height[3]:3.2g})",
             )
         )
 
@@ -481,8 +479,7 @@ class ColorTransferFunction(MultiVariateTransferFunction):
                 "step",
                 f"start(x):{start:3.2g}",
                 f"stop(x):{stop:3.2g}",
-                "value(y):(%3.2g, %3.2g, %3.2g, %3.2g)"
-                % (value[0], value[1], value[2], value[3]),
+                f"value(y):({value[0]:3.2g}, {value[1]:3.2g}, {value[2]:3.2g}, {value[3]:3.2g})",
             )
         )
 
@@ -605,7 +602,9 @@ class ColorTransferFunction(MultiVariateTransferFunction):
         ax.set_ylabel("Opacity")
         ax.set_xlabel("Value")
 
-    def vert_cbar(self, resolution, log_scale, ax, label=None, label_fmt=None):
+    def vert_cbar(
+        self, resolution, log_scale, ax, label=None, label_fmt=None, *, size=10
+    ):
         r"""Display an image of the transfer function
 
         This function loads up matplotlib and displays the current transfer function.
@@ -659,13 +658,13 @@ class ColorTransferFunction(MultiVariateTransferFunction):
                 + self.alpha.x[0]
             )
             if log_scale:
-                val = 10 ** val
+                val = 10**val
             if label_fmt is None:
                 if abs(val) < 1.0e-3 or abs(val) > 1.0e4:
                     if not val == 0.0:
                         e = np.floor(np.log10(abs(val)))
                         return r"${:.2f}\times 10^{{ {:d} }}$".format(
-                            val / 10.0 ** e, int(e)
+                            val / 10.0**e, int(e)
                         )
                     else:
                         return r"$0$"
@@ -686,9 +685,9 @@ class ColorTransferFunction(MultiVariateTransferFunction):
         ax.xaxis.set_major_formatter(FuncFormatter(y_format))
         ax.set_xlim(0.0, max_alpha)
         ax.get_xaxis().set_ticks([])
-        ax.set_ylim(visible[0], visible[-1])
+        ax.set_ylim(visible[0].item(), visible[-1].item())
         ax.tick_params(axis="y", colors="white", size=10)
-        ax.set_ylabel(label, color="white", size=10 * resolution / 512.0)
+        ax.set_ylabel(label, color="white", size=size * resolution / 512.0)
 
     def sample_colormap(self, v, w, alpha=None, colormap="gist_stern", col_bounds=None):
         r"""Add a Gaussian based on an existing colormap.
@@ -724,14 +723,16 @@ class ColorTransferFunction(MultiVariateTransferFunction):
         --------
 
         >>> tf = ColorTransferFunction((-10.0, -5.0))
-        >>> tf.sample_colormap(-7.0, 0.01, colormap="arbre")
+        >>> tf.sample_colormap(-7.0, 0.01, colormap="cmyt.arbre")
         """
+        from yt.visualization.color_maps import _get_cmap
+
         v = np.float64(v)
         if col_bounds is None:
             rel = (v - self.x_bounds[0]) / (self.x_bounds[1] - self.x_bounds[0])
         else:
             rel = (v - col_bounds[0]) / (col_bounds[1] - col_bounds[0])
-        cmap = get_cmap(colormap)
+        cmap = _get_cmap(colormap)
         r, g, b, a = cmap(rel)
         if alpha is None:
             alpha = a
@@ -773,11 +774,13 @@ class ColorTransferFunction(MultiVariateTransferFunction):
         >>> def linramp(vals, minval, maxval):
         ...     return (vals - vals.min()) / (vals.max() - vals.min())
         >>> tf = ColorTransferFunction((-10.0, -5.0))
-        >>> tf.map_to_colormap(-8.0, -6.0, scale=10.0, colormap="arbre")
+        >>> tf.map_to_colormap(-8.0, -6.0, scale=10.0, colormap="cmyt.arbre")
         >>> tf.map_to_colormap(
-        ...     -6.0, -5.0, scale=10.0, colormap="arbre", scale_func=linramp
+        ...     -6.0, -5.0, scale=10.0, colormap="cmyt.arbre", scale_func=linramp
         ... )
         """
+        from yt.visualization.color_maps import _get_cmap
+
         mi = np.float64(mi)
         ma = np.float64(ma)
         rel0 = int(
@@ -787,9 +790,9 @@ class ColorTransferFunction(MultiVariateTransferFunction):
             self.nbins * (ma - self.x_bounds[0]) / (self.x_bounds[1] - self.x_bounds[0])
         )
         rel0 = max(rel0, 0)
-        rel1 = min(rel1, self.nbins - 1)
+        rel1 = min(rel1, self.nbins - 1) + 1
         tomap = np.linspace(0.0, 1.0, num=rel1 - rel0)
-        cmap = get_cmap(colormap)
+        cmap = _get_cmap(colormap)
         cc = cmap(tomap)
         if scale_func is None:
             scale_mult = 1.0
@@ -933,7 +936,9 @@ class ProjectionTransferFunction(MultiVariateTransferFunction):
 
     def __init__(self, x_bounds=(-1e60, 1e60), n_fields=1):
         if n_fields > 3:
-            raise NotImplementedError
+            raise NotImplementedError(
+                f"supplied ${n_fields} but n_fields > 3 not implemented."
+            )
         MultiVariateTransferFunction.__init__(self)
         # Strip units off of x_bounds, if any
         x_bounds = [np.float64(xb) for xb in x_bounds]

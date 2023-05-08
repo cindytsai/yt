@@ -4,6 +4,8 @@ import uuid
 import warnings
 import weakref
 from collections import defaultdict
+from functools import cached_property
+from typing import Type
 
 import numpy as np
 import numpy.core.defchararray as np_char
@@ -12,12 +14,17 @@ from more_itertools import always_iterable
 from yt.config import ytcfg
 from yt.data_objects.index_subobjects.grid_patch import AMRGridPatch
 from yt.data_objects.static_output import Dataset
+from yt.fields.field_info_container import FieldInfoContainer
 from yt.funcs import mylog, setdefaultattr
+from yt.geometry.api import Geometry
 from yt.geometry.geometry_handler import YTDataChunk
 from yt.geometry.grid_geometry_handler import GridIndex
 from yt.units import dimensions
-from yt.units.unit_lookup_table import default_unit_symbol_lut, unit_prefixes
-from yt.units.unit_object import UnitParseError
+from yt.units.unit_lookup_table import (  # type: ignore
+    default_unit_symbol_lut,
+    unit_prefixes,
+)
+from yt.units.unit_object import UnitParseError  # type: ignore
 from yt.units.yt_array import YTQuantity
 from yt.utilities.decompose import decompose_array, get_psize
 from yt.utilities.file_handler import FITSFileHandler
@@ -32,9 +39,9 @@ lat_prefixes = ["Y", "DEC", "GLAT", "LINEAR"]
 spec_names = {"V": "Velocity", "F": "Frequency", "E": "Energy", "W": "Wavelength"}
 
 space_prefixes = list(set(lon_prefixes + lat_prefixes))
-sky_prefixes = set(space_prefixes)
-sky_prefixes.difference_update({"X", "Y", "LINEAR"})
-sky_prefixes = list(sky_prefixes)
+unique_sky_prefixes = set(space_prefixes)
+unique_sky_prefixes.difference_update({"X", "Y", "LINEAR"})
+sky_prefixes = list(unique_sky_prefixes)
 spec_prefixes = list(spec_names.keys())
 
 
@@ -47,12 +54,8 @@ class FITSGrid(AMRGridPatch):
         self.Children = []
         self.Level = 0
 
-    def __repr__(self):
-        return "FITSGrid_%04i (%s)" % (self.id, self.ActiveDimensions)
-
 
 class FITSHierarchy(GridIndex):
-
     grid = FITSGrid
 
     def __init__(self, ds, dataset_type="fits"):
@@ -231,7 +234,7 @@ class FITSHierarchy(GridIndex):
 
         for field in self.derived_field_list:
             f = self.dataset.field_info[field]
-            if f._function.__name__ == "_TranslationFunc":
+            if f.is_alias:
                 # Translating an already-converted field
                 self.dataset.conversion_factors[field] = 1.0
 
@@ -313,7 +316,7 @@ def check_sky_coords(filename, ndim):
 
 class FITSDataset(Dataset):
     _index_class = FITSHierarchy
-    _field_info_class = FITSFieldInfo
+    _field_info_class: Type[FieldInfoContainer] = FITSFieldInfo
     _dataset_type = "fits"
     _handle = None
 
@@ -330,7 +333,6 @@ class FITSDataset(Dataset):
         units_override=None,
         unit_system="cgs",
     ):
-
         if parameters is None:
             parameters = {}
         parameters["nprocs"] = nprocs
@@ -419,23 +421,26 @@ class FITSDataset(Dataset):
             mylog.warning("Assuming 1.0 = 1.0 %s", cgs)
             setdefaultattr(self, f"{unit}_unit", self.quan(1.0, cgs))
         self.magnetic_unit = np.sqrt(
-            4 * np.pi * self.mass_unit / (self.time_unit ** 2 * self.length_unit)
+            4 * np.pi * self.mass_unit / (self.time_unit**2 * self.length_unit)
         )
         self.magnetic_unit.convert_to_units("gauss")
         self.velocity_unit = self.length_unit / self.time_unit
 
-    def _parse_parameter_file(self):
+    @cached_property
+    def unique_identifier(self) -> str:
+        if self.parameter_filename.startswith("InMemory"):
+            return str(time.time())
+        else:
+            return super().unique_identifier
 
+    def _parse_parameter_file(self):
         self._determine_structure()
         self._determine_axes()
-
-        if self.parameter_filename.startswith("InMemory"):
-            self.unique_identifier = time.time()
 
         # Determine dimensionality
 
         self.dimensionality = self.naxis
-        self.geometry = "cartesian"
+        self.geometry = Geometry.CARTESIAN
 
         # Sometimes a FITS file has a 4D datacube, in which case
         # we take the 4th axis and assume it consists of different fields.
@@ -479,7 +484,7 @@ class FITSDataset(Dataset):
         # If nprocs is None, do some automatic decomposition of the domain
         if self.specified_parameters["nprocs"] is None:
             nprocs = np.around(
-                np.prod(self.domain_dimensions) / 32 ** self.dimensionality
+                np.prod(self.domain_dimensions) / 32**self.dimensionality
             ).astype("int")
             self.parameters["nprocs"] = max(min(nprocs, 512), 1)
         else:
@@ -529,7 +534,11 @@ class FITSDataset(Dataset):
 
     @classmethod
     def _is_valid(cls, filename, *args, **kwargs):
-        fileh = check_fits_valid(filename)
+        try:
+            fileh = check_fits_valid(filename)
+        except Exception:
+            return False
+
         if fileh is None:
             return False
         else:
@@ -627,7 +636,11 @@ class YTFITSDataset(FITSDataset):
 
     @classmethod
     def _is_valid(cls, filename, *args, **kwargs):
-        fileh = check_fits_valid(filename)
+        try:
+            fileh = check_fits_valid(filename)
+        except Exception:
+            return False
+
         if fileh is None:
             return False
         else:
@@ -655,7 +668,7 @@ class SkyDataFITSDataset(FITSDataset):
 
         end = min(self.dimensionality + 1, 4)
 
-        self.geometry = "spectral_cube"
+        self.geometry = Geometry.SPECTRAL_CUBE
 
         log_str = "Detected these axes: " + "%s " * len(self.ctypes)
         mylog.info(log_str, *self.ctypes)
@@ -700,7 +713,10 @@ class SkyDataFITSDataset(FITSDataset):
 
     @classmethod
     def _is_valid(cls, filename, *args, **kwargs):
-        return check_sky_coords(filename, ndim=2)
+        try:
+            return check_sky_coords(filename, ndim=2)
+        except Exception:
+            return False
 
 
 class SpectralCubeFITSHierarchy(FITSHierarchy):
@@ -756,7 +772,7 @@ class SpectralCubeFITSDataset(SkyDataFITSDataset):
     def _parse_parameter_file(self):
         super()._parse_parameter_file()
 
-        self.geometry = "spectral_cube"
+        self.geometry = Geometry.SPECTRAL_CUBE
 
         end = min(self.dimensionality + 1, 4)
 
@@ -810,7 +826,10 @@ class SpectralCubeFITSDataset(SkyDataFITSDataset):
 
     @classmethod
     def _is_valid(cls, filename, *args, **kwargs):
-        return check_sky_coords(filename, ndim=3)
+        try:
+            return check_sky_coords(filename, ndim=3)
+        except Exception:
+            return False
 
 
 class EventsFITSHierarchy(FITSHierarchy):
@@ -909,7 +928,10 @@ class EventsFITSDataset(SkyDataFITSDataset):
 
     @classmethod
     def _is_valid(cls, filename, *args, **kwargs):
-        fileh = check_fits_valid(filename)
+        try:
+            fileh = check_fits_valid(filename)
+        except Exception:
+            return False
         if fileh is not None:
             try:
                 valid = fileh[1].name == "EVENTS"

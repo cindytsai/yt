@@ -1,13 +1,11 @@
-import warnings
-
 import numpy as np
+from unyt import unyt_array
 
 from yt.config import ytcfg
-from yt.units.yt_array import YTArray
 from yt.visualization.image_writer import write_bitmap, write_image
 
 
-class ImageArray(YTArray):
+class ImageArray(unyt_array):
     r"""A custom Numpy ndarray used for images.
 
     This differs from ndarray in that you can optionally specify an
@@ -77,11 +75,7 @@ class ImageArray(YTArray):
         registry=None,
         info=None,
         bypass_validation=False,
-        input_units=None,
     ):
-        if input_units is not None:
-            warnings.warn("'input_units' is deprecated. Please use 'units'.")
-            units = input_units
         obj = super().__new__(
             cls, input_array, units, registry, bypass_validation=bypass_validation
         )
@@ -261,7 +255,6 @@ class ImageArray(YTArray):
         sigma_clip=None,
         background="black",
         rescale=True,
-        clip_ratio=None,
     ):
         r"""Writes ImageArray to png file.
 
@@ -319,17 +312,9 @@ class ImageArray(YTArray):
         if filename is not None and filename[-4:] != ".png":
             filename += ".png"
 
-        if clip_ratio is not None:
-            warnings.warn(
-                "'clip_ratio' keyword is deprecated. Use 'sigma_clip' instead"
-            )
-            sigma_clip = clip_ratio
-
         if sigma_clip is not None:
-            nz = out[:, :, :3][out[:, :, :3].nonzero()]
-            return write_bitmap(
-                out.swapaxes(0, 1), filename, nz.mean() + sigma_clip * nz.std()
-            )
+            clip_value = self._clipping_value(sigma_clip, im=out)
+            return write_bitmap(out.swapaxes(0, 1), filename, clip_value)
         else:
             return write_bitmap(out.swapaxes(0, 1), filename)
 
@@ -437,3 +422,11 @@ class ImageArray(YTArray):
             if not filename.endswith(".h5"):
                 filename = filename + ".h5"
             self.write_hdf5(filename, dataset_name)
+
+    def _clipping_value(self, sigma_clip, im=None):
+        # return the max value to clip with given a sigma_clip value. If im
+        # is None, the current instance is used
+        if im is None:
+            im = self
+        nz = im[:, :, :3][im[:, :, :3].nonzero()]
+        return nz.mean() + sigma_clip * nz.std()

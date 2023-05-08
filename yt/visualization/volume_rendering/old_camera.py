@@ -1,12 +1,12 @@
 import builtins
 from copy import deepcopy
+from typing import List
 
 import numpy as np
 
 from yt.config import ytcfg
 from yt.data_objects.api import ImageArray
 from yt.funcs import ensure_numpy_array, get_num_threads, get_pbar, is_sequence, mylog
-from yt.geometry.geometry_handler import cached_property
 from yt.units.yt_array import YTArray
 from yt.utilities.amr_kdtree.api import AMRKDTree
 from yt.utilities.exceptions import YTNotInsideNotebook
@@ -117,7 +117,6 @@ class Camera(ParallelAnalysisInterface):
     Examples
     --------
 
-    >>> from yt.mods import *
     >>> import yt.visualization.volume_rendering.api as vr
 
     >>> ds = load("DD1701")  # Load a dataset
@@ -133,7 +132,7 @@ class Camera(ParallelAnalysisInterface):
     # Construct transfer function
     >>> tf = vr.ColorTransferFunction((mi - 2, ma + 2))
     # Sample transfer function with 5 gaussians.  Use new col_bounds keyword.
-    >>> tf.add_layers(5, w=0.05, col_bounds=(mi + 1, ma), colormap="spectral")
+    >>> tf.add_layers(5, w=0.05, col_bounds=(mi + 1, ma), colormap="nipy_spectral")
 
     # Create the camera object
     >>> cam = vr.Camera(c, L, W, (N, N), transfer_function=tf, ds=ds)
@@ -204,7 +203,7 @@ class Camera(ParallelAnalysisInterface):
         dd = self.ds.all_data()
         efields = dd._determine_fields(self.fields)
         if self.log_fields is None:
-            self.log_fields = [self.ds._get_field_info(*f).take_log for f in efields]
+            self.log_fields = [self.ds._get_field_info(f).take_log for f in efields]
         self.no_ghost = no_ghost
         self.use_light = use_light
         self.light_dir = None
@@ -649,7 +648,7 @@ class Camera(ParallelAnalysisInterface):
 
     def get_sampler_args(self, image):
         rotp = np.concatenate(
-            [self.orienter.inv_mat.ravel("F"), self.back_center.ravel()]
+            [self.orienter.inv_mat.ravel("F"), self.back_center.ravel().ndview]
         )
         args = (
             np.atleast_3d(rotp),
@@ -725,7 +724,6 @@ class Camera(ParallelAnalysisInterface):
         image = self.finalize_image(image)
         return image
 
-    @cached_property
     def _pyplot(self):
         from matplotlib import pyplot
 
@@ -802,14 +800,8 @@ class Camera(ParallelAnalysisInterface):
 
     def save_image(self, image, fn=None, clip_ratio=None, transparent=False):
         if self.comm.rank == 0 and fn is not None:
-            if transparent:
-                image.write_png(
-                    fn, clip_ratio=clip_ratio, rescale=True, background=None
-                )
-            else:
-                image.write_png(
-                    fn, clip_ratio=clip_ratio, rescale=True, background="black"
-                )
+            background = None if transparent else "black"
+            image.write_png(fn, rescale=True, background=background)
 
     def initialize_source(self):
         return self.volume.initialize_source(
@@ -824,7 +816,7 @@ class Camera(ParallelAnalysisInterface):
             "north_vector": self.orienter.unit_vectors[1],
             "normal_vector": self.orienter.unit_vectors[2],
             "width": self.width,
-            "dataset": self.ds.fullpath,
+            "dataset": self.ds.directory,
         }
         return info_dict
 
@@ -1071,7 +1063,7 @@ class Camera(ParallelAnalysisInterface):
         R = get_rotation_matrix(theta, rot_vector)
 
         normal_vector = self.front_center - self.center
-        normal_vector = normal_vector / np.sqrt((normal_vector ** 2).sum())
+        normal_vector = normal_vector / np.sqrt((normal_vector**2).sum())
 
         if rotate_all:
             self.switch_view(
@@ -1185,7 +1177,7 @@ data_object_registry["camera"] = Camera
 
 
 class InteractiveCamera(Camera):
-    frames = []
+    frames: List[ImageArray] = []
 
     def snapshot(self, fn=None, clip_ratio=None):
         self._pyplot.figure(2)
@@ -1414,7 +1406,7 @@ class PerspectiveCamera(Camera):
                 # boundary line
                 sight_length = np.sqrt(
                     self.width[0] ** 2 + self.width[1] ** 2
-                ) / np.sqrt(1 - sight_angle_cos ** 2)
+                ) / np.sqrt(1 - sight_angle_cos**2)
             pos1[i] = self.center + sight_length * sight_vector[i]
 
         dx = np.dot(pos1 - sight_center, self.orienter.unit_vectors[0])
@@ -1454,7 +1446,7 @@ class PerspectiveCamera(Camera):
         focal_point = np.dot(R, focal_point) + rot_center
 
         normal_vector = rot_center - focal_point
-        normal_vector = normal_vector / np.sqrt((normal_vector ** 2).sum())
+        normal_vector = normal_vector / np.sqrt((normal_vector**2).sum())
 
         self.switch_view(normal_vector=normal_vector, center=focal_point)
 
@@ -1479,7 +1471,6 @@ def corners(left_edge, right_edge):
 
 
 class HEALpixCamera(Camera):
-
     _sampler_object = None
 
     def __init__(
@@ -1502,11 +1493,11 @@ class HEALpixCamera(Camera):
         raise NotImplementedError
 
     def new_image(self):
-        image = np.zeros((12 * self.nside ** 2, 1, 4), dtype="float64", order="C")
+        image = np.zeros((12 * self.nside**2, 1, 4), dtype="float64", order="C")
         return image
 
     def get_sampler_args(self, image):
-        nv = 12 * self.nside ** 2
+        nv = 12 * self.nside**2
         vs = arr_pix2vec_nest(self.nside, np.arange(nv))
         vs.shape = (nv, 1, 3)
         vs += 1e-8
@@ -1567,7 +1558,7 @@ class HEALpixCamera(Camera):
             "type": self.__class__.__name__,
             "center": self.center,
             "radius": self.radius,
-            "dataset": self.ds.fullpath,
+            "dataset": self.ds.directory,
         }
         return info_dict
 
@@ -1711,7 +1702,7 @@ class FisheyeCamera(Camera):
         fields = dd._determine_fields(fields)
         self.fields = fields
         if log_fields is None:
-            log_fields = [self.ds._get_field_info(*f).take_log for f in fields]
+            log_fields = [self.ds._get_field_info(f).take_log for f in fields]
         self.log_fields = log_fields
         self.sub_samples = sub_samples
         if volume is None:
@@ -1723,19 +1714,19 @@ class FisheyeCamera(Camera):
         return {}
 
     def new_image(self):
-        image = np.zeros((self.resolution ** 2, 1, 4), dtype="float64", order="C")
+        image = np.zeros((self.resolution**2, 1, 4), dtype="float64", order="C")
         return image
 
     def get_sampler_args(self, image):
         vp = arr_fisheye_vectors(self.resolution, self.fov)
-        vp.shape = (self.resolution ** 2, 1, 3)
+        vp.shape = (self.resolution**2, 1, 3)
         vp2 = vp.copy()
         for i in range(3):
             vp[:, :, i] = (vp2 * self.rotation_matrix[:, i]).sum(axis=2)
         del vp2
         vp *= self.radius
         uv = np.ones(3, dtype="float64")
-        positions = np.ones((self.resolution ** 2, 1, 3), dtype="float64") * self.center
+        positions = np.ones((self.resolution**2, 1, 3), dtype="float64") * self.center
 
         args = (
             positions,
@@ -1808,7 +1799,6 @@ class MosaicCamera(Camera):
         preload=True,
         use_light=False,
     ):
-
         ParallelAnalysisInterface.__init__(self)
 
         self.procs_per_wg = procs_per_wg
@@ -1929,7 +1919,6 @@ class MosaicCamera(Camera):
         self.width = owidth
 
     def snapshot(self, fn=None, clip_ratio=None, double_check=False, num_threads=0):
-
         my_storage = {}
         offx, offy = np.meshgrid(range(self.nimx), range(self.nimy))
         offxy = zip(offx.ravel(), offy.ravel())
@@ -2047,7 +2036,6 @@ class ProjectionCamera(Camera):
         interpolated=False,
         method="integrate",
     ):
-
         if not interpolated:
             volume = 1
 
@@ -2065,9 +2053,9 @@ class ProjectionCamera(Camera):
             self.weightfield = ("index", "temp_weightfield_%u" % (id(self),))
 
             def _make_wf(f, w):
-                def temp_weightfield(a, b):
-                    tr = b[f].astype("float64") * b[w]
-                    return b.apply_units(tr, a.units)
+                def temp_weightfield(field, data):
+                    tr = data[f].astype("float64") * data[w]
+                    return data.apply_units(tr, field.units)
 
                 return temp_weightfield
 
@@ -2126,7 +2114,7 @@ class ProjectionCamera(Camera):
 
     def get_sampler_args(self, image):
         rotp = np.concatenate(
-            [self.orienter.inv_mat.ravel("F"), self.back_center.ravel()]
+            [self.orienter.inv_mat.ravel("F"), self.back_center.ravel().ndview]
         )
         args = (
             np.atleast_3d(rotp),
@@ -2152,7 +2140,7 @@ class ProjectionCamera(Camera):
         ds = self.ds
         dd = ds.all_data()
         field = dd._determine_fields([self.field])[0]
-        finfo = ds._get_field_info(*field)
+        finfo = ds._get_field_info(field)
         dl = 1.0
         if self.method == "integrate":
             if self.weight is None:
@@ -2190,7 +2178,7 @@ class ProjectionCamera(Camera):
         # Now we have a bounding box.
         data_source = ds.region(self.center, mi, ma)
 
-        for (grid, mask) in data_source.blocks:
+        for grid, mask in data_source.blocks:
             data = [(grid[field] * mask).astype("float64") for field in fields]
             pg = PartitionedGrid(
                 grid.id,
@@ -2209,7 +2197,7 @@ class ProjectionCamera(Camera):
     def save_image(self, image, fn=None, clip_ratio=None):
         dd = self.ds.all_data()
         field = dd._determine_fields([self.field])[0]
-        finfo = self.ds._get_field_info(*field)
+        finfo = self.ds._get_field_info(field)
         if finfo.take_log:
             im = np.log10(image)
         else:
@@ -2221,7 +2209,6 @@ class ProjectionCamera(Camera):
                 write_image(im, fn)
 
     def snapshot(self, fn=None, clip_ratio=None, double_check=False, num_threads=0):
-
         if num_threads is None:
             num_threads = get_num_threads()
 
@@ -2401,7 +2388,6 @@ class StereoSphericalCamera(Camera):
         num_threads=0,
         transparent=False,
     ):
-
         if num_threads is None:
             num_threads = get_num_threads()
 

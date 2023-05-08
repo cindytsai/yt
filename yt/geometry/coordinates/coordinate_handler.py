@@ -1,10 +1,13 @@
 import abc
 import weakref
+from functools import cached_property
 from numbers import Number
+from typing import Optional, Tuple
 
 import numpy as np
 
-from yt.funcs import fix_unitary, is_sequence, validate_width_tuple
+from yt._typing import AxisOrder
+from yt.funcs import fix_unitary, is_sequence, parse_center_array, validate_width_tuple
 from yt.units.yt_array import YTArray, YTQuantity
 from yt.utilities.exceptions import YTCoordinateNotImplemented, YTInvalidWidthError
 
@@ -31,6 +34,71 @@ def _get_vert_fields(axi, units="code_length"):
         return rv
 
     return _vert
+
+
+def _setup_dummy_cartesian_coords_and_widths(registry, axes: Tuple[str]):
+    for ax in axes:
+        registry.add_field(
+            ("index", f"d{ax}"), sampling_type="cell", function=_unknown_coord
+        )
+        registry.add_field(("index", ax), sampling_type="cell", function=_unknown_coord)
+
+
+def _setup_polar_coordinates(registry, axis_id):
+    f1, f2 = _get_coord_fields(axis_id["r"])
+    registry.add_field(
+        ("index", "dr"),
+        sampling_type="cell",
+        function=f1,
+        display_field=False,
+        units="code_length",
+    )
+
+    registry.add_field(
+        ("index", "r"),
+        sampling_type="cell",
+        function=f2,
+        display_field=False,
+        units="code_length",
+    )
+
+    f1, f2 = _get_coord_fields(axis_id["theta"], "dimensionless")
+    registry.add_field(
+        ("index", "dtheta"),
+        sampling_type="cell",
+        function=f1,
+        display_field=False,
+        units="dimensionless",
+    )
+
+    registry.add_field(
+        ("index", "theta"),
+        sampling_type="cell",
+        function=f2,
+        display_field=False,
+        units="dimensionless",
+    )
+
+    def _path_r(field, data):
+        return data["index", "dr"]
+
+    registry.add_field(
+        ("index", "path_element_r"),
+        sampling_type="cell",
+        function=_path_r,
+        units="code_length",
+    )
+
+    def _path_theta(field, data):
+        # Note: this already assumes cell-centered
+        return data["index", "r"] * data["index", "dtheta"]
+
+    registry.add_field(
+        ("index", "path_element_theta"),
+        sampling_type="cell",
+        function=_path_theta,
+        units="code_length",
+    )
 
 
 def validate_sequence_width(width, ds, unit=None):
@@ -63,11 +131,15 @@ def validate_sequence_width(width, ds, unit=None):
 
 
 class CoordinateHandler(abc.ABC):
-    name = None
+    name: str
+    _default_axis_order: AxisOrder
 
-    def __init__(self, ds, ordering):
+    def __init__(self, ds, ordering: Optional[AxisOrder] = None):
         self.ds = weakref.proxy(ds)
-        self.axis_order = ordering
+        if ordering is not None:
+            self.axis_order = ordering
+        else:
+            self.axis_order = self._default_axis_order
 
     @abc.abstractmethod
     def setup_fields(self):
@@ -113,98 +185,57 @@ class CoordinateHandler(abc.ABC):
     def convert_from_spherical(self, coord):
         pass
 
-    _data_projection = None
-
-    @property
+    @cached_property
     def data_projection(self):
-        if self._data_projection is not None:
-            return self._data_projection
-        dpj = {}
-        for ax in self.axis_order:
-            dpj[ax] = None
-        self._data_projection = dpj
-        return dpj
+        return {ax: None for ax in self.axis_order}
 
-    _data_transform = None
-
-    @property
+    @cached_property
     def data_transform(self):
-        if self._data_transform is not None:
-            return self._data_transform
-        dtx = {}
-        for ax in self.axis_order:
-            dtx[ax] = None
-        self._data_transform = dtx
-        return dtx
+        return {ax: None for ax in self.axis_order}
 
-    _axis_name = None
-
-    @property
+    @cached_property
     def axis_name(self):
-        if self._axis_name is not None:
-            return self._axis_name
         an = {}
         for axi, ax in enumerate(self.axis_order):
             an[axi] = ax
             an[ax] = ax
             an[ax.capitalize()] = ax
-        self._axis_name = an
         return an
 
-    _axis_id = None
-
-    @property
+    @cached_property
     def axis_id(self):
-        if self._axis_id is not None:
-            return self._axis_id
         ai = {}
         for axi, ax in enumerate(self.axis_order):
             ai[ax] = ai[axi] = axi
-        self._axis_id = ai
         return ai
-
-    _image_axis_name = None
 
     @property
     def image_axis_name(self):
-        # Default
-        if self._image_axis_name is not None:
-            return self._image_axis_name
-        self._image_axis_name = rv = {}
+        rv = {}
         for i in range(3):
             rv[i] = (self.axis_name[self.x_axis[i]], self.axis_name[self.y_axis[i]])
             rv[self.axis_name[i]] = rv[i]
             rv[self.axis_name[i].capitalize()] = rv[i]
         return rv
 
-    _x_axis = None
-
-    @property
+    @cached_property
     def x_axis(self):
-        if self._x_axis is not None:
-            return self._x_axis
         ai = self.axis_id
         xa = {}
         for a1, a2 in self._x_pairs:
             xa[a1] = xa[ai[a1]] = ai[a2]
-        self._x_axis = xa
         return xa
 
-    _y_axis = None
-
-    @property
+    @cached_property
     def y_axis(self):
-        if self._y_axis is not None:
-            return self._y_axis
         ai = self.axis_id
         ya = {}
         for a1, a2 in self._y_pairs:
             ya[a1] = ya[ai[a1]] = ai[a2]
-        self._y_axis = ya
         return ya
 
     @property
-    @abc.abstractproperty
+    @abc.abstractmethod
     def period(self):
         pass
 
@@ -254,45 +285,10 @@ class CoordinateHandler(abc.ABC):
         return width
 
     def sanitize_center(self, center, axis):
-        if isinstance(center, str):
-            if center.lower() == "m" or center.lower() == "max":
-                v, center = self.ds.find_max(("gas", "density"))
-                center = self.ds.arr(center, "code_length")
-            elif center.lower() == "c" or center.lower() == "center":
-                # domain_left_edge and domain_right_edge might not be
-                # initialized until we create the index, so create it
-                self.ds.index
-                center = (self.ds.domain_left_edge + self.ds.domain_right_edge) / 2
-            else:
-                raise RuntimeError(f'center keyword "{center}" not recognized')
-        elif isinstance(center, YTArray):
-            return self.ds.arr(center), self.convert_to_cartesian(center)
-        elif is_sequence(center):
-            if isinstance(center[0], str) and isinstance(center[1], str):
-                if center[0].lower() == "min":
-                    v, center = self.ds.find_min(center[1])
-                elif center[0].lower() == "max":
-                    v, center = self.ds.find_max(center[1])
-                else:
-                    raise RuntimeError(f'center keyword "{center}" not recognized')
-                center = self.ds.arr(center, "code_length")
-            elif is_sequence(center[0]) and isinstance(center[1], str):
-                center = self.ds.arr(center[0], center[1])
-            else:
-                center = self.ds.arr(center, "code_length")
-        else:
-            raise RuntimeError(f'center keyword "{center}" not recognized')
+        center = parse_center_array(center, ds=self.ds, axis=axis)
         # This has to return both a center and a display_center
         display_center = self.convert_to_cartesian(center)
         return center, display_center
-
-    def sanitize_buffer_fill_values(self, buff):
-        """Replace nans with +inf in buff, if all valid values are positive"""
-        # In buffer with only positive values, maplotlib will raise a warning
-        # if nan is used as a filler, while it tolerates np.inf just fine
-        minval = buff[~np.isnan(buff)].min()
-        if minval >= 0:
-            buff[np.isnan(buff)] = np.inf
 
 
 def cartesian_to_cylindrical(coord, center=(0, 0, 0)):
@@ -315,3 +311,51 @@ def cylindrical_to_cartesian(coord, center=(0, 0, 0)):
     c2[..., 1] = np.sin(coord[..., 0]) * coord[..., 1] + center[1]
     c2[..., 2] = coord[..., 2]
     return c2
+
+
+def _get_polar_bounds(self: CoordinateHandler, axes: Tuple[str, str]):
+    # a small helper function that is needed by two unrelated classes
+    ri = self.axis_id[axes[0]]
+    pi = self.axis_id[axes[1]]
+    rmin = self.ds.domain_left_edge[ri]
+    rmax = self.ds.domain_right_edge[ri]
+    phimin = self.ds.domain_left_edge[pi]
+    phimax = self.ds.domain_right_edge[pi]
+    corners = [
+        (rmin, phimin),
+        (rmin, phimax),
+        (rmax, phimin),
+        (rmax, phimax),
+    ]
+
+    def to_polar_plane(r, phi):
+        x = r * np.cos(phi)
+        y = r * np.sin(phi)
+        return x, y
+
+    conic_corner_coords = [to_polar_plane(*corner) for corner in corners]
+
+    phimin = phimin.d
+    phimax = phimax.d
+
+    if phimin <= np.pi <= phimax:
+        xxmin = -rmax
+    else:
+        xxmin = min(xx for xx, yy in conic_corner_coords)
+
+    if phimin <= 0 <= phimax:
+        xxmax = rmax
+    else:
+        xxmax = max(xx for xx, yy in conic_corner_coords)
+
+    if phimin <= 3 * np.pi / 2 <= phimax:
+        yymin = -rmax
+    else:
+        yymin = min(yy for xx, yy in conic_corner_coords)
+
+    if phimin <= np.pi / 2 <= phimax:
+        yymax = rmax
+    else:
+        yymax = max(yy for xx, yy in conic_corner_coords)
+
+    return xxmin, xxmax, yymin, yymax

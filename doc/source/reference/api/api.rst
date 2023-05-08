@@ -15,6 +15,7 @@ SlicePlot and ProjectionPlot
    ~yt.visualization.plot_window.AxisAlignedSlicePlot
    ~yt.visualization.plot_window.OffAxisSlicePlot
    ~yt.visualization.plot_window.ProjectionPlot
+   ~yt.visualization.plot_window.AxisAlignedProjectionPlot
    ~yt.visualization.plot_window.OffAxisProjectionPlot
    ~yt.visualization.plot_window.WindowPlotMPL
    ~yt.visualization.plot_window.PlotWindow
@@ -229,6 +230,17 @@ AMReX/Boxlib
    ~yt.frontends.boxlib.io.IOHandlerBoxlib
    ~yt.frontends.boxlib.io.IOHandlerOrion
 
+CfRadial
+^^^^^^^^
+
+.. autosummary::
+
+   ~yt.frontends.cf_radial.data_structures.CFRadialGrid
+   ~yt.frontends.cf_radial.data_structures.CFRadialHierarchy
+   ~yt.frontends.cf_radial.data_structures.CFRadialDataset
+   ~yt.frontends.cf_radial.fields.CFRadialFieldInfo
+   ~yt.frontends.cf_radial.io.CFRadialIOHandler
+
 Chombo
 ^^^^^^
 
@@ -442,7 +454,6 @@ Loading Data
 .. autosummary::
 
    ~yt.loaders.load
-   ~yt.loaders.simulation
    ~yt.loaders.load_uniform_grid
    ~yt.loaders.load_amr_grids
    ~yt.loaders.load_particles
@@ -523,7 +534,6 @@ Field Functions
    ~yt.data_objects.static_output.Dataset.add_field
    ~yt.data_objects.static_output.Dataset.add_deposited_particle_field
    ~yt.data_objects.static_output.Dataset.add_mesh_sampling_particle_field
-   ~yt.data_objects.static_output.Dataset.add_smoothed_particle_field
    ~yt.data_objects.static_output.Dataset.add_gradient_fields
    ~yt.frontends.stream.data_structures.StreamParticlesDataset.add_sph_fields
 
@@ -637,7 +647,6 @@ particularly with complicated layouts.
    ~yt.visualization.eps_writer.single_plot
    ~yt.visualization.eps_writer.multiplot
    ~yt.visualization.eps_writer.multiplot_yt
-   ~yt.visualization.eps_writer.return_cmap
    ~yt.visualization.eps_writer.return_colormap
 
 .. _derived-quantities-api:
@@ -663,7 +672,6 @@ See :ref:`derived-quantities`.
    ~yt.data_objects.derived_quantities.TotalMass
    ~yt.data_objects.derived_quantities.TotalQuantity
    ~yt.data_objects.derived_quantities.WeightedAverageQuantity
-   ~yt.data_objects.derived_quantities.WeightedVariance
 
 .. _callback-api:
 
@@ -675,7 +683,6 @@ See also :ref:`callbacks`.
 
 .. autosummary::
 
-   ~yt.visualization.plot_window.PWViewerMPL.annotate_clear
    ~yt.visualization.plot_window.PWViewerMPL.clear_annotations
    ~yt.visualization.plot_modifications.ArrowCallback
    ~yt.visualization.plot_modifications.CellEdgesCallback
@@ -683,7 +690,6 @@ See also :ref:`callbacks`.
    ~yt.visualization.plot_modifications.ContourCallback
    ~yt.visualization.plot_modifications.CuttingQuiverCallback
    ~yt.visualization.plot_modifications.GridBoundaryCallback
-   ~yt.visualization.plot_modifications.HaloCatalogCallback
    ~yt.visualization.plot_modifications.ImageLineCallback
    ~yt.visualization.plot_modifications.LinePlotCallback
    ~yt.visualization.plot_modifications.MagFieldCallback
@@ -709,7 +715,6 @@ See also :ref:`colormaps`.
 
 .. autosummary::
 
-   ~yt.visualization.color_maps.add_cmap
    ~yt.visualization.color_maps.add_colormap
    ~yt.visualization.color_maps.make_colormap
    ~yt.visualization.color_maps.show_colormaps

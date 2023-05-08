@@ -3,6 +3,7 @@ import shutil
 import tempfile
 
 import numpy as np
+from numpy.testing import assert_array_equal, assert_equal
 
 from yt.data_objects.api import create_profile
 from yt.frontends.ytdata.api import (
@@ -14,7 +15,7 @@ from yt.frontends.ytdata.api import (
     save_as_dataset,
 )
 from yt.loaders import load
-from yt.testing import assert_allclose_units, assert_array_equal, assert_equal
+from yt.testing import assert_allclose_units
 from yt.units.yt_array import YTArray, YTQuantity
 from yt.utilities.answer_testing.framework import (
     AnswerTestingTest,
@@ -32,6 +33,10 @@ def make_tempdir():
 
 
 def compare_unit_attributes(ds1, ds2):
+    r"""
+    Checks to make sure that the length, mass, time, velocity, and
+    magnetic units are the same for two different dataset objects.
+    """
     attrs = ("length_unit", "mass_unit", "time_unit", "velocity_unit", "magnetic_unit")
     for attr in attrs:
         u1 = getattr(ds1, attr, None)

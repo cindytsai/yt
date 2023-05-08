@@ -121,7 +121,7 @@ class ExodusIIDataset(Dataset):
         >>> ds = yt.load(
         ...     "MOOSE_sample_data/mps_out.e",
         ...     step=10,
-        ...     displacements={"connect2": (1.0, [0.0, 0.0, 0.0])},
+        ...     displacements={"connect2": (5.0, [0.0, 0.0, 0.0])},
         ... )
 
         This will load the Dataset at index 10, scaling the displacements for
@@ -139,17 +139,22 @@ class ExodusIIDataset(Dataset):
         ... )
 
         """
-        self.parameter_filename = filename
-        self.fluid_types += self._get_fluid_types()
         self.step = step
         if displacements is None:
             self.displacements = {}
         else:
             self.displacements = displacements
-        super().__init__(filename, dataset_type, units_override=units_override)
-        self.index_filename = filename
         self.storage_filename = storage_filename
+
+        super().__init__(filename, dataset_type, units_override=units_override)
+
+        self.fluid_types += self._get_fluid_types()
         self.default_field = [f for f in self.field_list if f[0] == "connect1"][-1]
+
+    @property
+    def index_filename(self):
+        # historic alias
+        return self.filename
 
     def _set_code_unit_attributes(self):
         # This is where quantities are created that represent the various
@@ -171,7 +176,6 @@ class ExodusIIDataset(Dataset):
             self._read_glo_var()
             self.dimensionality = ds.variables["coor_names"].shape[0]
             self.parameters["info_records"] = self._load_info_records()
-            self.unique_identifier = self._get_unique_identifier()
             self.num_steps = len(ds.variables["time_whole"])
             self.current_time = self._get_current_time()
             self.parameters["num_meshes"] = ds.variables["eb_status"].shape[0]
@@ -228,9 +232,6 @@ class ExodusIIDataset(Dataset):
             except (KeyError, TypeError):
                 mylog.warning("No info_records found")
                 return []
-
-    def _get_unique_identifier(self):
-        return self.parameter_filename
 
     def _get_current_time(self):
         with self._handle.open_ds() as ds:
@@ -317,13 +318,10 @@ class ExodusIIDataset(Dataset):
             return coords
 
     def _apply_displacement(self, coords, mesh_id):
-
         mesh_name = "connect%d" % (mesh_id + 1)
+        new_coords = coords.copy()
         if mesh_name not in self.displacements:
-            new_coords = coords.copy()
             return new_coords
-
-        new_coords = np.zeros_like(coords)
         fac = self.displacements[mesh_name][0]
         offset = self.displacements[mesh_name][1]
 
