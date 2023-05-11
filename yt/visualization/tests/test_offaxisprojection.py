@@ -3,9 +3,12 @@ import shutil
 import tempfile
 import unittest
 
+import numpy as np
+from numpy.testing import assert_equal
+
 from yt.testing import (
-    assert_equal,
     assert_fname,
+    assert_rel_equal,
     expand_keywords,
     fake_octree_ds,
     fake_random_ds,
@@ -60,7 +63,7 @@ class TestOffAxisProjection(unittest.TestCase):
         wp_kwargs["take_log"] = (True, False)
         wp_kwargs["figsize"] = ((8, 6), [1, 1])
         wp_kwargs["dpi"] = (100, 50)
-        wp_kwargs["cmap_name"] = ("arbre", "kelp")
+        wp_kwargs["cmap_name"] = ("cmyt.arbre", "cmyt.kelp")
         wp_kwargs_list = expand_keywords(wp_kwargs)
 
         # test all off_axis_projection kwargs and write_projection kwargs
@@ -98,5 +101,41 @@ def test_field_cut_off_axis_octree():
         (p3.frb[("gas", "density")] == p4.frb[("gas", "density")]).all(), False
     )
     p4rho = p4.frb[("gas", "density")]
-    assert_equal(p4rho.min() == 0.0, True)  # Lots of zeros
-    assert_equal(p4rho[p4rho > 0.0].min() >= 0.5, True)
+    assert_equal(np.nanmin(p4rho[p4rho > 0.0]) >= 0.5, True)
+
+
+def test_offaxis_moment():
+    ds = fake_random_ds(64)
+
+    def _vlos_sq(field, data):
+        return data["gas", "velocity_los"] ** 2
+
+    ds.add_field(
+        ("gas", "velocity_los_squared"),
+        _vlos_sq,
+        sampling_type="local",
+        units="cm**2/s**2",
+    )
+    p1 = OffAxisProjectionPlot(
+        ds,
+        [1, 1, 1],
+        [("gas", "velocity_los"), ("gas", "velocity_los_squared")],
+        weight_field=("gas", "density"),
+        moment=1,
+        buff_size=(400, 400),
+    )
+    p2 = OffAxisProjectionPlot(
+        ds,
+        [1, 1, 1],
+        ("gas", "velocity_los"),
+        weight_field=("gas", "density"),
+        moment=2,
+        buff_size=(400, 400),
+    )
+    assert_rel_equal(
+        np.sqrt(
+            p1.frb["gas", "velocity_los_squared"] - p1.frb["gas", "velocity_los"] ** 2
+        ),
+        p2.frb["gas", "velocity_los"],
+        10,
+    )

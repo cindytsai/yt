@@ -1,10 +1,14 @@
+import abc
 import itertools
+import sys
 import uuid
 from collections import defaultdict
 from contextlib import contextmanager
+from typing import Tuple
 
 import numpy as np
 from more_itertools import always_iterable
+from unyt import unyt_array
 from unyt.exceptions import UnitConversionError, UnitParseError
 
 import yt.geometry
@@ -13,8 +17,9 @@ from yt.data_objects.derived_quantities import DerivedQuantityCollection
 from yt.data_objects.field_data import YTFieldData
 from yt.fields.field_exceptions import NeedsGridType
 from yt.funcs import fix_axis, is_sequence, iter_fields, validate_width_tuple
+from yt.geometry.api import Geometry
 from yt.geometry.selection_routines import compose_selector
-from yt.units import YTArray, dimensions as ytdims
+from yt.units import YTArray
 from yt.utilities.exceptions import (
     GenerationInProgress,
     YTBooleanObjectError,
@@ -30,14 +35,19 @@ from yt.utilities.parallel_tools.parallel_analysis_interface import (
     ParallelAnalysisInterface,
 )
 
+if sys.version_info >= (3, 11):
+    from typing import assert_never
+else:
+    from typing_extensions import assert_never
 
-class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
+
+class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface, abc.ABC):
     _locked = False
     _sort_by = None
     _selector = None
     _current_chunk = None
     _data_source = None
-    _dimensionality = None
+    _dimensionality: int
     _max_level = None
     _min_level = None
     _derived_quantity_chunking = "io"
@@ -106,7 +116,7 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
             if inspected >= len(fields_to_get):
                 break
             inspected += 1
-            fi = self.ds._get_field_info(*field)
+            fi = self.ds._get_field_info(field)
             fd = self.ds.field_dependencies.get(
                 field, None
             ) or self.ds.field_dependencies.get(field[1], None)
@@ -164,7 +174,7 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
         for field in self._determine_fields(fields):
             if field in self.field_data:
                 continue
-            finfo = self.ds._get_field_info(*field)
+            finfo = self.ds._get_field_info(field)
             try:
                 finfo.check_available(self)
             except NeedsGridType:
@@ -182,13 +192,13 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
         # We now split up into readers for the types of fields
         fluids, particles = [], []
         finfos = {}
-        for ftype, fname in fields_to_get:
-            finfo = self.ds._get_field_info(ftype, fname)
-            finfos[ftype, fname] = finfo
+        for field_key in fields_to_get:
+            finfo = self.ds._get_field_info(field_key)
+            finfos[field_key] = finfo
             if finfo.sampling_type == "particle":
-                particles.append((ftype, fname))
-            elif (ftype, fname) not in fluids:
-                fluids.append((ftype, fname))
+                particles.append(field_key)
+            elif field_key not in fluids:
+                fluids.append(field_key)
         # The _read method will figure out which fields it needs to get from
         # disk, and return a dict of those fields along with the fields that
         # need to be generated.
@@ -227,7 +237,7 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
                 index += 1
                 if field in self.field_data:
                     continue
-                fi = self.ds._get_field_info(*field)
+                fi = self.ds._get_field_info(field)
                 try:
                     fd = self._generate_field(field)
                     if hasattr(fd, "units"):
@@ -241,22 +251,29 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
                         # field accesses
                         units = getattr(fd, "units", "")
                         if units == "":
-                            dimensions = ytdims.dimensionless
+                            sunits = ""
+                            dimensions = 1
                         else:
-                            dimensions = units.dimensions
-                            units = str(
+                            sunits = str(
                                 units.get_base_equivalent(self.ds.unit_system.name)
                             )
-                        if fi.dimensions != dimensions:
+                            dimensions = units.dimensions
+
+                        if fi.dimensions is None:
+                            mylog.warning(
+                                "Field %s was added without specifying units or dimensions, "
+                                "auto setting units to %s",
+                                fi.name,
+                                sunits,
+                            )
+                        elif fi.dimensions != dimensions:
                             raise YTDimensionalityError(fi.dimensions, dimensions)
-                        fi.units = units
+                        fi.units = sunits
+                        fi.dimensions = dimensions
                         self.field_data[field] = self.ds.arr(fd, units)
-                        mylog.warning(
-                            "Field %s was added without specifying units, "
-                            "assuming units are %s",
-                            fi.name,
-                            units,
-                        )
+                    if fi.output_units is None:
+                        fi.output_units = fi.units
+
                     try:
                         fd.convert_to_units(fi.units)
                     except AttributeError:
@@ -265,7 +282,7 @@ class YTSelectionContainer(YTDataContainer, ParallelAnalysisInterface):
                         # supposed to be unitless
                         fd = self.ds.arr(fd, "")
                         if fi.units != "":
-                            raise YTFieldUnitError(fi, fd.units)
+                            raise YTFieldUnitError(fi, fd.units) from None
                     except UnitConversionError as e:
                         raise YTFieldUnitError(fi, fd.units) from e
                     except UnitParseError as e:
@@ -535,6 +552,7 @@ class YTSelectionContainer2D(YTSelectionContainer):
             origin=origin,
             frb_generator=frb,
             plot_type=plot_type,
+            geometry=self.ds.geometry,
         )
         pw._setup_plots()
         return pw
@@ -581,8 +599,8 @@ class YTSelectionContainer2D(YTSelectionContainer):
         >>> write_image(np.log10(frb[("gas", "density")]), "density_100kpc.png")
         """
 
-        if (self.ds.geometry == "cylindrical" and self.axis == 1) or (
-            self.ds.geometry == "polar" and self.axis == 2
+        if (self.ds.geometry is Geometry.CYLINDRICAL and self.axis == 1) or (
+            self.ds.geometry is Geometry.POLAR and self.axis == 2
         ):
             if center is not None and center != (0.0, 0.0):
                 raise NotImplementedError(
@@ -1295,7 +1313,6 @@ class YTSelectionContainer3D(YTSelectionContainer):
     def _calculate_flux_in_grid(
         self, grid, mask, field, value, field_x, field_y, field_z, fluxing_field=None
     ):
-
         vc_fields = [field, field_x, field_y, field_z]
         if fluxing_field is not None:
             vc_fields.append(fluxing_field)
@@ -1370,18 +1387,29 @@ class YTSelectionContainer3D(YTSelectionContainer):
         """
         return self.ds.domain_left_edge, self.ds.domain_right_edge
 
-    def get_bbox(self):
+    def get_bbox(self) -> Tuple[unyt_array, unyt_array]:
         """
         Return the bounding box for this data container.
         """
-        if self.ds.geometry != "cartesian":
+        geometry: Geometry = self.ds.geometry
+        if geometry is Geometry.CARTESIAN:
+            le, re = self._get_bbox()
+            le.convert_to_units("code_length")
+            re.convert_to_units("code_length")
+            return le, re
+        elif (
+            geometry is Geometry.CYLINDRICAL
+            or geometry is Geometry.POLAR
+            or geometry is Geometry.SPHERICAL
+            or geometry is Geometry.GEOGRAPHIC
+            or geometry is Geometry.INTERNAL_GEOGRAPHIC
+            or geometry is Geometry.SPECTRAL_CUBE
+        ):
             raise NotImplementedError(
-                "get_bbox is currently only implemented for cartesian geometries!"
+                f"get_bbox is currently not implemented for {geometry=}!"
             )
-        le, re = self._get_bbox()
-        le.convert_to_units("code_length")
-        re.convert_to_units("code_length")
-        return le, re
+        else:
+            assert_never(geometry)
 
     def volume(self):
         """

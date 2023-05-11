@@ -32,7 +32,7 @@ While colormaps that employ a variety of colors often look attractive,
 they are not always the best choice to convey information to one's audience.
 There are numerous `articles <https://eagereyes.org/basics/rainbow-color-map>`_
 and
-`presentations <http://pong.tamu.edu/~kthyng/presentations/visualization.pdf>`_
+`presentations <https://speakerdeck.com/kthyng/perceptions-of-matplotlib-colormaps>`_
 that discuss how rainbow-based colormaps fail with regard to black-and-white
 reproductions, colorblind audience members, and confusing in color ordering.
 Depending on the application, the consensus seems to be that gradients between
@@ -122,9 +122,29 @@ or to output the original yt colormaps to an image file, try:
     import yt
 
     yt.show_colormaps(
-        subset=["algae", "kamae", "spectral", "arbre", "dusk", "octarine", "kelp"],
+        subset=[
+            "cmyt.algae",
+            "cmyt.arbre",
+            "cmyt.dusk",
+            "cmyt.kelp",
+            "cmyt.octarine",
+            "cmyt.pastel",
+        ],
         filename="yt_native.png",
     )
+
+.. note ::
+
+    Since yt 4.1, yt native colormaps are shipped as a separate package
+    `cmyt <https://pypi.org/project/cmyt/>`_ that can be used
+    outside yt itself.
+    Within `yt` functions, these colormaps can still be referenced without
+    the ``"cmyt."`` prefix. However, there is no guarantee that this will
+    work in upcoming version of matplotlib, so our recommentation is to keep
+    the prefix at all times to retain forward compatibility.
+    yt also retains compatibility with names these colormaps were formerly
+    known as (for instance ``cmyt.pastel`` used to be named ``kamae``).
+
 
 Applying a Colormap to your Rendering
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

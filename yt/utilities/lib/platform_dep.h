@@ -1,6 +1,7 @@
 #include <math.h>
 #ifdef MS_WIN32
 #include "malloc.h"
+#include <float.h>
 typedef int int32_t;
 typedef long long int64_t;
 /* Taken from http://siliconandlithium.blogspot.com/2014/05/msvc-c99-mathh-header.html */
@@ -24,9 +25,6 @@ static __inline double fmax(double x, double y){
 }
 static __inline double fmin(double x, double y){
     return (x < y) ? x : y;
-}
-static __inline double log2(double x) {
-    return log(x) * M_LOG2E;
 }
 
 /* adapted from http://www.johndcook.com/blog/cpp_erf/

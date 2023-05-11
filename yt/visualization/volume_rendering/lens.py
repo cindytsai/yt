@@ -1,7 +1,7 @@
 import numpy as np
 
 from yt.data_objects.image_array import ImageArray
-from yt.units.yt_array import uhstack, unorm, uvstack
+from yt.units._numpy_wrapper_functions import uhstack, unorm, uvstack
 from yt.utilities.lib.grid_traversal import arr_fisheye_vectors
 from yt.utilities.math_utils import get_rotation_matrix
 from yt.utilities.parallel_tools.parallel_analysis_interface import (
@@ -275,7 +275,7 @@ class PerspectiveLens(Lens):
                 # to other corner within the image, which produces visible
                 # domain boundary line
                 sight_length = np.sqrt(width[0] ** 2 + width[1] ** 2)
-                sight_length = sight_length / np.sqrt(1 - sight_angle_cos ** 2)
+                sight_length = sight_length / np.sqrt(1 - sight_angle_cos**2)
             pos1[i] = position + sight_length * sight_vector[i]
 
         dx = np.dot(pos1 - sight_center, camera.unit_vectors[0])
@@ -365,7 +365,6 @@ class StereoPerspectiveLens(Lens):
         return sampler_params
 
     def _get_positions_vectors(self, camera, disparity):
-
         single_resolution_x = int(np.floor(camera.resolution[0]) / 2)
 
         east_vec = camera.unit_vectors[0]
@@ -451,7 +450,6 @@ class StereoPerspectiveLens(Lens):
         return px, py, dz
 
     def _get_px_py_dz(self, camera, pos, res, disparity):
-
         res0_h = np.floor(res[0]) / 2
 
         east_vec = camera.unit_vectors[0]
@@ -488,7 +486,7 @@ class StereoPerspectiveLens(Lens):
                 # to other corner within the image, which produces visible
                 # domain boundary line
                 sight_length = np.sqrt(width[0] ** 2 + width[1] ** 2)
-                sight_length = sight_length / np.sqrt(1 - sight_angle_cos ** 2)
+                sight_length = sight_length / np.sqrt(1 - sight_angle_cos**2)
             pos1[i] = camera_position_shift + sight_length * sight_vector[i]
 
         dx = np.dot(pos1 - sight_center, east_vec_rot)
@@ -587,8 +585,8 @@ class FisheyeLens(Lens):
 
     def __repr__(self):
         disp = (
-            "<Lens Object>:\n\tlens_type:fisheye\n\tviewpoint:%s"
-            "\nt\tfov:%s\n\tradius:%s" % (self.viewpoint, self.fov, self.radius)
+            f"<Lens Object>:\n\tlens_type:fisheye\n\tviewpoint:{self.viewpoint}"
+            f"\nt\tfov:{self.fov}\n\tradius:{self.radius}"
         )
         return disp
 

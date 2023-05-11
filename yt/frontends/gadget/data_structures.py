@@ -1,12 +1,14 @@
 import os
-import stat
 import struct
+from typing import Type
 
 import numpy as np
 
 from yt.data_objects.static_output import ParticleFile
+from yt.fields.field_info_container import FieldInfoContainer
 from yt.frontends.sph.data_structures import SPHDataset, SPHParticleIndex
 from yt.funcs import only_on_root
+from yt.geometry.geometry_handler import Index
 from yt.utilities.chemical_formulas import compute_mu
 from yt.utilities.cosmology import Cosmology
 from yt.utilities.fortran_utils import read_record
@@ -100,9 +102,9 @@ class GadgetBinaryHeader:
         else:
             raise RuntimeError(
                 "Gadget snapshot file is likely corrupted! "
-                "The first 4 bytes represent %s (as little endian int32). "
-                "But we are looking for %s (for format 1) or 8 (for format 2)."
-                % (rhead, first_header_size)
+                f"The first 4 bytes represent {rhead} (as little endian int32). "
+                f"But we are looking for {first_header_size} (for format 1) "
+                "or 8 (for format 2)."
             )
 
     @property
@@ -154,7 +156,7 @@ class GadgetBinaryHeader:
         for filename in [self.filename, self.filename + ".0"]:
             if os.path.exists(filename):
                 return open(filename, "rb")
-        raise RuntimeError(f"Snapshot file {self.filename} does not exist.")
+        raise FileNotFoundError(f"Snapshot file {self.filename} does not exist.")
 
     def validate(self):
         """Validate data integrity."""
@@ -208,9 +210,9 @@ class GadgetBinaryIndex(SPHParticleIndex):
 
 
 class GadgetDataset(SPHDataset):
-    _index_class = GadgetBinaryIndex
-    _file_class = GadgetBinaryFile
-    _field_info_class = GadgetFieldInfo
+    _index_class: Type[Index] = GadgetBinaryIndex
+    _file_class: Type[ParticleFile] = GadgetBinaryFile
+    _field_info_class: Type[FieldInfoContainer] = GadgetFieldInfo
     _particle_mass_name = "Mass"
     _particle_coordinates_name = "Coordinates"
     _particle_velocity_name = "Velocities"
@@ -346,7 +348,6 @@ class GadgetDataset(SPHDataset):
         return self._header.value
 
     def _parse_parameter_file(self):
-
         hvals = self._get_hvals()
 
         self.dimensionality = 3
@@ -424,7 +425,15 @@ class GadgetDataset(SPHDataset):
         )
 
         if hvals["NumFiles"] > 1:
-            self.filename_template = f"{prefix}.%(num)s{self._suffix}"
+            for t in (
+                f"{prefix}.%(num)s{self._suffix}",
+                f"{prefix}.gad.%(num)s{self._suffix}",
+            ):
+                if os.path.isfile(t % {"num": 0}):
+                    self.filename_template = t
+                    break
+            else:
+                raise RuntimeError("Could not determine correct data file template.")
         else:
             self.filename_template = self.parameter_filename
 
@@ -559,10 +568,14 @@ class GadgetDataset(SPHDataset):
         return header.validate()
 
 
+class GadgetHDF5File(ParticleFile):
+    pass
+
+
 class GadgetHDF5Dataset(GadgetDataset):
-    _file_class = ParticleFile
+    _file_class = GadgetHDF5File
     _index_class = SPHParticleIndex
-    _field_info_class = GadgetFieldInfo
+    _field_info_class: Type[FieldInfoContainer] = GadgetFieldInfo
     _particle_mass_name = "Masses"
     _sph_ptypes = ("PartType0",)
     _suffix = ".hdf5"
@@ -626,11 +639,9 @@ class GadgetHDF5Dataset(GadgetDataset):
         return uvals
 
     def _set_owls_eagle(self):
-
         self.dimensionality = 3
         self.refine_by = 2
         self.parameters["HydroMethod"] = "sph"
-        self.unique_identifier = int(os.stat(self.parameter_filename)[stat.ST_CTIME])
 
         self._unit_base = self._get_uvals()
         self._unit_base["cmcm"] = 1.0 / self._unit_base["UnitLength_in_cm"]
@@ -665,7 +676,6 @@ class GadgetHDF5Dataset(GadgetDataset):
         self.file_count = self.parameters["NumFilesPerSnapshot"]
 
     def _set_owls_eagle_units(self):
-
         # note the contents of the HDF5 Units group are in _unit_base
         # note the velocity stored on disk is sqrt(a) dx/dt
         # physical velocity [cm/s] = a dx/dt

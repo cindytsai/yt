@@ -1,14 +1,14 @@
 import builtins
 import functools
 from collections import OrderedDict
-from typing import Optional
+from typing import List, Optional
 
 import numpy as np
 
 from yt.config import ytcfg
 from yt.funcs import mylog
-from yt.units.dimensions import length
-from yt.units.unit_registry import UnitRegistry
+from yt.units.dimensions import length  # type: ignore
+from yt.units.unit_registry import UnitRegistry  # type: ignore
 from yt.units.yt_array import YTArray, YTQuantity
 from yt.utilities.exceptions import YTNotInsideNotebook
 from yt.visualization._commons import get_canvas, validate_image_name
@@ -248,8 +248,7 @@ class Scene:
     def _get_render_sources(self):
         return [s for s in self.sources.values() if isinstance(s, RenderSource)]
 
-    def _setup_save(self, fname, render):
-
+    def _setup_save(self, fname, render) -> str:
         self._render_on_demand(render)
 
         rensources = self._get_render_sources()
@@ -349,8 +348,10 @@ class Scene:
             ax = fig.add_axes([0, 0, 1, 1])
             ax.set_axis_off()
             out = self._last_render
-            nz = out[:, :, :3][out[:, :, :3].nonzero()]
-            max_val = nz.mean() + sigma_clip * nz.std()
+            if sigma_clip is not None:
+                max_val = out._clipping_value(sigma_clip)
+            else:
+                max_val = out[:, :, :3].max()
             alpha = 255 * out[:, :, 3].astype("uint8")
             out = np.clip(out[:, :, :3] / max_val, 0.0, 1.0) * 255
             out = np.concatenate([out.astype("uint8"), alpha[..., None]], axis=-1)
@@ -363,10 +364,11 @@ class Scene:
         self,
         fname: Optional[str] = None,
         label_fmt: Optional[str] = None,
-        text_annotate: Optional[str] = None,
+        text_annotate=None,
         dpi: int = 100,
         sigma_clip: Optional[float] = None,
         render: bool = True,
+        tf_rect: Optional[List[float]] = None,
     ):
         r"""Saves the most recently rendered image of the Scene to disk,
         including an image of the transfer function and and user-defined
@@ -409,6 +411,12 @@ class Scene:
             If True, will render the scene before saving.
             If False, will use results of previous render if it exists.
             Default: True
+        tf_rect : sequence of floats, optional
+           A rectangle that defines the location of the transfer
+           function legend.  This is only used for the case where
+           there are multiple volume sources with associated transfer
+           functions.  tf_rect is of the form [x0, y0, width, height],
+           in figure coordinates.
 
         Returns
         -------
@@ -437,15 +445,41 @@ class Scene:
         """
         fname = self._setup_save(fname, render)
 
-        # which transfer function?
-        rs = self._get_render_sources()[0]
-        tf = rs.transfer_function
-        label = rs.data_source.ds._get_field_info(rs.field).get_label()
-
         ax = self._show_mpl(
             self._last_render.swapaxes(0, 1), sigma_clip=sigma_clip, dpi=dpi
         )
-        self._annotate(ax.axes, tf, rs, label=label, label_fmt=label_fmt)
+
+        # number of transfer functions?
+        num_trans_func = 0
+        for rs in self._get_render_sources():
+            if hasattr(rs, "transfer_function"):
+                num_trans_func += 1
+
+        # which transfer function?
+        if num_trans_func == 1:
+            rs = self._get_render_sources()[0]
+            tf = rs.transfer_function
+            label = rs.data_source.ds._get_field_info(rs.field).get_label()
+            self._annotate(ax.axes, tf, rs, label=label, label_fmt=label_fmt)
+        else:
+            # set the origin and width and height of the colorbar region
+            if tf_rect is None:
+                tf_rect = [0.80, 0.12, 0.12, 0.9]
+            cbx0, cby0, cbw, cbh = tf_rect
+
+            cbh_each = cbh / num_trans_func
+
+            for i, rs in enumerate(self._get_render_sources()):
+                ax = self._render_figure.add_axes(
+                    [cbx0, cby0 + i * cbh_each, 0.8 * cbw, 0.8 * cbh_each]
+                )
+                try:
+                    tf = rs.transfer_function
+                except AttributeError:
+                    pass
+                else:
+                    label = rs.data_source.ds._get_field_info(rs.field).get_label()
+                    self._annotate_multi(ax, tf, rs, label=label, label_fmt=label_fmt)
 
         # any text?
         if text_annotate is not None:
@@ -478,11 +512,9 @@ class Scene:
         ax.set_position([0, 0, 1, 1])
 
         if sigma_clip is not None:
-            nz = im[im > 0.0]
-            nim = im / (nz.mean() + sigma_clip * np.std(nz))
+            nim = im / im._clipping_value(sigma_clip)
             nim[nim > 1.0] = 1.0
             nim[nim < 0.0] = 0.0
-            del nz
         else:
             nim = im
         axim = ax.imshow(nim[:, :, :3] / nim[:, :, :3].max(), interpolation="bilinear")
@@ -503,6 +535,18 @@ class Scene:
             label_fmt=label_fmt,
             resolution=self.camera.resolution[0],
             log_scale=source.log_field,
+        )
+
+    def _annotate_multi(self, ax, tf, source, label, label_fmt):
+        ax.yaxis.set_label_position("right")
+        ax.yaxis.tick_right()
+        tf.vert_cbar(
+            ax=ax,
+            label=label,
+            label_fmt=label_fmt,
+            resolution=self.camera.resolution[0],
+            log_scale=source.log_field,
+            size=6,
         )
 
     def _validate(self):
@@ -620,60 +664,55 @@ class Scene:
         self._camera = Camera(self, data_source, lens_type, auto)
         return self.camera
 
-    def camera():
-        doc = r"""The camera property.
+    @property
+    def camera(self):
+        r"""The camera property.
 
         This is the default camera that will be used when rendering. Can be set
         manually, but Camera type will be checked for validity.
         """
+        return self._camera
 
-        def fget(self):
-            return self._camera
+    @camera.setter
+    def camera(self, value):
+        value.width = self.arr(value.width)
+        value.focus = self.arr(value.focus)
+        value.position = self.arr(value.position)
+        self._camera = value
 
-        def fset(self, value):
-            value.width = self.arr(value.width)
-            value.focus = self.arr(value.focus)
-            value.position = self.arr(value.position)
-            self._camera = value
+    @camera.deleter
+    def camera(self):
+        del self._camera
+        self._camera = None
 
-        def fdel(self):
-            del self._camera
-            self._camera = None
+    @property
+    def unit_registry(self):
+        ur = self._unit_registry
+        if ur is None:
+            ur = UnitRegistry()
+            # This will be updated when we add a volume source
+            ur.add("unitary", 1.0, length)
+        self._unit_registry = ur
+        return self._unit_registry
 
-        return locals()
+    @unit_registry.setter
+    def unit_registry(self, value):
+        self._unit_registry = value
+        if self.camera is not None:
+            self.camera.width = YTArray(
+                self.camera.width.in_units("unitary"), registry=value
+            )
+            self.camera.focus = YTArray(
+                self.camera.focus.in_units("unitary"), registry=value
+            )
+            self.camera.position = YTArray(
+                self.camera.position.in_units("unitary"), registry=value
+            )
 
-    camera = property(**camera())
-
-    def unit_registry():
-        def fget(self):
-            ur = self._unit_registry
-            if ur is None:
-                ur = UnitRegistry()
-                # This will be updated when we add a volume source
-                ur.add("unitary", 1.0, length)
-            self._unit_registry = ur
-            return self._unit_registry
-
-        def fset(self, value):
-            self._unit_registry = value
-            if self.camera is not None:
-                self.camera.width = YTArray(
-                    self.camera.width.in_units("unitary"), registry=value
-                )
-                self.camera.focus = YTArray(
-                    self.camera.focus.in_units("unitary"), registry=value
-                )
-                self.camera.position = YTArray(
-                    self.camera.position.in_units("unitary"), registry=value
-                )
-
-        def fdel(self):
-            del self._unit_registry
-            self._unit_registry = None
-
-        return locals()
-
-    unit_registry = property(**unit_registry())
+    @unit_registry.deleter
+    def unit_registry(self):
+        del self._unit_registry
+        self._unit_registry = None
 
     def set_camera(self, camera):
         r"""
@@ -867,9 +906,7 @@ class Scene:
 
         input_array : Iterable
             A tuple, list, or array to attach units to
-        units: String unit specification, unit symbol object, or astropy
-            units object
-        input_units : deprecated in favor of 'units'
+        units: String unit specification, unit symbol object, or astropy units object
             The units of the array. Powers must be specified using python syntax
             (cm**3, not cm^3).
         dtype : string or NumPy dtype object

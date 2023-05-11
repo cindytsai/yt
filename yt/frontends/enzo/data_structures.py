@@ -4,6 +4,7 @@ import string
 import time
 import weakref
 from collections import defaultdict
+from functools import cached_property
 
 import numpy as np
 from more_itertools import always_iterable
@@ -54,9 +55,6 @@ class EnzoGrid(AMRGridPatch):
             self.filename = os.path.join(self.index.directory, filename)
         return
 
-    def __repr__(self):
-        return "EnzoGrid_%04i" % (self.id)
-
     @property
     def Parent(self):
         if self._parent_id == -1:
@@ -87,7 +85,6 @@ class EnzoGridInMemory(EnzoGrid):
 
 
 class EnzoGridGZ(EnzoGrid):
-
     __slots__ = ()
 
     def retrieve_ghost_zones(self, n_zones, fields, all_levels=False, smoothed=False):
@@ -143,18 +140,12 @@ class EnzoGridGZ(EnzoGrid):
 
 
 class EnzoHierarchy(GridIndex):
-
     _strip_path = False
     grid = EnzoGrid
     _preload_implemented = True
 
     def __init__(self, ds, dataset_type):
-
         self.dataset_type = dataset_type
-        if ds.file_style is not None:
-            self._bn = ds.file_style
-        else:
-            self._bn = "%s.cpu%%04i"
         self.index_filename = os.path.abspath(f"{ds.parameter_filename}.hierarchy")
         if os.path.getsize(self.index_filename) == 0:
             raise OSError(-1, "File empty", self.index_filename)
@@ -540,17 +531,13 @@ class EnzoHierarchy(GridIndex):
 
 
 class EnzoHierarchyInMemory(EnzoHierarchy):
-
     grid = EnzoGridInMemory
-    _enzo = None
 
-    @property
+    @cached_property
     def enzo(self):
-        if self._enzo is None:
-            import enzo
+        import enzo
 
-            self._enzo = enzo
-        return self._enzo
+        return enzo
 
     def __init__(self, ds, dataset_type=None):
         self.dataset_type = dataset_type
@@ -684,7 +671,6 @@ class EnzoDataset(Dataset):
         self,
         filename,
         dataset_type=None,
-        file_style=None,
         parameter_override=None,
         conversion_override=None,
         storage_filename=None,
@@ -715,7 +701,6 @@ class EnzoDataset(Dataset):
             self,
             filename,
             dataset_type,
-            file_style=file_style,
             units_override=units_override,
             unit_system=unit_system,
             default_species_fields=default_species_fields,
@@ -763,6 +748,22 @@ class EnzoDataset(Dataset):
 
         return ""
 
+    @cached_property
+    def unique_identifier(self) -> str:
+        if "CurrentTimeIdentifier" in self.parameters:
+            # enzo2
+            return str(self.parameters["CurrentTimeIdentifier"])
+        elif "MetaDataDatasetUUID" in self.parameters:
+            # enzo2
+            return str(self.parameters["MetaDataDatasetUUID"])
+        elif "Internal" in self.parameters:
+            # enzo3
+            return str(
+                self.parameters["Internal"]["Provenance"]["CurrentTimeIdentidier"]
+            )
+        else:
+            return super().unique_identifier
+
     def _parse_parameter_file(self):
         """
         Parses the parameter file and establishes the various
@@ -797,7 +798,6 @@ class EnzoDataset(Dataset):
             sim["Domain"]["DomainRightEdge"], dtype="float64"
         )
         self.gamma = phys["Hydro"]["Gamma"]
-        self.unique_identifier = internal["Provenance"]["CurrentTimeIdentifier"]
         self.current_time = internal["InitialTime"]
         self.cosmological_simulation = phys["Cosmology"]["ComovingCoordinates"]
         if self.cosmological_simulation == 1:
@@ -866,10 +866,7 @@ class EnzoDataset(Dataset):
             always_iterable(self.parameters["LeftFaceBoundaryCondition"] == 3)
         )
         self.dimensionality = self.parameters["TopGridRank"]
-        if "MetaDataDatasetUUID" in self.parameters:
-            self.unique_identifier = self.parameters["MetaDataDatasetUUID"]
-        elif "CurrentTimeIdentifier" in self.parameters:
-            self.unique_identifier = self.parameters["CurrentTimeIdentifier"]
+
         if self.dimensionality > 1:
             self.domain_dimensions = self.parameters["TopGridDimensions"]
             if len(self.domain_dimensions) < 3:
@@ -960,12 +957,12 @@ class EnzoDataset(Dataset):
         else:
             if "LengthUnits" in self.parameters:
                 length_unit = self.parameters["LengthUnits"]
-                mass_unit = self.parameters["DensityUnits"] * length_unit ** 3
+                mass_unit = self.parameters["DensityUnits"] * length_unit**3
                 time_unit = self.parameters["TimeUnits"]
             elif "SimulationControl" in self.parameters:
                 units = self.parameters["SimulationControl"]["Units"]
                 length_unit = units["Length"]
-                mass_unit = units["Density"] * length_unit ** 3
+                mass_unit = units["Density"] * length_unit**3
                 time_unit = units["Time"]
             else:
                 mylog.warning("Setting 1.0 in code units to be 1.0 cm")
@@ -977,7 +974,7 @@ class EnzoDataset(Dataset):
             setdefaultattr(self, "time_unit", self.quan(time_unit, "s"))
             setdefaultattr(self, "velocity_unit", self.length_unit / self.time_unit)
 
-        density_unit = self.mass_unit / self.length_unit ** 3
+        density_unit = self.mass_unit / self.length_unit**3
         magnetic_unit = np.sqrt(4 * np.pi * density_unit) * self.velocity_unit
         magnetic_unit = np.float64(magnetic_unit.in_cgs())
         setdefaultattr(self, "magnetic_unit", self.quan(magnetic_unit, "gauss"))
@@ -1004,11 +1001,6 @@ class EnzoDatasetInMemory(EnzoDataset):
     _index_class = EnzoHierarchyInMemory
     _dataset_type = "enzo_inline"
 
-    def __new__(cls, *args, **kwargs):
-        obj = object.__new__(cls)
-        obj.__init__(*args, **kwargs)
-        return obj
-
     def __init__(self, parameter_override=None, conversion_override=None):
         self.fluid_types += ("enzo",)
         if parameter_override is None:
@@ -1022,7 +1014,9 @@ class EnzoDatasetInMemory(EnzoDataset):
 
     def _parse_parameter_file(self):
         enzo = self._obtain_enzo()
-        self.basename = "cycle%08i" % (enzo.yt_parameter_file["NumberOfPythonCalls"])
+        self._input_filename = "cycle%08i" % (
+            enzo.yt_parameter_file["NumberOfPythonCalls"]
+        )
         self.parameters["CurrentTimeIdentifier"] = time.time()
         self.parameters.update(enzo.yt_parameter_file)
         self.conversion_factors.update(enzo.conversion_factors)
@@ -1048,8 +1042,6 @@ class EnzoDatasetInMemory(EnzoDataset):
         self.dimensionality = self.parameters["TopGridRank"]
         self.domain_dimensions = self.parameters["TopGridDimensions"]
         self.current_time = self.parameters["InitialTime"]
-        if "CurrentTimeIdentifier" in self.parameters:
-            self.unique_identifier = self.parameters["CurrentTimeIdentifier"]
         if self.parameters["ComovingCoordinates"]:
             self.cosmological_simulation = 1
             self.current_redshift = self.parameters["CosmologyCurrentRedshift"]

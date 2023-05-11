@@ -4,6 +4,7 @@ import argparse
 import os
 import signal
 import sys
+from typing import List
 
 from yt.config import ytcfg
 from yt.funcs import (
@@ -16,6 +17,8 @@ from yt.funcs import (
 from yt.utilities import rpdb
 
 exe_name = os.path.basename(sys.executable)
+
+
 # At import time, we determined whether or not we're being run in parallel.
 def turn_on_parallelism():
     parallel_capable = False
@@ -135,7 +138,7 @@ parser.add_argument(
 if not hasattr(sys, "argv") or sys.argv is None:
     sys.argv = []
 
-unparsed_args = []
+unparsed_args: List[str] = []
 
 parallel_capable = False
 if not ytcfg.get("yt", "internals", "command_line"):

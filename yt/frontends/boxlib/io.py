@@ -17,7 +17,6 @@ def _remove_raw(all_fields, raw_fields):
 
 
 class IOHandlerBoxlib(BaseIOHandler):
-
     _dataset_type = "boxlib_native"
 
     def __init__(self, ds, *args, **kwargs):
@@ -69,7 +68,7 @@ class IOHandlerBoxlib(BaseIOHandler):
         offset_list = self.ds.index.raw_field_map[field_name][2]
 
         lev = grid.Level
-        filename = base_dir + "Level_%d/" % lev + fn_list[grid.id]
+        filename = os.path.join(base_dir, f"Level_{lev}", fn_list[grid.id])
         offset = offset_list[grid.id]
         box = box_list[grid.id]
 
@@ -79,7 +78,7 @@ class IOHandlerBoxlib(BaseIOHandler):
         with open(filename, "rb") as f:
             f.seek(offset)
             f.readline()  # always skip the first line
-            arr = np.fromfile(f, "float64", np.product(shape))
+            arr = np.fromfile(f, "float64", np.prod(shape))
             arr = arr.reshape(shape, order="F")
         return arr[
             tuple(
@@ -122,7 +121,10 @@ class IOHandlerBoxlib(BaseIOHandler):
         return data
 
     def _read_particle_coords(self, chunks, ptf):
-        yield from self._read_particle_fields(chunks, ptf, None)
+        yield from (
+            (ptype, xyz, 0.0)
+            for ptype, xyz in self._read_particle_fields(chunks, ptf, None)
+        )
 
     def _read_particle_fields(self, chunks, ptf, selector):
         for chunk in chunks:  # These should be organized by grid filename
@@ -142,15 +144,24 @@ class IOHandlerBoxlib(BaseIOHandler):
                         rdata = np.fromfile(
                             f, pheader.real_type, pheader.num_real * npart
                         )
-                        x = np.asarray(rdata[0 :: pheader.num_real], dtype=np.float64)
-                        y = np.asarray(rdata[1 :: pheader.num_real], dtype=np.float64)
-                        if g.ds.dimensionality == 2:
-                            z = np.ones_like(y)
-                            z *= 0.5 * (g.LeftEdge[2] + g.RightEdge[2])
-                        else:
-                            z = np.asarray(
-                                rdata[2 :: pheader.num_real], dtype=np.float64
-                            )
+
+                        # Allow reading particles in 1, 2, and 3 dimensions,
+                        # setting the appropriate default for unused dimensions.
+                        pos = []
+                        for idim in [1, 2, 3]:
+                            if g.ds.dimensionality >= idim:
+                                pos.append(
+                                    np.asarray(
+                                        rdata[idim - 1 :: pheader.num_real],
+                                        dtype=np.float64,
+                                    )
+                                )
+                            else:
+                                center = 0.5 * (
+                                    g.LeftEdge[idim - 1] + g.RightEdge[idim - 1]
+                                )
+                                pos.append(np.full(npart, center, dtype=np.float64))
+                        x, y, z = pos
 
                         if selector is None:
                             # This only ever happens if the call is made from
@@ -195,9 +206,9 @@ class IOHandlerOrion(IOHandlerBoxlib):
 
     @property
     def particle_filename(self):
-        fn = self.ds.output_dir + "/StarParticles"
+        fn = os.path.join(self.ds.output_dir, "StarParticles")
         if not os.path.exists(fn):
-            fn = self.ds.output_dir + "/SinkParticles"
+            fn = os.path.join(self.ds.output_dir, "SinkParticles")
         self._particle_filename = fn
         return self._particle_filename
 
@@ -205,7 +216,6 @@ class IOHandlerOrion(IOHandlerBoxlib):
 
     @property
     def particle_field_index(self):
-
         index = parse_orion_sinks(self.particle_filename)
 
         self._particle_field_index = index
@@ -216,7 +226,6 @@ class IOHandlerOrion(IOHandlerBoxlib):
         chunks = list(chunks)
 
         if isinstance(selector, GridSelector):
-
             if not (len(chunks) == len(chunks[0].objs) == 1):
                 raise RuntimeError
 

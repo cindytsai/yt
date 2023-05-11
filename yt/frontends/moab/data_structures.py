@@ -68,7 +68,6 @@ class MoabHex8Dataset(Dataset):
             unit_system=unit_system,
         )
         self.storage_filename = storage_filename
-        self.filename = filename
         self._handle = HDF5FileHandler(filename)
 
     def _set_code_unit_attributes(self):
@@ -87,7 +86,6 @@ class MoabHex8Dataset(Dataset):
         self.refine_by = 2
         self.dimensionality = len(self.domain_dimensions)
         self.current_time = 0.0
-        self.unique_identifier = self.parameter_filename
         self.cosmological_simulation = False
         self.num_ghost_zones = 0
         self.current_redshift = 0.0
@@ -169,7 +167,6 @@ class PyneMoabHex8Dataset(Dataset):
             unit_system=unit_system,
         )
         self.storage_filename = storage_filename
-        self.filename = filename
 
     def _set_code_unit_attributes(self):
         # Almost everything is regarded as dimensionless in MOAB, so these will
@@ -187,7 +184,6 @@ class PyneMoabHex8Dataset(Dataset):
         self.refine_by = 2
         self.dimensionality = len(self.domain_dimensions)
         self.current_time = 0.0
-        self.unique_identifier = self.parameter_filename
         self.cosmological_simulation = False
         self.num_ghost_zones = 0
         self.current_redshift = 0.0

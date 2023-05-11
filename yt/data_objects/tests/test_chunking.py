@@ -1,5 +1,7 @@
-from yt.testing import assert_equal, assert_true, fake_random_ds
-from yt.units.yt_array import uconcatenate
+from numpy.testing import assert_equal
+
+from yt.testing import assert_true, fake_random_ds
+from yt.units._numpy_wrapper_functions import uconcatenate
 
 
 def _get_dobjs(c):
@@ -48,11 +50,11 @@ def test_ds_hold():
         dd.ds.__hash__() == ds1.__hash__()
     )  # dd.ds is a weakref, so can't use "is"
     assert_true(dd.index is ds1.index)
-    assert_equal(dd[("index", "ones")].size, 64 ** 3)
+    assert_equal(dd[("index", "ones")].size, 64**3)
     with dd._ds_hold(ds2):
         assert_true(dd.ds.__hash__() == ds2.__hash__())
         assert_true(dd.index is ds2.index)
-        assert_equal(dd[("index", "ones")].size, 128 ** 3)
+        assert_equal(dd[("index", "ones")].size, 128**3)
     assert_true(dd.ds.__hash__() == ds1.__hash__())
     assert_true(dd.index is ds1.index)
-    assert_equal(dd[("index", "ones")].size, 64 ** 3)
+    assert_equal(dd[("index", "ones")].size, 64**3)

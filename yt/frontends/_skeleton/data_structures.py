@@ -20,9 +20,6 @@ class SkeletonGrid(AMRGridPatch):
         self.Children = []
         self.Level = level
 
-    def __repr__(self):
-        return "SkeletonGrid_%04i (%s)" % (self.id, self.ActiveDimensions)
-
 
 class SkeletonHierarchy(GridIndex):
     grid = SkeletonGrid
@@ -114,6 +111,10 @@ class SkeletonDataset(Dataset):
         # These can also be set:
         # self.velocity_unit = self.quan(1.0, "cm/s")
         # self.magnetic_unit = self.quan(1.0, "gauss")
+        #
+        # If your frontend uses SI EM units, set magnetic units like this
+        # instead:
+        # self.magnetic_unit = self.quan(1.0, "T")
 
         # this minimalistic implementation fills the requirements for
         # this frontend to run, change it to make it run _correctly_ !
@@ -146,12 +147,9 @@ class SkeletonDataset(Dataset):
         #   self.hubble_constant            <= float
 
         # optional (the following have default implementations)
-        #   self.unique_identifier      <= unique identifier for the dataset
-        #                                  being read (e.g., UUID or ST_CTIME) (int)
         #
-        #   self.geometry  <= a lower case string
-        #                     ("cartesian", "polar", "cylindrical"...)
-        #                     (defaults to 'cartesian')
+        #   self.geometry: any yt.geometry.api.Geometry enum member
+        #                  defaults to Geometry.CARTESIAN
 
         # this attribute is required.
         # Change this value to a constant 0 if time is not relevant to your dataset.

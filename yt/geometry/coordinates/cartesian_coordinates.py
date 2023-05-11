@@ -2,7 +2,8 @@ import numpy as np
 
 from yt.data_objects.index_subobjects.unstructured_mesh import SemiStructuredMesh
 from yt.funcs import mylog
-from yt.units.yt_array import YTArray, uconcatenate, uvstack
+from yt.units._numpy_wrapper_functions import uconcatenate, uvstack
+from yt.units.yt_array import YTArray
 from yt.utilities.lib.pixelization_routines import (
     interpolate_sph_grid_gather,
     normalization_2d_utility,
@@ -14,6 +15,7 @@ from yt.utilities.lib.pixelization_routines import (
     pixelize_sph_kernel_projection,
     pixelize_sph_kernel_slice,
 )
+from yt.utilities.math_utils import compute_stddev_image
 from yt.utilities.nodal_data_utils import get_nodal_data
 
 from .coordinate_handler import (
@@ -57,7 +59,7 @@ def _sample_ray(ray, npoints, field):
         # are two indices if the sampling point happens to fall exactly at
         # a cell boundary
         field_values[i] = ray_field[np.argmax(ray_contains)]
-    dr = np.sqrt((sample_dr ** 2).sum())
+    dr = np.sqrt((sample_dr**2).sum())
     x = np.arange(npoints) / (npoints - 1) * (dr * npoints)
     return x, field_values
 
@@ -88,9 +90,7 @@ def all_data(data, ptype, fields, kdtree=False):
 
 class CartesianCoordinateHandler(CoordinateHandler):
     name = "cartesian"
-
-    def __init__(self, ds, ordering=("x", "y", "z")):
-        super().__init__(ds, ordering)
+    _default_axis_order = ("x", "y", "z")
 
     def setup_fields(self, registry):
         for axi, ax in enumerate(self.axis_order):
@@ -128,6 +128,10 @@ class CartesianCoordinateHandler(CoordinateHandler):
                 units="code_length",
             )
 
+        self._register_volume(registry)
+        self._check_fields(registry)
+
+    def _register_volume(self, registry):
         def _cell_volume(field, data):
             rv = data["index", "dx"].copy(order="K")
             rv *= data["index", "dy"]
@@ -143,6 +147,7 @@ class CartesianCoordinateHandler(CoordinateHandler):
         )
         registry.alias(("index", "volume"), ("index", "cell_volume"))
 
+    def _check_fields(self, registry):
         registry.check_derived_fields(
             [
                 ("index", "dx"),
@@ -213,7 +218,7 @@ class CartesianCoordinateHandler(CoordinateHandler):
             # re-order the array and squeeze out the dummy dim
             return np.squeeze(np.transpose(img, (yax, xax, ax)))
 
-        elif self.axis_id.get(dimension, dimension) < 3:
+        elif self.axis_id.get(dimension, dimension) is not None:
             return self._ortho_pixelize(
                 data_source, field, bounds, size, antialias, dimension, periodic
             )
@@ -301,7 +306,7 @@ class CartesianCoordinateHandler(CoordinateHandler):
         if hasattr(period, "in_units"):
             period = period.in_units("code_length").d
 
-        buff = np.zeros((size[1], size[0]), dtype="f8")
+        buff = np.full((size[1], size[0]), np.nan, dtype="float64")
         particle_datasets = (ParticleDataset, StreamParticlesDataset)
         is_sph_field = finfo.is_sph_field
 
@@ -334,6 +339,7 @@ class CartesianCoordinateHandler(CoordinateHandler):
             bnds = data_source.ds.arr(bounds, "code_length").tolist()
             if isinstance(data_source, YTParticleProj):
                 weight = data_source.weight_field
+                moment = data_source.moment
                 le, re = data_source.data_source.get_bbox()
                 xa = self.x_axis[dim]
                 ya = self.y_axis[dim]
@@ -426,6 +432,26 @@ class CartesianCoordinateHandler(CoordinateHandler):
                             period=period,
                         )
                     normalization_2d_utility(buff, weight_buff)
+                    if moment == 2:
+                        buff2 = np.zeros(size, dtype="float64")
+                        for chunk in proj_reg.chunks([], "io"):
+                            data_source._initialize_projected_units([field], chunk)
+                            data_source._initialize_projected_units([weight], chunk)
+                            pixelize_sph_kernel_projection(
+                                buff2,
+                                chunk[ptype, px_name].to("code_length"),
+                                chunk[ptype, py_name].to("code_length"),
+                                chunk[ptype, "smoothing_length"].to("code_length"),
+                                chunk[ptype, "mass"].to("code_mass"),
+                                chunk[ptype, "density"].to("code_density"),
+                                chunk[field].in_units(ounits) ** 2,
+                                bnds,
+                                check_period=int(periodic),
+                                period=period,
+                                weight_field=chunk[weight].in_units(wounits),
+                            )
+                        normalization_2d_utility(buff2, weight_buff)
+                        buff = compute_stddev_image(buff2, buff)
             elif isinstance(data_source, YTSlice):
                 smoothing_style = getattr(self.ds, "sph_smoothing_style", "scatter")
                 normalize = getattr(self.ds, "use_sph_normalization", True)
@@ -550,7 +576,7 @@ class CartesianCoordinateHandler(CoordinateHandler):
         from yt.frontends.ytdata.data_structures import YTSpatialPlotDataset
 
         indices = np.argsort(data_source["pdx"])[::-1].astype(np.int_)
-        buff = np.zeros((size[1], size[0]), dtype="f8")
+        buff = np.full((size[1], size[0]), np.nan, dtype="float64")
         ftype = "index"
         if isinstance(data_source.ds, YTSpatialPlotDataset):
             ftype = "gas"

@@ -758,17 +758,17 @@ def ortho_find(vec1):
         x2 = 1.0
         y2 = 0.0
         z2 = -(x1 / z1)
-        norm2 = (1.0 + z2 ** 2.0) ** (0.5)
+        norm2 = (1.0 + z2**2.0) ** (0.5)
     elif y1 != 0:
         x2 = 0.0
         z2 = 1.0
         y2 = -(z1 / y1)
-        norm2 = (1.0 + y2 ** 2.0) ** (0.5)
+        norm2 = (1.0 + y2**2.0) ** (0.5)
     else:
         y2 = 1.0
         z2 = 0.0
         x2 = -(y1 / x1)
-        norm2 = (1.0 + z2 ** 2.0) ** (0.5)
+        norm2 = (1.0 + z2**2.0) ** (0.5)
     vec2 = np.array([x2, y2, z2])
     vec2 /= norm2
     vec3 = np.cross(vec1, vec2)
@@ -1187,19 +1187,19 @@ def get_rotation_matrix(theta, rot_vector):
     R = np.array(
         [
             [
-                cost + ux ** 2 * (1 - cost),
+                cost + ux**2 * (1 - cost),
                 ux * uy * (1 - cost) - uz * sint,
                 ux * uz * (1 - cost) + uy * sint,
             ],
             [
                 uy * ux * (1 - cost) + uz * sint,
-                cost + uy ** 2 * (1 - cost),
+                cost + uy**2 * (1 - cost),
                 uy * uz * (1 - cost) - ux * sint,
             ],
             [
                 uz * ux * (1 - cost) - uy * sint,
                 uz * uy * (1 - cost) + ux * sint,
-                cost + uz ** 2 * (1 - cost),
+                cost + uz**2 * (1 - cost),
             ],
         ]
     )
@@ -1240,17 +1240,17 @@ def quaternion_to_rotation_matrix(quaternion):
 
     R = np.empty((3, 3), dtype=np.float64)
 
-    R[0][0] = 1.0 - 2.0 * y ** 2 - 2.0 * z ** 2
+    R[0][0] = 1.0 - 2.0 * y**2 - 2.0 * z**2
     R[0][1] = 2.0 * x * y + 2.0 * w * z
     R[0][2] = 2.0 * x * z - 2.0 * w * y
 
     R[1][0] = 2.0 * x * y - 2.0 * w * z
-    R[1][1] = 1.0 - 2.0 * x ** 2 - 2.0 * z ** 2
+    R[1][1] = 1.0 - 2.0 * x**2 - 2.0 * z**2
     R[1][2] = 2.0 * y * z + 2.0 * w * x
 
     R[2][0] = 2.0 * x * z + 2.0 * w * y
     R[2][1] = 2.0 * y * z - 2.0 * w * x
-    R[2][2] = 1.0 - 2.0 * x ** 2 - 2.0 * y ** 2
+    R[2][2] = 1.0 - 2.0 * x**2 - 2.0 * y**2
 
     return R
 
@@ -1323,7 +1323,7 @@ def get_sph_r(coords):
     # The spherical coordinates radius is simply the magnitude of the
     # coordinate vector.
 
-    return np.sqrt(np.sum(coords ** 2, axis=0))
+    return np.sqrt(np.sum(coords**2, axis=0))
 
 
 def resize_vector(vector, vector_array):
@@ -1362,7 +1362,7 @@ def get_sph_theta(coords, normal):
     JdotCoords = np.sum(J * coords, axis=0)
 
     with np.errstate(invalid="ignore"):
-        ret = np.arccos(JdotCoords / np.sqrt(np.sum(coords ** 2, axis=0)))
+        ret = np.arccos(JdotCoords / np.sqrt(np.sum(coords**2, axis=0)))
 
     ret[np.isnan(ret)] = 0
 
@@ -1407,7 +1407,7 @@ def get_cyl_r(coords, normal):
     J = np.tile(res_normal, tile_shape)
 
     JcrossCoords = np.cross(J, coords, axisa=0, axisb=0, axisc=0)
-    return np.sqrt(np.sum(JcrossCoords ** 2, axis=0))
+    return np.sqrt(np.sum(JcrossCoords**2, axis=0))
 
 
 def get_cyl_z(coords, normal):
@@ -1541,3 +1541,43 @@ def get_sph_theta_component(vectors, theta, phi, normal):
     )
 
     return np.sum(vectors * thetahat, axis=0)
+
+
+def compute_stddev_image(buff2, buff):
+    """
+    This function computes the standard deviation of a weighted projection.
+    It defines the standard deviation as sigma^2 = <v^2>-<v>^2, where the
+    brackets indicate averages (with the weight) and v is the field in
+    question.
+
+    There is the possibility that if the projection at a particular location
+    is of a constant or a single cell/particle, then <v^2> = <v>^2 and instead
+    of getting zero one gets roundoff error that results in sigma^2 < 0,
+    which is unphysical.
+
+    We handle this here by performing the subtraction and checking that any
+    and all negative values of sigma^2 can be attributed to roundoff and
+    thus be safely set to zero. We error out if this is not the case. There
+    are ways of computing the standard deviation that are designed to avoid
+    this catastrophic cancellation, but this would require rather substantial
+    and invasive changes to the projection machinery so for the time being
+    it is avoided.
+
+    Parameters
+    ----------
+    buff2 : ImageArray
+        The image of the weighted averge of the field squared
+    buff : ImageArray
+        The image of the weighted averge of the field
+    """
+    buff1 = buff * buff
+    y = buff2 - buff1
+    close_negs = np.isclose(np.asarray(buff2), np.asarray(buff1))[y < 0.0]
+    if close_negs.all():
+        y[y < 0.0] = 0.0
+    else:
+        raise ValueError(
+            "Something went wrong, there are significant negative "
+            "variances in the standard deviation image!"
+        )
+    return np.sqrt(y)

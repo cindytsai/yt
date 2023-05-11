@@ -7,7 +7,9 @@ import numpy as np
 from yt.data_objects.index_subobjects.grid_patch import AMRGridPatch
 from yt.data_objects.index_subobjects.unstructured_mesh import SemiStructuredMesh
 from yt.data_objects.static_output import Dataset
+from yt.fields.magnetic_field import get_magnetic_normalization
 from yt.funcs import get_pbar, mylog
+from yt.geometry.api import Geometry
 from yt.geometry.grid_geometry_handler import GridIndex
 from yt.geometry.unstructured_mesh_handler import UnstructuredIndex
 from yt.utilities.chemical_formulas import compute_mu
@@ -74,7 +76,7 @@ class AthenaPPLogarithmicIndex(UnstructuredIndex):
         nb = np.array([nbx, nby, nbz], dtype="int64")
         self.mesh_factors = np.ones(3, dtype="int64") * ((nb > 1).astype("int") + 1)
 
-        block_grid = -np.ones((nbx, nby, nbz, nlevel), dtype=np.int)
+        block_grid = -np.ones((nbx, nby, nbz, nlevel), dtype="int64")
         block_grid[log_loc[:, 0], log_loc[:, 1], log_loc[:, 2], levels[:]] = np.arange(
             num_blocks
         )
@@ -159,12 +161,8 @@ class AthenaPPGrid(AMRGridPatch):
             self.dds[2] = 1.0
         self.field_data["dx"], self.field_data["dy"], self.field_data["dz"] = self.dds
 
-    def __repr__(self):
-        return "AthenaPPGrid_%04i (%s)" % (self.id, self.ActiveDimensions)
-
 
 class AthenaPPHierarchy(GridIndex):
-
     grid = AthenaPPGrid
     _dataset_type = "athena_pp"
     _data_file = None
@@ -241,6 +239,7 @@ class AthenaPPDataset(Dataset):
         units_override=None,
         unit_system="code",
         default_species_fields=None,
+        magnetic_normalization="gaussian",
     ):
         self.fluid_types += ("athena_pp",)
         if parameters is None:
@@ -258,6 +257,7 @@ class AthenaPPDataset(Dataset):
         else:
             self._index_class = AthenaPPHierarchy
             self.logarithmic = False
+        self._magnetic_factor = get_magnetic_normalization(magnetic_normalization)
         Dataset.__init__(
             self,
             filename,
@@ -266,11 +266,9 @@ class AthenaPPDataset(Dataset):
             unit_system=unit_system,
             default_species_fields=default_species_fields,
         )
-        self.filename = filename
         if storage_filename is None:
-            storage_filename = f"{filename.split('/')[-1]}.yt"
+            storage_filename = self.basename + ".yt"
         self.storage_filename = storage_filename
-        self.backup_filename = self.filename[:-4] + "_backup.gdf"
 
     def _set_code_unit_attributes(self):
         """
@@ -292,13 +290,14 @@ class AthenaPPDataset(Dataset):
             setattr(self, f"{unit}_unit", self.quan(1.0, cgs))
 
         self.magnetic_unit = np.sqrt(
-            4 * np.pi * self.mass_unit / (self.time_unit ** 2 * self.length_unit)
+            self._magnetic_factor
+            * self.mass_unit
+            / (self.time_unit**2 * self.length_unit)
         )
         self.magnetic_unit.convert_to_units("gauss")
         self.velocity_unit = self.length_unit / self.time_unit
 
     def _parse_parameter_file(self):
-
         xmin, xmax = self._handle.attrs["RootGridX1"][:2]
         ymin, ymax = self._handle.attrs["RootGridX2"][:2]
         zmin, zmax = self._handle.attrs["RootGridX3"][:2]
@@ -306,7 +305,9 @@ class AthenaPPDataset(Dataset):
         self.domain_left_edge = np.array([xmin, ymin, zmin], dtype="float64")
         self.domain_right_edge = np.array([xmax, ymax, zmax], dtype="float64")
 
-        self.geometry = geom_map[self._handle.attrs["Coordinates"].decode("utf-8")]
+        self.geometry = Geometry(
+            geom_map[self._handle.attrs["Coordinates"].decode("utf-8")]
+        )
         self.domain_width = self.domain_right_edge - self.domain_left_edge
         self.domain_dimensions = self._handle.attrs["RootGridSize"]
 
@@ -328,7 +329,6 @@ class AthenaPPDataset(Dataset):
             dimensionality = 1
         self.dimensionality = dimensionality
         self.current_time = self._handle.attrs["Time"]
-        self.unique_identifier = self.parameter_filename.__hash__()
         self.cosmological_simulation = False
         self.num_ghost_zones = 0
         self.field_ordering = "fortran"
@@ -361,7 +361,7 @@ class AthenaPPDataset(Dataset):
     @classmethod
     def _is_valid(cls, filename, *args, **kwargs):
         try:
-            if filename.endswith("athdf"):
+            if filename.endswith(".athdf"):
                 return True
         except Exception:
             pass

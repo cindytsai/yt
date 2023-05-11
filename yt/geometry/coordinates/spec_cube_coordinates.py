@@ -5,10 +5,11 @@ from .coordinate_handler import _get_coord_fields
 class SpectralCubeCoordinateHandler(CartesianCoordinateHandler):
     name = "spectral_cube"
 
-    def __init__(self, ds, ordering=("x", "y", "z")):
-        ordering = tuple(
-            "xyz"[axis] for axis in (ds.lon_axis, ds.lat_axis, ds.spec_axis)
-        )
+    def __init__(self, ds, ordering=None):
+        if ordering is None:
+            ordering = tuple(
+                "xyz"[axis] for axis in (ds.lon_axis, ds.lat_axis, ds.spec_axis)
+            )
         super().__init__(ds, ordering)
 
         self.default_unit_label = {}
@@ -79,32 +80,8 @@ class SpectralCubeCoordinateHandler(CartesianCoordinateHandler):
                 units="code_length",
             )
 
-        def _cell_volume(field, data):
-            rv = data["index", "dx"].copy(order="K")
-            rv *= data["index", "dy"]
-            rv *= data["index", "dz"]
-            return rv
-
-        registry.add_field(
-            ("index", "cell_volume"),
-            sampling_type="cell",
-            function=_cell_volume,
-            display_field=False,
-            units="code_length**3",
-        )
-        registry.alias(("index", "volume"), ("index", "cell_volume"))
-
-        registry.check_derived_fields(
-            [
-                ("index", "dx"),
-                ("index", "dy"),
-                ("index", "dz"),
-                ("index", "x"),
-                ("index", "y"),
-                ("index", "z"),
-                ("index", "cell_volume"),
-            ]
-        )
+        self._register_volume(registry)
+        self._check_fields(registry)
 
     _x_pairs = (("x", "y"), ("y", "x"), ("z", "x"))
     _y_pairs = (("x", "z"), ("y", "z"), ("z", "y"))

@@ -4,14 +4,24 @@ import tempfile
 from unittest import TestCase
 
 import numpy as np
+from numpy.testing import assert_almost_equal
 
-from yt.testing import assert_almost_equal, fake_random_ds
+from yt.testing import fake_random_ds
 from yt.visualization.volume_rendering.api import (
     OpaqueSource,
     Scene,
     ZBuffer,
     create_volume_source,
 )
+
+
+class FakeOpaqueSource(OpaqueSource):
+    # A minimal (mock) concrete implementation of OpaqueSource
+    def render(self, camera, zbuffer=None):
+        pass
+
+    def _validate(self):
+        pass
 
 
 def setup():
@@ -65,7 +75,7 @@ class ZBufferTest(TestCase):
         empty[:, :, 2] = 1.0  # Set blue to 1's
         empty[:, :, 3] = 1.0  # Set alpha to 1's
         zbuffer = ZBuffer(empty, z)
-        zsource = OpaqueSource()
+        zsource = FakeOpaqueSource()
         zsource.set_zbuffer(zbuffer)
         sc.add_source(zsource)
 

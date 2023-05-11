@@ -1,6 +1,7 @@
 import numpy as np
+from numpy.testing import assert_almost_equal
 
-from yt.testing import assert_almost_equal, fake_sph_orientation_ds, requires_module
+from yt.testing import fake_sph_orientation_ds, requires_module
 from yt.utilities.lib.pixelization_routines import pixelize_sph_kernel_projection
 from yt.utilities.on_demand_imports import _scipy
 from yt.visualization.volume_rendering import off_axis_projection as OffAP
@@ -270,7 +271,7 @@ def test_center_3():
 @requires_module("scipy")
 def find_compare_maxima(expected_maxima, buf, resolution, width):
     buf_ndarray = buf.ndarray_view()
-    max_filter_buf = ndimage.filters.maximum_filter(buf_ndarray, size=5)
+    max_filter_buf = ndimage.maximum_filter(buf_ndarray, size=5)
     maxima = np.isclose(max_filter_buf, buf_ndarray, rtol=1e-09)
 
     # ignore contributions from zones of no smoothing

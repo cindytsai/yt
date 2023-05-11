@@ -14,11 +14,10 @@ import numpy as np
 
 cimport cython
 cimport numpy as np
-from cython cimport floating
-from libc.math cimport copysign, fabs
+from libc.math cimport copysign, fabs, log2
 from libc.stdlib cimport free, malloc
 
-from yt.utilities.lib.fp_utils cimport fclip, i64clip
+from yt.utilities.lib.fp_utils cimport i64clip
 
 from yt.utilities.exceptions import YTDomainOverflow
 
@@ -40,7 +39,6 @@ cdef extern from "math.h":
     double fabs(double x) nogil
 
 cdef extern from "platform_dep.h":
-    double log2(double x) nogil
     long int lrint(double x) nogil
 
 @cython.cdivision(True)
@@ -86,6 +84,7 @@ cdef np.int64_t tsb(np.int64_t x, np.int64_t width):
         i += 1
     return i
 
+@cython.cpow(True)
 @cython.cdivision(True)
 @cython.boundscheck(False)
 @cython.wraparound(False)
@@ -93,6 +92,7 @@ cdef np.int64_t bitrange(np.int64_t x, np.int64_t width,
                          np.int64_t start, np.int64_t end):
     return x >> (width-end) & ((2**(end-start))-1)
 
+@cython.cpow(True)
 @cython.cdivision(True)
 @cython.boundscheck(False)
 @cython.wraparound(False)
@@ -101,6 +101,7 @@ cdef np.int64_t rrot(np.int64_t x, np.int64_t i, np.int64_t width):
     x = (x>>i) | (x<<width-i)
     return x&(2**width-1)
 
+@cython.cpow(True)
 @cython.cdivision(True)
 @cython.boundscheck(False)
 @cython.wraparound(False)
@@ -123,6 +124,7 @@ cdef np.int64_t entry(np.int64_t x):
     if x == 0: return 0
     return graycode(2*((x-1)/2))
 
+@cython.cpow(True)
 @cython.cdivision(True)
 @cython.boundscheck(False)
 @cython.wraparound(False)
@@ -735,7 +737,7 @@ def morton_qsort_swap(np.ndarray[np.uint64_t, ndim=1] ind,
     ind[a] = ind[b]
     ind[b] = t
 
-def morton_qsort_partition(np.ndarray[floating, ndim=2] pos,
+def morton_qsort_partition(np.ndarray[cython.floating, ndim=2] pos,
                            np.int64_t l, np.int64_t h,
                            np.ndarray[np.uint64_t, ndim=1] ind,
                            use_loop = False):
@@ -801,7 +803,7 @@ def morton_qsort_partition(np.ndarray[floating, ndim=2] pos,
 @cython.cdivision(True)
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def morton_qsort_recursive(np.ndarray[floating, ndim=2] pos,
+def morton_qsort_recursive(np.ndarray[cython.floating, ndim=2] pos,
                            np.int64_t l, np.int64_t h,
                            np.ndarray[np.uint64_t, ndim=1] ind,
                            use_loop = False):
@@ -815,7 +817,7 @@ def morton_qsort_recursive(np.ndarray[floating, ndim=2] pos,
 @cython.cdivision(True)
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def morton_qsort_iterative(np.ndarray[floating, ndim=2] pos,
+def morton_qsort_iterative(np.ndarray[cython.floating, ndim=2] pos,
                            np.int64_t l, np.int64_t h,
                            np.ndarray[np.uint64_t, ndim=1] ind,
                            use_loop = False):
@@ -853,7 +855,7 @@ def morton_qsort_iterative(np.ndarray[floating, ndim=2] pos,
 @cython.cdivision(True)
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def morton_qsort(np.ndarray[floating, ndim=2] pos,
+def morton_qsort(np.ndarray[cython.floating, ndim=2] pos,
                  np.int64_t l, np.int64_t h,
                  np.ndarray[np.uint64_t, ndim=1] ind,
                  recursive = False,
@@ -867,7 +869,7 @@ def morton_qsort(np.ndarray[floating, ndim=2] pos,
 @cython.cdivision(True)
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def get_morton_argsort1(np.ndarray[floating, ndim=2] pos,
+def get_morton_argsort1(np.ndarray[cython.floating, ndim=2] pos,
                         np.int64_t start, np.int64_t end,
                         np.ndarray[np.uint64_t, ndim=1] ind):
     # Return if only one position selected
@@ -884,7 +886,7 @@ def get_morton_argsort1(np.ndarray[floating, ndim=2] pos,
         get_morton_argsort1(pos,start,top-1,ind)
     return
 
-def compare_morton(np.ndarray[floating, ndim=1] p0, np.ndarray[floating, ndim=1] q0):
+def compare_morton(np.ndarray[cython.floating, ndim=1] p0, np.ndarray[cython.floating, ndim=1] q0):
     cdef np.float64_t p[3]
     cdef np.float64_t q[3]
     # cdef np.int64_t iep,ieq,imp,imq
@@ -900,14 +902,13 @@ def compare_morton(np.ndarray[floating, ndim=1] p0, np.ndarray[floating, ndim=1]
 @cython.cdivision(True)
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef np.int64_t position_to_morton(np.ndarray[floating, ndim=1] pos_x,
-                        np.ndarray[floating, ndim=1] pos_y,
-                        np.ndarray[floating, ndim=1] pos_z,
+cdef np.int64_t position_to_morton(np.ndarray[cython.floating, ndim=1] pos_x,
+                        np.ndarray[cython.floating, ndim=1] pos_y,
+                        np.ndarray[cython.floating, ndim=1] pos_z,
                         np.float64_t dds[3], np.float64_t DLE[3],
                         np.float64_t DRE[3],
                         np.ndarray[np.uint64_t, ndim=1] ind,
                         int filter):
-    cdef np.uint64_t mi
     cdef np.uint64_t ii[3]
     cdef np.float64_t p[3]
     cdef np.int64_t i, j, use
@@ -1044,7 +1045,9 @@ def knn_direct(np.ndarray[np.float64_t, ndim=2] P, np.uint64_t k, np.uint64_t i,
         for m in range(3):
             jpos[m] = P[idx[j],m]
         dist[j] = euclidean_distance(ipos, jpos)
-    sort_fwd = np.argsort(dist, kind='mergesort')[:k]
+    # casting to uint64 for compatibility with 32 bits systems
+    # see https://github.com/yt-project/yt/issues/3656
+    sort_fwd = np.argsort(dist, kind='mergesort')[:k].astype(np.int64, copy=False)
     if return_dist:
         return np.array(idx)[sort_fwd], np.array(dist)[sort_fwd]
     elif return_rad:
@@ -1113,7 +1116,6 @@ def csearch_morton(np.ndarray[np.float64_t, ndim=2] P, int k, np.uint64_t i,
         ValueError: If l<i<h. l and h must be on the same side of i.
 
     """
-    cdef int j
     cdef np.uint64_t m
     # Make sure that h and l are both larger/smaller than i
     if (l < i) and (h > i):
@@ -1187,7 +1189,8 @@ def knn_morton(np.ndarray[np.float64_t, ndim=2] P0, int k, np.uint64_t i0,
     cdef np.ndarray[np.uint64_t, ndim=1] sort_fwd = np.arange(N,dtype=np.uint64)
     cdef np.ndarray[np.uint64_t, ndim=1] sort_rev = np.arange(N,dtype=np.uint64)
     cdef np.ndarray[np.uint64_t, ndim=1] Ai
-    cdef np.int64_t idxmin, idxmax, u, l, I
+    cdef np.int64_t idxmin, idxmax, u, l
+    cdef np.uint64_t I
     # Sort if necessary
     if issorted:
         P = P0

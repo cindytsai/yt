@@ -3,9 +3,12 @@ import shutil
 import tempfile
 import unittest
 
+from numpy.testing import assert_raises
+
 import yt
-from yt.config import YTConfig, config_dir, ytcfg
-from yt.testing import assert_raises, fake_random_ds
+from yt.config import ytcfg
+from yt.testing import fake_random_ds
+from yt.utilities.configure import YTConfig, config_dir
 
 _TEST_PLUGIN = "_test_plugin.py"
 
@@ -35,6 +38,7 @@ class TestPluginFile(unittest.TestCase):
     def setUpClass(cls):
         cls.xdg_config_home = os.environ.get("XDG_CONFIG_HOME")
         cls.tmpdir = tempfile.mkdtemp()
+        os.mkdir(os.path.join(cls.tmpdir, "yt"))
         os.environ["XDG_CONFIG_HOME"] = cls.tmpdir
         with open(YTConfig.get_global_config_file(), mode="w") as fh:
             fh.write(_DUMMY_CFG_TOML)

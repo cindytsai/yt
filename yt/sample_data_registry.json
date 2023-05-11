@@ -29,17 +29,35 @@
     "load_name": "snapshot_150.hdf5",
     "url": "https://yt-project.org/data/ArepoBullet.tar.gz"
   },
+  "ArepoCosmicRays.tar.gz": {
+    "hash": "e664ea7f634fff778511e9ae7b2e375ba9c5099e427f7c037d48bba9944388f4",
+    "load_kwargs": {},
+    "load_name": "snapshot_039.hdf5",
+    "url": "https://yt-project.org/data/ArepoCosmicRays.tar.gz"
+  },
   "BigEndianGadgetBinary.tar.gz": {
     "hash": "0ab8d69b7c0c1a74282c567823916cc947f9ead7ab54b749a38a17c158b371c9",
     "load_kwargs": {},
     "load_name": "BigEndianGadgetBinary",
     "url": "https://yt-project.org/data/BigEndianGadgetBinary.tar.gz"
   },
+  "C15-3D-3deg.tar.gz": {
+    "hash": "b59a4ea80b3e5bf0c8fc1ab960241b23e8cba6d7346cab25d071d9a63c3be2b7",
+    "load_kwargs": {},
+    "load_name": "chimera_002715000_grid_1_01.h5",
+    "url": "https://yt-project.org/data/C15-3D-3deg.tar.gz"
+  },
   "CfRadialGrid.tar.gz": {
     "hash": "22a45b322773d4b2864ccab93c521d8e3d637d81c8d8c0852e1a67c7fa883e0c",
     "load_kwargs": {},
     "load_name": "grid1.nc",
     "url": "https://yt-project.org/data/CfRadialGrid.tar.gz"
+  },
+  "ChollaSimple.tar.gz": {
+    "hash": "aa277471f694f9de2e46c190efd8cd631c0694044aa29cb8431f127319774d73",
+    "load_kwargs": {},
+    "load_name": "0.h5",
+    "url": "https://yt-project.org/data/ChollaSimple.tar.gz"
   },
   "ClusterMerger.tar.gz": {
     "hash": "862a537bdecb8de363f20abec751665fd2b9208c29ae66331105cf848e7a0033",
@@ -124,6 +142,12 @@
     "load_kwargs": {},
     "load_name": "ExodusII/gold.e",
     "url": "https://yt-project.org/data/ExodusII_tests.tar.gz"
+  },
+  "F37_80.tar.gz": {
+    "hash": "ff0eeb2690ec53f25def74a346fdef07878e46d16424ce4f5d31d8c841408a46",
+    "load_kwargs": {},
+    "load_name": "chimera_00001_grid_1_01.h5",
+    "url": "https://yt-project.org/data/F37_80.tar.gz"
   },
   "FIRE_M12i_ref11.tar.gz": {
     "hash": "74488ca3158810ad76ed65bf43a5769b899b63d3985a9b43ff55bffd04bf3af2",
@@ -270,6 +294,12 @@
     "load_kwargs": {},
     "load_name": "plt00015",
     "url": "https://yt-project.org/data/Laser.tar.gz"
+  },
+  "LocBub_dust.tar.gz": {
+    "hash": "1ad9728ca982616686d9bd6c1c959fece3c067ecbbba64ff8c2c5bfcc1deed01",
+    "load_kwargs": {},
+    "load_name": "LocBub_dust_hdf5_plt_cnt_0220",
+    "url": "https://yt-project.org/data/LocBub_dust.tar.gz"
   },
   "MagneticumCluster.tar.gz": {
     "hash": "403c2224c205a44ee92a5925053be8aef6e5d530d9297c18151cdb0f588c32a7",
@@ -500,7 +530,7 @@
     "hash": "6fc406dd056b525592f704b202dadf52c41024660dbbd96cfbeb830d710a70d8",
     "load_kwargs": {},
     "load_name": null,
-    "url": "https://yt-project.org/data/acisf05356N003_evt2.fits.gz.tar.gz"
+    "url": "https://yt-project.org/data/acisf05356N003_evt2.fits.gz"
   },
   "agora_1e11.00400.tar.gz": {
     "hash": "3a8820735bcf5067dfbe0fcd90d79121a801ea1a34c7d6de7e09185d3c635e6a",
@@ -610,6 +640,12 @@
     "load_name": null,
     "url": "https://yt-project.org/data/check_pooch.py.tar.gz"
   },
+  "cm1_tornado_lofs.tar.gz": {
+    "hash": "7a84f688b363b79d2ac7bf53d1a963f01d07926a0d268e4163ba87ea81699706",
+    "load_kwargs": {},
+    "load_name": "nc4_cm1_lofs_tornado_test.nc",
+    "url": "https://yt-project.org/data/cm1_tornado_lofs.tar.gz"
+  },
   "datafiles.json": {
     "hash": "56732241ddfe5770d0dacc52c1957a0c8b13ca095fd0d8f029dbd263be714838",
     "load_kwargs": {},
@@ -692,7 +728,7 @@
     "hash": "1aff152f616d2626c8515c1493e65f07843d9b5f2ba73b7e4271a2dc6a9e6da7",
     "load_kwargs": {},
     "load_name": null,
-    "url": "https://yt-project.org/data/grs-50-cube.fits.gz.tar.gz"
+    "url": "https://yt-project.org/data/grs-50-cube.fits.gz"
   },
   "halo1e11_run1.00400.tar.gz": {
     "hash": "414d05f9d5aa2dc2811e55fab59ad2c1426ec51675aaf41db773b24cd2f0aa5f",
@@ -710,7 +746,7 @@
     "hash": "6a44b6c352a5c98c58f0b2b7498fd87e2430c530971eaff68b843146d82d6609",
     "load_kwargs": {},
     "load_name": null,
-    "url": "https://yt-project.org/data/m33_hi.fits.gz.tar.gz"
+    "url": "https://yt-project.org/data/m33_hi.fits.gz"
   },
   "maestro_subCh_plt00248.tar.gz": {
     "hash": "6de1b63b63ce9738e4596ccf4cc75087d5029c892c07f40c2c69887e76b8ec1a",
@@ -838,6 +874,12 @@
     "load_name": "sizmbhloz-clref04SNth-rs9_a0.9011.art",
     "url": "https://yt-project.org/data/sizmbhloz-clref04SNth-rs9_a0.9011.tar.gz"
   },
+  "SmartStars.tar.gz": {
+    "hash": "990ff61aa85408d33c4c6be7181e1f64fcd738526dcf0e34be5605d8bb158605",
+    "load_kwargs": {},
+    "load_name": "DD0100/output_0100",
+    "url": "https://yt-project.org/data/SmartStars.tar.gz"
+  },
   "snapshot_010.tar.gz": {
     "hash": "c98fa744de250d02833b643e3250dce2cf2c7a622c42c96b201024ee28582ba9",
     "load_kwargs": {},
@@ -867,6 +909,12 @@
     "load_kwargs": {},
     "load_name": "RadTube/plt00500",
     "url": "https://yt-project.org/data/test_outputs.tar.gz"
+  },
+  "tiny_fof_halos.tar.gz": {
+    "hash": "48555ba2c482be88d7944a79ecf27967b517366d4d1075a7a5639e6d2339d8f0",
+    "load_kwargs": {},
+    "load_name": "DD0045/DD0045.0.h5",
+    "url": "https://yt-project.org/data/tiny_fof_halos.tar.gz"
   },
   "ytdata_test.tar.gz": {
     "hash": "cafb2b06ab3190ba17909585b58a4724e25f27ac72f11d6dff1a482146eb8958",

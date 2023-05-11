@@ -1,10 +1,12 @@
 import os
+from functools import partial
 
 import numpy as np
 
 from yt import units
+from yt._typing import KnownFieldsT
 from yt.fields.field_info_container import FieldInfoContainer
-from yt.frontends.ramses.io import convert_ramses_ages
+from yt.frontends.ramses.io import convert_ramses_conformal_time_to_physical_age
 from yt.utilities.cython_fortran_utils import FortranFile
 from yt.utilities.linear_interpolators import BilinearFieldInterpolator
 from yt.utilities.logger import ytLogger as mylog
@@ -92,7 +94,7 @@ _Y = 0.24  # He fraction, hardcoded
 
 
 class RAMSESFieldInfo(FieldInfoContainer):
-    known_other_fields = (
+    known_other_fields: KnownFieldsT = (
         ("Density", (rho_units, ["density"], None)),
         ("x-velocity", (vel_units, ["velocity_x"], None)),
         ("y-velocity", (vel_units, ["velocity_y"], None)),
@@ -114,7 +116,7 @@ class RAMSESFieldInfo(FieldInfoContainer):
         ("B_z_left", (b_units, ["magnetic_field_z_left"], None)),
         ("B_z_right", (b_units, ["magnetic_field_z_right"], None)),
     )
-    known_particle_fields = (
+    known_particle_fields: KnownFieldsT = (
         ("particle_position_x", ("code_length", [], None)),
         ("particle_position_y", ("code_length", [], None)),
         ("particle_position_z", ("code_length", [], None)),
@@ -131,7 +133,7 @@ class RAMSESFieldInfo(FieldInfoContainer):
         ("particle_tag", ("", [], None)),
     )
 
-    known_sink_fields = (
+    known_sink_fields: KnownFieldsT = (
         ("particle_position_x", ("code_length", [], None)),
         ("particle_position_y", ("code_length", [], None)),
         ("particle_position_z", ("code_length", [], None)),
@@ -161,11 +163,13 @@ class RAMSESFieldInfo(FieldInfoContainer):
         def star_age(field, data):
             if data.ds.cosmological_simulation:
                 conformal_age = data[ptype, "conformal_birth_time"]
-                formation_time = convert_ramses_ages(data.ds, conformal_age)
-                formation_time = data.ds.arr(formation_time, "code_time")
+                physical_age = convert_ramses_conformal_time_to_physical_age(
+                    data.ds, conformal_age
+                )
+                return data.ds.arr(physical_age, "code_time")
             else:
                 formation_time = data[ptype, "particle_birth_time"]
-            return data.ds.current_time - formation_time
+                return data.ds.current_time - formation_time
 
         self.add_field(
             (ptype, "star_age"),
@@ -260,8 +264,21 @@ class RAMSESFieldInfo(FieldInfoContainer):
         p = RTFieldFileHandler.get_rt_parameters(self.ds).copy()
         p.update(self.ds.parameters)
         ngroups = p["nGroups"]
-        rt_c = p["rt_c_frac"] * units.c / (p["unit_l"] / p["unit_t"])
-        dens_conv = (p["unit_np"] / rt_c).value / units.cm ** 3
+        # Make sure rt_c_frac is at least as long as the number of levels in
+        # the simulation. Pad with either 1 (default) when using level-dependent
+        # reduced speed of light, otherwise pad with a constant value
+        if len(p["rt_c_frac"]) == 1:
+            pad_value = p["rt_c_frac"][0]
+        else:
+            pad_value = 1
+        rt_c_frac = np.pad(
+            p["rt_c_frac"],
+            (0, max(0, self.ds.max_level - len(["rt_c_frac"]) + 1)),
+            constant_values=pad_value,
+        )
+
+        rt_c = rt_c_frac * units.c / (p["unit_l"] / p["unit_t"])
+        dens_conv = (p["unit_np"] / rt_c).value / units.cm**3
 
         ########################################
         # Adding the fields in the hydro_* files
@@ -276,25 +293,25 @@ class RAMSESFieldInfo(FieldInfoContainer):
             function=_temp_IR,
             units=self.ds.unit_system["temperature"],
         )
+
+        def _species_density(field, data, species: str):
+            return data["gas", f"{species}_fraction"] * data["gas", "density"]
+
+        def _species_mass(field, data, species: str):
+            return data["gas", f"{species}_density"] * data["index", "cell_volume"]
+
         for species in ["H_p1", "He_p1", "He_p2"]:
-
-            def _species_density(field, data):
-                return data["gas", f"{species}_fraction"] * data["gas", "density"]
-
             self.add_field(
                 ("gas", species + "_density"),
                 sampling_type="cell",
-                function=_species_density,
+                function=partial(_species_density, species=species),
                 units=self.ds.unit_system["density"],
             )
-
-            def _species_mass(field, data):
-                return data["gas", f"{species}_density"] * data["index", "cell_volume"]
 
             self.add_field(
                 ("gas", species + "_mass"),
                 sampling_type="cell",
-                function=_species_mass,
+                function=partial(_species_mass, species=species),
                 units=self.ds.unit_system["mass"],
             )
 
@@ -302,7 +319,10 @@ class RAMSESFieldInfo(FieldInfoContainer):
         # Adding the fields in the rt_ files
         def gen_pdens(igroup):
             def _photon_density(field, data):
-                rv = data["ramses-rt", f"Photon_density_{igroup + 1}"] * dens_conv
+                # The photon density depends on the possibly level-dependent conversion factor.
+                ilvl = data["index", "grid_level"].astype(int)
+                dc = dens_conv[ilvl]
+                rv = data["ramses-rt", f"Photon_density_{igroup + 1}"] * dc
                 return rv
 
             return _photon_density
@@ -315,7 +335,10 @@ class RAMSESFieldInfo(FieldInfoContainer):
                 units=self.ds.unit_system["number_density"],
             )
 
-        flux_conv = p["unit_pf"] / units.cm ** 2 / units.s
+        flux_conv = p["unit_pf"] / units.cm**2 / units.s
+        flux_unit = (
+            1 / self.ds.unit_system["time"] / self.ds.unit_system["length"] ** 2
+        ).units
 
         def gen_flux(key, igroup):
             def _photon_flux(field, data):
@@ -324,9 +347,6 @@ class RAMSESFieldInfo(FieldInfoContainer):
 
             return _photon_flux
 
-        flux_unit = (
-            1 / self.ds.unit_system["time"] / self.ds.unit_system["length"] ** 2
-        ).units
         for key in "xyz":
             for igroup in range(ngroups):
                 self.add_field(

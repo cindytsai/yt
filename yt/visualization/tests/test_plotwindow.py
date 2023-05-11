@@ -5,18 +5,25 @@ import unittest
 from collections import OrderedDict
 
 import numpy as np
-from nose.tools import assert_true
-
-from yt.loaders import load_uniform_grid
-from yt.testing import (
+from matplotlib.colors import LogNorm, Normalize, SymLogNorm
+from numpy.testing import (
     assert_array_almost_equal,
     assert_array_equal,
     assert_equal,
-    assert_fname,
     assert_raises,
+)
+from unyt import unyt_array
+
+from yt.loaders import load_uniform_grid
+from yt.testing import (
+    assert_allclose_units,
+    assert_fname,
     assert_rel_equal,
+    assert_true,
+    fake_amr_ds,
     fake_random_ds,
     requires_file,
+    requires_module,
 )
 from yt.units import kboltz
 from yt.units.yt_array import YTArray, YTQuantity
@@ -26,7 +33,10 @@ from yt.utilities.answer_testing.framework import (
     requires_ds,
 )
 from yt.utilities.exceptions import YTInvalidFieldType
-from yt.visualization.api import (
+from yt.visualization.plot_window import (
+    AxisAlignedProjectionPlot,
+    AxisAlignedSlicePlot,
+    NormalPlot,
     OffAxisProjectionPlot,
     OffAxisSlicePlot,
     ProjectionPlot,
@@ -58,16 +68,15 @@ ATTR_ARGS = {
     ],
     "set_buff_size": [((1600,), {}), (((600, 800),), {})],
     "set_center": [(((0.4, 0.3),), {})],
-    "set_cmap": [(("density", "RdBu"), {}), (("density", "kamae"), {})],
+    "set_cmap": [(("density", "RdBu"), {}), (("density", "cmyt.pastel"), {})],
     "set_font": [((OrderedDict(sorted(FPROPS.items(), key=lambda t: t[0])),), {})],
     "set_log": [(("density", False), {})],
     "set_figure_size": [((7.0,), {})],
     "set_zlim": [
         (("density", 1e-25, 1e-23), {}),
-        (("density", 1e-25, None), {"dynamic_range": 4}),
+        (("density",), {"zmin": 1e-25, "dynamic_range": 4}),
     ],
     "zoom": [((10,), {})],
-    "toggle_right_handed": [((), {})],
 }
 
 
@@ -76,13 +85,19 @@ CENTER_SPECS = (
     "M",
     "max",
     "Max",
+    "min",
+    "Min",
     "c",
     "C",
     "center",
     "Center",
+    "left",
+    "right",
     [0.5, 0.5, 0.5],
     [[0.2, 0.3, 0.4], "cm"],
     YTArray([0.3, 0.4, 0.7], "cm"),
+    ("max", ("gas", "density")),
+    ("min", ("gas", "density")),
 )
 
 WIDTH_SPECS = {
@@ -130,7 +145,7 @@ WEIGHT_FIELDS = (
     ("gas", "density"),
 )
 
-PROJECTION_METHODS = ("integrate", "sum", "mip")
+PROJECTION_METHODS = ("integrate", "sum", "min", "max")
 
 BUFF_SIZES = [(800, 800), (1600, 1600), (1254, 1254), (800, 600)]
 
@@ -189,7 +204,6 @@ def test_attributes():
 
 
 class TestHideAxesColorbar(unittest.TestCase):
-
     ds = None
 
     def setUp(self):
@@ -225,7 +239,6 @@ class TestHideAxesColorbar(unittest.TestCase):
 
 
 class TestSetWidth(unittest.TestCase):
-
     ds = None
 
     def setUp(self):
@@ -381,7 +394,6 @@ class TestPlotWindowSave(unittest.TestCase):
 
 
 class TestPerFieldConfig(unittest.TestCase):
-
     ds = None
 
     def setUp(self):
@@ -418,13 +430,13 @@ class TestPerFieldConfig(unittest.TestCase):
         fields_to_plot = fields + [("index", "radius")]
         if self.ds is None:
             self.ds = fake_random_ds(16, fields=fields, units=units)
-            self.slc = ProjectionPlot(self.ds, 0, fields_to_plot)
+            self.proj = ProjectionPlot(self.ds, 0, fields_to_plot)
 
     def tearDown(self):
         from yt.config import ytcfg
 
         del self.ds
-        del self.slc
+        del self.proj
         for key in self.newConfig.keys():
             ytcfg.remove(*key)
         for key, val in self.oldConfig.items():
@@ -433,26 +445,41 @@ class TestPerFieldConfig(unittest.TestCase):
     def test_units(self):
         from unyt import Unit
 
-        assert_equal(self.slc.frb["gas", "density"].units, Unit("mile*lb/yd**3"))
-        assert_equal(self.slc.frb["gas", "temperature"].units, Unit("cm*K"))
-        assert_equal(self.slc.frb["gas", "pressure"].units, Unit("dyn/cm"))
+        assert_equal(self.proj.frb["gas", "density"].units, Unit("mile*lb/yd**3"))
+        assert_equal(self.proj.frb["gas", "temperature"].units, Unit("cm*K"))
+        assert_equal(self.proj.frb["gas", "pressure"].units, Unit("dyn/cm"))
 
     def test_scale(self):
-        assert_equal(self.slc._field_transform["gas", "density"].name, "linear")
-        assert_equal(self.slc._field_transform["gas", "temperature"].name, "symlog")
-        assert_equal(self.slc._field_transform["gas", "temperature"].func, 100)
-        assert_equal(self.slc._field_transform["gas", "pressure"].name, "log10")
-        assert_equal(self.slc._field_transform["index", "radius"].name, "log10")
+        assert_equal(
+            self.proj.plots["gas", "density"].norm_handler.norm_type, Normalize
+        )
+        assert_equal(
+            self.proj.plots["gas", "temperature"].norm_handler.norm_type, SymLogNorm
+        )
+        assert_allclose_units(
+            self.proj.plots["gas", "temperature"].norm_handler.linthresh,
+            unyt_array(100, "K*cm"),
+        )
+        assert_equal(self.proj.plots["gas", "pressure"].norm_handler.norm_type, LogNorm)
+        assert_equal(
+            self.proj.plots["index", "radius"].norm_handler.norm_type, SymLogNorm
+        )
 
     def test_cmap(self):
-        assert_equal(self.slc._colormap_config["gas", "density"], "plasma")
-        assert_equal(self.slc._colormap_config["gas", "temperature"], "hot")
-        assert_equal(self.slc._colormap_config["gas", "pressure"], "viridis")
+        assert_equal(
+            self.proj.plots["gas", "density"].colorbar_handler.cmap.name, "plasma"
+        )
+        assert_equal(
+            self.proj.plots["gas", "temperature"].colorbar_handler.cmap.name, "hot"
+        )
+        assert_equal(
+            self.proj.plots["gas", "pressure"].colorbar_handler.cmap.name, "viridis"
+        )
 
 
 def test_on_off_compare():
     # fake density field that varies in the x-direction only
-    den = np.arange(32 ** 3) / 32 ** 2 + 1
+    den = np.arange(32**3) / 32**2 + 1
     den = den.reshape(32, 32, 32)
     den = np.array(den, dtype=np.float64)
     data = dict(density=(den, "g/cm**3"))
@@ -588,7 +615,7 @@ def test_set_background_color():
     ds = fake_random_ds(32)
     plot = SlicePlot(ds, 2, ("gas", "density"))
     plot.set_background_color(("gas", "density"), "red")
-    plot._setup_plots()
+    plot.render()
     ax = plot.plots[("gas", "density")].axes
     assert_equal(ax.get_facecolor(), (1.0, 0.0, 0.0, 1.0))
 
@@ -713,9 +740,88 @@ def test_symlog_colorbar():
         ("gas", "negative_density"),
     ]:
         plot = SlicePlot(ds, 2, field)
-        plot.set_log(field, True, linthresh=0.1)
+        plot.set_log(field, linthresh=0.1)
         with tempfile.NamedTemporaryFile(suffix="png") as f:
             plot.save(f.name)
+
+
+def test_symlog_min_zero():
+    # see https://github.com/yt-project/yt/issues/3791
+    shape = (32, 16, 1)
+    a = np.linspace(0, 1, 16)
+    b = np.ones((32, 16))
+    c = np.reshape(a * b, shape)
+    data = {("gas", "density"): c}
+
+    ds = load_uniform_grid(
+        data,
+        shape,
+        bbox=np.array([[0.0, 5.0], [0, 1], [-0.1, +0.1]]),
+    )
+
+    p = SlicePlot(ds, "z", "density")
+    im_arr = p["gas", "density"].image.get_array()
+
+    # check that no data value was mapped to a NaN (log(0))
+    assert np.all(~np.isnan(im_arr))
+    # 0 should be mapped to itself since we expect a symlog norm
+    assert np.min(im_arr) == 0.0
+
+
+def test_symlog_extremely_small_vals():
+    # check that the plot can be constructed without crashing
+    # see https://github.com/yt-project/yt/issues/3858
+    # and https://github.com/yt-project/yt/issues/3944
+    shape = (64, 64, 1)
+    arr = np.full(shape, 5.0e-324)
+    arr[0, 0] = -1e12
+    arr[1, 1] = 200
+
+    arr2 = np.full(shape, 5.0e-324)
+    arr2[0, 0] = -1e12
+
+    arr3 = arr.copy()
+    arr3[4, 4] = 0.0
+
+    d = {"scalar_spans_0": arr, "tiny_vmax": arr2, "scalar_tiny_with_0": arr3}
+
+    ds = load_uniform_grid(d, shape)
+    for field in d:
+        p = SlicePlot(ds, "z", field)
+        p["stream", field]
+
+
+def test_symlog_linthresh_gt_vmax():
+    # check that some more edge cases do not crash
+
+    # linthresh will end up being larger than vmax here. This is OK.
+    shape = (64, 64, 1)
+    arr = np.full(shape, -1e30)
+    arr[1, 1] = -1e27
+    arr[2, 2] = 1e-12
+    arr[3, 3] = 1e-10
+
+    arr2 = -1 * arr.copy()  # also check the reverse
+    d = {"linthresh_gt_vmax": arr, "linthresh_lt_vmin": arr2}
+
+    ds = load_uniform_grid(d, shape)
+    for field in d:
+        p = SlicePlot(ds, "z", field)
+        p["stream", field]
+
+
+def test_symlog_symmetric():
+    # should run ok when abs(min negative) == abs(pos max)
+    shape = (64, 64, 1)
+    arr = np.full(shape, -1e30)
+    arr[1, 1] = -1e27
+    arr[2, 2] = 1e10
+    arr[3, 3] = 1e30
+    d = {"linthresh_symmetric": arr}
+
+    ds = load_uniform_grid(d, shape)
+    p = SlicePlot(ds, "z", "linthresh_symmetric")
+    p["stream", "linthresh_symmetric"]
 
 
 def test_nan_data():
@@ -730,3 +836,99 @@ def test_nan_data():
 
     with tempfile.NamedTemporaryFile(suffix="png") as f:
         plot.save(f.name)
+
+
+def test_sanitize_valid_normal_vector():
+    # note: we don't test against non-cartesian geometries
+    # because the way normal "vectors" work isn't clearly
+    # specified and works more as an implementation detail
+    # at the moment
+    ds = fake_amr_ds(geometry="cartesian")
+
+    # We allow maximal polymorphism for axis-aligned directions:
+    # even if 3-component vector is received, we want to use the
+    # AxisAligned* plotting class (as opposed to OffAxis*) because
+    # it's much easier to optimize so it's expected to be more
+    # performant.
+    axis_label_from_inputs = {
+        "x": ["x", 0, [1, 0, 0], [0.1, 0.0, 0.0], [-10, 0, 0]],
+        "y": ["y", 1, [0, 1, 0], [0.0, 0.1, 0.0], [0, -10, 0]],
+        "z": ["z", 2, [0, 0, 1], [0.0, 0.0, 0.1], [0, 0, -10]],
+    }
+    for expected, user_inputs in axis_label_from_inputs.items():
+        for ui in user_inputs:
+            assert NormalPlot.sanitize_normal_vector(ds, ui) == expected
+
+    # arbitrary 3-floats sequences are also valid input.
+    # They should be returned as np.ndarrays, but the norm and orientation
+    # could be altered. What's important is that their direction is preserved.
+    for ui in [(1, 1, 1), [0.0, -3, 1e9], np.ones(3, dtype="int8")]:
+        res = NormalPlot.sanitize_normal_vector(ds, ui)
+        assert isinstance(res, np.ndarray)
+        assert res.dtype == np.float64
+        assert_array_equal(
+            np.cross(ui, res),
+            [0, 0, 0],
+        )
+
+
+def test_reject_invalid_normal_vector():
+    ds = fake_amr_ds(geometry="cartesian")
+    for ui in [0.0, 1.0, 2.0, 3.0]:
+        # acceptable scalar numeric values are restricted to integers.
+        # Floats might be a sign that something went wrong upstream
+        # e.g., rounding errors, parsing error...
+        assert_raises(TypeError, NormalPlot.sanitize_normal_vector, ds, ui)
+    for ui in [
+        "X",
+        "xy",
+        "not-an-axis",
+        (0, 0, 0),
+        [0, 0, 0],
+        np.zeros(3),
+        [1, 0, 0, 0],
+        [1, 0],
+        [1],
+        [0],
+        3,
+        10,
+    ]:
+        assert_raises(ValueError, NormalPlot.sanitize_normal_vector, ds, ui)
+
+
+def test_dispatch_plot_classes():
+    ds = fake_random_ds(16)
+    p1 = ProjectionPlot(ds, "z", ("gas", "density"))
+    p2 = ProjectionPlot(ds, (1, 2, 3), ("gas", "density"))
+    s1 = SlicePlot(ds, "z", ("gas", "density"))
+    s2 = SlicePlot(ds, (1, 2, 3), ("gas", "density"))
+    assert isinstance(p1, AxisAlignedProjectionPlot)
+    assert isinstance(p2, OffAxisProjectionPlot)
+    assert isinstance(s1, AxisAlignedSlicePlot)
+    assert isinstance(s2, OffAxisSlicePlot)
+
+
+@requires_module("cartopy")
+def test_invalid_swap_projection():
+    # projections and transforms will not work
+    ds = fake_amr_ds(geometry="geographic")
+    slc = SlicePlot(ds, "altitude", ds.field_list[0], origin="native")
+    slc.set_mpl_projection("Robinson")
+    slc.swap_axes()  # should raise mylog.warning and not toggle _swap_axes
+    assert slc._has_swapped_axes is False
+
+
+def test_set_font():
+    # simply check that calling the set_font method doesn't raise an error
+    # https://github.com/yt-project/yt/issues/4263
+    ds = fake_amr_ds()
+    slc = SlicePlot(ds, "x", "Density")
+    slc.set_font(
+        {
+            "family": "sans-serif",
+            "style": "italic",
+            "weight": "bold",
+            "size": 24,
+            "color": "blue",
+        }
+    )

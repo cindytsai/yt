@@ -1,14 +1,12 @@
 import numpy as np
 
+from yt.frontends.enzo_e.misc import get_particle_mass_correction, nested_dict_get
 from yt.utilities.exceptions import YTException
 from yt.utilities.io_handler import BaseIOHandler
 from yt.utilities.on_demand_imports import _h5py as h5py
 
-_particle_position_names = {}
-
 
 class EnzoEIOHandler(BaseIOHandler):
-
     _dataset_type = "enzo_e"
     _base = slice(None)
     _field_dtype = "float64"
@@ -20,6 +18,21 @@ class EnzoEIOHandler(BaseIOHandler):
             slice(self.ds.ghost_zones, -self.ds.ghost_zones),
         )
 
+        # Determine if particle masses are actually masses or densities.
+        if self.ds.parameters["version"] is not None:
+            # they're masses for enzo-e versions that record a version string
+            mass_flag = True
+        else:
+            # in earlier versions: query the existence of the "mass_is_mass"
+            # particle parameter
+            mass_flag = nested_dict_get(
+                self.ds.parameters, ("Particle", "mass_is_mass"), default=None
+            )
+        # the historic approach for initializing the value of "mass_is_mass"
+        # was unsound (and could yield a random value). Thus we should only
+        # check for the parameter's existence and not its value
+        self._particle_mass_is_mass = mass_flag is not None
+
     def _read_field_names(self, grid):
         if grid.filename is None:
             return []
@@ -28,8 +41,7 @@ class EnzoEIOHandler(BaseIOHandler):
             group = f[grid.block_name]
         except KeyError as e:
             raise YTException(
-                message="Grid %s is missing from data file %s."
-                % (grid.block_name, grid.filename),
+                message=f"Grid {grid.block_name} is missing from data file {grid.filename}.",
                 ds=self.ds,
             ) from e
         fields = []
@@ -67,7 +79,10 @@ class EnzoEIOHandler(BaseIOHandler):
         return fields, ptypes
 
     def _read_particle_coords(self, chunks, ptf):
-        yield from self._read_particle_fields(chunks, ptf, None)
+        yield from (
+            (ptype, xyz, 0.0)
+            for ptype, xyz in self._read_particle_fields(chunks, ptf, None)
+        )
 
     def _read_particle_fields(self, chunks, ptf, selector):
         chunks = list(chunks)
@@ -115,6 +130,8 @@ class EnzoEIOHandler(BaseIOHandler):
                         continue
                     for field in field_list:
                         data = np.asarray(group.get(pn % field)[()], "=f8")
+                        if field == "mass" and not self._particle_mass_is_mass:
+                            data[mask] *= get_particle_mass_correction(self.ds)
                         yield (ptype, field), data[mask]
             if f:
                 f.close()

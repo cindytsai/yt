@@ -3,8 +3,8 @@ import functools
 import numpy as np
 
 from yt.units import dimensions
-from yt.units.unit_object import Unit
-from yt.units.unit_registry import UnitRegistry
+from yt.units.unit_object import Unit  # type: ignore
+from yt.units.unit_registry import UnitRegistry  # type: ignore
 from yt.units.yt_array import YTArray, YTQuantity
 from yt.utilities.physical_constants import (
     gravitational_constant_cgs as G,
@@ -83,6 +83,7 @@ class Cosmology:
         self.omega_radiation = float(omega_radiation)
         self.omega_lambda = float(omega_lambda)
         self.omega_curvature = float(omega_curvature)
+        hubble_constant = float(hubble_constant)
         if unit_registry is None:
             unit_registry = UnitRegistry(unit_system=unit_system)
             unit_registry.add("h", hubble_constant, dimensions.dimensionless, r"h")
@@ -425,9 +426,9 @@ class Cosmology:
 
         zp1 = 1 + z
         return np.sqrt(
-            self.omega_matter * zp1 ** 3
-            + self.omega_curvature * zp1 ** 2
-            + self.omega_radiation * zp1 ** 4
+            self.omega_matter * zp1**3
+            + self.omega_curvature * zp1**2
+            + self.omega_radiation * zp1**4
             + self.omega_lambda * dark_factor
         )
 

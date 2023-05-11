@@ -1,12 +1,12 @@
 import numpy as np
-
-from yt.testing import (
+from numpy.testing import (
     assert_array_equal,
     assert_array_less,
     assert_equal,
     assert_raises,
-    fake_random_ds,
 )
+
+from yt.testing import fake_random_ds
 from yt.utilities.lib.misc_utilities import (
     obtain_position_vector,
     obtain_relative_velocity_vector,
@@ -941,7 +941,7 @@ def test_knn_direct(seed=1):
     N = 1e5
     idx = np.arange(N, dtype=np.uint64)
     rad = np.arange(N, dtype=np.float64)
-    pos = np.vstack(3 * [rad ** 2 / 3.0]).T
+    pos = np.vstack(3 * [rad**2 / 3.0]).T
     sort_shf = np.arange(N, dtype=np.uint64)
     for _ in range(20):
         np.random.shuffle(sort_shf)

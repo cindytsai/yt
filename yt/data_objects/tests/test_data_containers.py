@@ -5,12 +5,11 @@ import unittest
 
 import numpy as np
 from nose.tools import assert_raises
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_array_equal, assert_equal
 
 from yt.data_objects.data_containers import YTDataContainer
 from yt.data_objects.particle_filters import particle_filter
 from yt.testing import (
-    assert_equal,
     fake_amr_ds,
     fake_particle_ds,
     fake_random_ds,
@@ -56,7 +55,7 @@ class TestDataContainers(unittest.TestCase):
         # Delete a non-existent field
         with assert_raises(YTFieldNotFound) as ex:
             del proj["p_mass"]
-        desired = "Could not find field ('unknown', 'p_mass') in UniformGridData."
+        desired = "Could not find field 'p_mass' in UniformGridData."
         assert_equal(str(ex.exception), desired)
 
     def test_write_out(self):
@@ -117,7 +116,7 @@ class TestDataContainers(unittest.TestCase):
         fields = ["density", "cell_mass"]
         units = ["g/cm**3", "g"]
         ds = fake_amr_ds(
-            fields=fields, units=units, geometry="cylindrical", particles=16 ** 3
+            fields=fields, units=units, geometry="cylindrical", particles=16**3
         )
         dd = ds.all_data()
         proj = ds.proj(
@@ -134,7 +133,7 @@ class TestDataContainers(unittest.TestCase):
         # Test isocontour properties for AMRGridData
         fields = ["density", "cell_mass"]
         units = ["g/cm**3", "g"]
-        ds = fake_amr_ds(fields=fields, units=units, particles=16 ** 3)
+        ds = fake_amr_ds(fields=fields, units=units, particles=16**3)
         dd = ds.all_data()
         q = dd.quantities["WeightedAverageQuantity"]
         rho = q(("gas", "density"), weight=("gas", "cell_mass"))

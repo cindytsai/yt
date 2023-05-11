@@ -3,6 +3,7 @@ import string
 
 import numpy as np
 
+from yt._typing import KnownFieldsT
 from yt.fields.field_info_container import FieldInfoContainer
 from yt.units import YTQuantity
 from yt.utilities.physical_constants import amu_cgs, boltzmann_constant_cgs, c
@@ -46,8 +47,7 @@ def _temperature(field, data):
 
 
 class WarpXFieldInfo(FieldInfoContainer):
-
-    known_other_fields = (
+    known_other_fields: KnownFieldsT = (
         ("Bx", ("T", ["magnetic_field_x", "B_x"], None)),
         ("By", ("T", ["magnetic_field_y", "B_y"], None)),
         ("Bz", ("T", ["magnetic_field_z", "B_z"], None)),
@@ -59,7 +59,7 @@ class WarpXFieldInfo(FieldInfoContainer):
         ("jz", ("A", ["current_z", "Jz", "J_z"], None)),
     )
 
-    known_particle_fields = (
+    known_particle_fields: KnownFieldsT = (
         ("particle_weight", ("", ["particle_weighting"], None)),
         ("particle_position_x", ("m", [], None)),
         ("particle_position_y", ("m", [], None)),
@@ -123,7 +123,7 @@ class WarpXFieldInfo(FieldInfoContainer):
                 + data[ptype, "particle_momentum_y"] ** 2
                 + data[ptype, "particle_momentum_z"] ** 2
             )
-            return np.sqrt(p2 * c ** 2 + data[ptype, "particle_mass"] ** 2 * c ** 4)
+            return np.sqrt(p2 * c**2 + data[ptype, "particle_mass"] ** 2 * c**4)
 
         self.add_field(
             (ptype, "particle_energy"),
@@ -134,21 +134,21 @@ class WarpXFieldInfo(FieldInfoContainer):
 
         def get_velocity_x(field, data):
             return (
-                c ** 2
+                c**2
                 * data[ptype, "particle_momentum_x"]
                 / data[ptype, "particle_energy"]
             )
 
         def get_velocity_y(field, data):
             return (
-                c ** 2
+                c**2
                 * data[ptype, "particle_momentum_y"]
                 / data[ptype, "particle_energy"]
             )
 
         def get_velocity_z(field, data):
             return (
-                c ** 2
+                c**2
                 * data[ptype, "particle_momentum_z"]
                 / data[ptype, "particle_energy"]
             )
@@ -178,8 +178,7 @@ class WarpXFieldInfo(FieldInfoContainer):
 
 
 class NyxFieldInfo(FieldInfoContainer):
-    known_other_fields = ()
-    known_particle_fields = (
+    known_particle_fields: KnownFieldsT = (
         ("particle_position_x", ("code_length", [], None)),
         ("particle_position_y", ("code_length", [], None)),
         ("particle_position_z", ("code_length", [], None)),
@@ -187,7 +186,7 @@ class NyxFieldInfo(FieldInfoContainer):
 
 
 class BoxlibFieldInfo(FieldInfoContainer):
-    known_other_fields = (
+    known_other_fields: KnownFieldsT = (
         ("density", (rho_units, ["density"], None)),
         ("eden", (eden_units, ["total_energy_density"], None)),
         ("xmom", (mom_units, ["momentum_density_x"], None)),
@@ -203,7 +202,7 @@ class BoxlibFieldInfo(FieldInfoContainer):
         ("zvel", ("cm/s", ["velocity_z"], None)),
     )
 
-    known_particle_fields = (
+    known_particle_fields: KnownFieldsT = (
         ("particle_mass", ("code_mass", [], None)),
         ("particle_position_x", ("code_length", [], None)),
         ("particle_position_y", ("code_length", [], None)),
@@ -304,8 +303,7 @@ class BoxlibFieldInfo(FieldInfoContainer):
 
 
 class CastroFieldInfo(FieldInfoContainer):
-
-    known_other_fields = (
+    known_other_fields: KnownFieldsT = (
         ("density", ("g/cm**3", ["density"], r"\rho")),
         ("xmom", ("g/(cm**2 * s)", ["momentum_density_x"], r"\rho u")),
         ("ymom", ("g/(cm**2 * s)", ["momentum_density_y"], r"\rho v")),
@@ -349,7 +347,7 @@ class CastroFieldInfo(FieldInfoContainer):
         ("rot_z", ("cm/s**2", [], r"\mathbf{f}_{\rm{rot}} \cdot \mathbf{e}_z")),
     )
 
-    known_particle_fields = (
+    known_particle_fields: KnownFieldsT = (
         ("particle_position_x", ("code_length", [], None)),
         ("particle_position_y", ("code_length", [], None)),
         ("particle_position_z", ("code_length", [], None)),
@@ -382,8 +380,7 @@ class CastroFieldInfo(FieldInfoContainer):
 
 
 class MaestroFieldInfo(FieldInfoContainer):
-
-    known_other_fields = (
+    known_other_fields: KnownFieldsT = (
         ("density", ("g/cm**3", ["density"], None)),
         ("x_vel", ("cm/s", ["velocity_x"], r"\tilde{u}")),
         ("y_vel", ("cm/s", ["velocity_y"], r"\tilde{v}")),
@@ -449,7 +446,15 @@ class MaestroFieldInfo(FieldInfoContainer):
     def setup_fluid_fields(self):
         unit_system = self.ds.unit_system
         # pick the correct temperature field
-        if self.ds.parameters["use_tfromp"]:
+        tfromp = False
+        if "use_tfromp" in self.ds.parameters:
+            # original MAESTRO (F90) code
+            tfromp = self.ds.parameters["use_tfromp"]
+        elif "maestro.use_tfromp" in self.ds.parameters:
+            # new MAESTROeX (C++) code
+            tfromp = self.ds.parameters["maestro.use_tfromp"]
+
+        if tfromp:
             self.alias(
                 ("gas", "temperature"),
                 ("boxlib", "tfromp"),

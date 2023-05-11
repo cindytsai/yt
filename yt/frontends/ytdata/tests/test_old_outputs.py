@@ -23,7 +23,13 @@ from yt.frontends.ytdata.tests.test_outputs import (
     YTDataFieldTest,
     compare_unit_attributes,
 )
-from yt.testing import assert_allclose_units, assert_array_equal, requires_file
+from yt.testing import (
+    assert_allclose_units,
+    assert_array_equal,
+    requires_file,
+    requires_module,
+    skip,
+)
 from yt.units.yt_array import YTArray
 from yt.utilities.answer_testing.framework import data_dir_load, requires_ds
 from yt.visualization.profile_plotter import PhasePlot, ProfilePlot
@@ -32,6 +38,8 @@ enzotiny = "enzo_tiny_cosmology/DD0046/DD0046"
 ytdata_dir = "ytdata_test"
 
 
+@skip(reason="See https://github.com/yt-project/yt/issues/3909")
+@requires_module("h5py")
 @requires_ds(enzotiny)
 @requires_file(os.path.join(ytdata_dir, "DD0046_sphere.h5"))
 @requires_file(os.path.join(ytdata_dir, "DD0046_cut_region.h5"))
@@ -53,6 +61,8 @@ def test_old_datacontainer_data():
     assert (cr[("gas", "temperature")] == cr_ds.data[("gas", "temperature")]).all()
 
 
+@skip(reason="See https://github.com/yt-project/yt/issues/3909")
+@requires_module("h5py")
 @requires_ds(enzotiny)
 @requires_file(os.path.join(ytdata_dir, "DD0046_covering_grid.h5"))
 @requires_file(os.path.join(ytdata_dir, "DD0046_arbitrary_grid.h5"))
@@ -89,6 +99,8 @@ def test_old_grid_datacontainer_data():
     yield YTDataFieldTest(full_fn, ("gas", "density"), geometric=False)
 
 
+@skip(reason="See https://github.com/yt-project/yt/issues/3909")
+@requires_module("h5py")
 @requires_ds(enzotiny)
 @requires_file(os.path.join(ytdata_dir, "DD0046_proj.h5"))
 def test_old_spatial_data():
@@ -101,6 +113,8 @@ def test_old_spatial_data():
     yield YTDataFieldTest(full_fn, ("gas", "density"), geometric=False)
 
 
+@skip(reason="See https://github.com/yt-project/yt/issues/3909")
+@requires_module("h5py")
 @requires_ds(enzotiny)
 @requires_file(os.path.join(ytdata_dir, "DD0046_Profile1D.h5"))
 @requires_file(os.path.join(ytdata_dir, "DD0046_Profile2D.h5"))
@@ -163,6 +177,8 @@ def test_old_profile_data():
     shutil.rmtree(tmpdir)
 
 
+@skip(reason="See https://github.com/yt-project/yt/issues/3909")
+@requires_module("h5py")
 @requires_ds(enzotiny)
 @requires_file(os.path.join(ytdata_dir, "test_data.h5"))
 @requires_file(os.path.join(ytdata_dir, "random_data.h5"))
