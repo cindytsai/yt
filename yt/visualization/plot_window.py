@@ -5,7 +5,6 @@ from typing import List, Optional, Type, Union
 
 import matplotlib
 import numpy as np
-from matplotlib.colors import Normalize
 from more_itertools import always_iterable
 from unyt.exceptions import UnitConversionError
 
@@ -255,13 +254,9 @@ class PlotWindow(ImagePlotContainer, abc.ABC):
         for field in self.data_source._determine_fields(self.fields):
             finfo = self.data_source.ds._get_field_info(field)
             pnh = self.plots[field].norm_handler
-            if finfo.take_log is False:
-                # take_log can be `None` so we explicitly compare against a boolean
-                pnh.norm_type = Normalize
-            else:
-                # do nothing, the norm handler is responsible for
-                # determining a viable norm, and defaults to LogNorm/SymLogNorm
-                pass
+
+            # take_log can be `None` so we explicitly compare against a boolean
+            pnh.prefer_log = finfo.take_log is not False
 
             # override from user configuration if any
             log, linthresh = get_default_from_config(
@@ -1242,7 +1237,9 @@ class PWViewerMPL(PlotWindow):
 
     def setup_callbacks(self):
         issue_deprecation_warning(
-            "The PWViewer.setup_callbacks method is a no-op.", since="4.1.0"
+            "The PWViewer.setup_callbacks method is a no-op.",
+            since="4.1",
+            stacklevel=3,
         )
 
     @invalidate_plot
@@ -1396,7 +1393,7 @@ class NormalPlot:
                 )
             return normal
 
-        if isinstance(normal, int):
+        if isinstance(normal, (int, np.integer)):
             if normal not in (0, 1, 2):
                 raise ValueError(
                     f"{normal} is not a valid axis identifier. Expected either 0, 1, or 2."
@@ -1618,7 +1615,7 @@ class ProjectionPlot(NormalPlot):
         This is the dataset object corresponding to the
         simulation output to be plotted.
     normal : int, str, or 3-element sequence of floats
-        This specifies the normal vector to the slice.
+        This specifies the normal vector to the projection.
         Valid int values are 0, 1 and 2. Corresponding str values depend on the
         geometry of the dataset and are generally given by `ds.coordinates.axis_order`.
         E.g. in cartesian they are 'x', 'y' and 'z'.
@@ -2038,7 +2035,8 @@ class AxisAlignedProjectionPlot(ProjectionPlot, PWViewerMPL):
             issue_deprecation_warning(
                 "'mip' method is a deprecated alias for 'max'. "
                 "Please use method='max' directly.",
-                since="4.1.0",
+                since="4.1",
+                stacklevel=3,
             )
             method = "max"
         normal = self.sanitize_normal_vector(ds, normal)

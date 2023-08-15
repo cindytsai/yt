@@ -10,7 +10,6 @@ from typing import Any, Dict, Final, List, Literal, Optional, Tuple, Type, Union
 
 import matplotlib
 from matplotlib.colors import LogNorm, Normalize, SymLogNorm
-from matplotlib.font_manager import FontProperties
 from unyt.dimensions import length
 
 from yt._maintenance.deprecation import issue_deprecation_warning
@@ -26,8 +25,8 @@ from yt.visualization._handlers import ColorbarHandler, NormHandler
 from yt.visualization.base_plot_types import PlotMPL
 
 from ._commons import (
-    DEFAULT_FONT_PROPERTIES,
     _get_units_label,
+    get_default_font_properties,
     invalidate_data,
     invalidate_figure,
     invalidate_plot,
@@ -45,6 +44,7 @@ def apply_callback(f):
         "The apply_callback decorator is not used in yt any more and "
         "will be removed in a future version. "
         "Please do not use it.",
+        stacklevel=3,
         since="4.1",
     )
 
@@ -122,6 +122,8 @@ class PlotContainer(abc.ABC):
     _default_font_size = 14.0
 
     def __init__(self, data_source, figure_size=None, fontsize: Optional[float] = None):
+        from matplotlib.font_manager import FontProperties
+
         self.data_source = data_source
         self.ds = data_source.ds
         self.ts = self._initialize_dataset(self.ds)
@@ -132,9 +134,9 @@ class PlotContainer(abc.ABC):
         if fontsize is None:
             fontsize = self.__class__._default_font_size
         if sys.version_info >= (3, 9):
-            font_dict = DEFAULT_FONT_PROPERTIES | {"size": fontsize}
+            font_dict = get_default_font_properties() | {"size": fontsize}
         else:
-            font_dict = {**DEFAULT_FONT_PROPERTIES, "size": fontsize}
+            font_dict = {**get_default_font_properties(), "size": fontsize}
 
         self._font_properties = FontProperties(**font_dict)
         self._font_color = None
@@ -241,6 +243,7 @@ class PlotContainer(abc.ABC):
         issue_deprecation_warning(
             "The get_log method is not reliable and is deprecated. "
             "Please do not rely on it.",
+            stacklevel=3,
             since="4.1",
         )
         log = {}
@@ -331,8 +334,9 @@ class PlotContainer(abc.ABC):
           customizations other than plot callbacks (`annotate_*`)
         - testing
         """
-        # this is a pure alias to the historic `_setup_plots` method
-        # which preserves backward compatibility for extension code
+        # this public API method should never be no-op, so we invalidate
+        # the plot to force a fresh render in _setup_plots()
+        self._plot_valid = False
         self._setup_plots()
 
     def _initialize_dataset(self, ts):
@@ -445,6 +449,7 @@ class PlotContainer(abc.ABC):
         ... )
 
         """
+        from matplotlib.font_manager import FontProperties
 
         if font_dict is None:
             font_dict = {}
@@ -454,9 +459,9 @@ class PlotContainer(abc.ABC):
         # this prevents reverting to the matplotlib defaults.
         _default_size = {"size": self.__class__._default_font_size}
         if sys.version_info >= (3, 9):
-            font_dict = DEFAULT_FONT_PROPERTIES | _default_size | font_dict
+            font_dict = get_default_font_properties() | _default_size | font_dict
         else:
-            font_dict = {**DEFAULT_FONT_PROPERTIES, **_default_size, **font_dict}
+            font_dict = {**get_default_font_properties(), **_default_size, **font_dict}
         self._font_properties = FontProperties(**font_dict)
         return self
 
@@ -1023,7 +1028,7 @@ class ImagePlotContainer(PlotContainer, abc.ABC):
                 "If you wish to explicitly set zmin to the minimal "
                 "data value, pass `zmin='min'` instead. "
                 "Otherwise leave this argument unset.",
-                since="4.1.0",
+                since="4.1",
                 stacklevel=5,
             )
             zmin = "min"
@@ -1037,7 +1042,7 @@ class ImagePlotContainer(PlotContainer, abc.ABC):
                 "If you wish to explicitly set zmax to the maximal "
                 "data value, pass `zmin='max'` instead. "
                 "Otherwise leave this argument unset.",
-                since="4.1.0",
+                since="4.1",
                 stacklevel=5,
             )
             zmax = "max"

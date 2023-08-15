@@ -223,7 +223,7 @@ class ProfilePlot(BaseLinePlot):
             ]
 
         if plot_spec is None:
-            plot_spec = [dict() for p in profiles]
+            plot_spec = [{} for p in profiles]
         if not isinstance(plot_spec, list):
             plot_spec = [plot_spec.copy() for p in profiles]
 
@@ -255,10 +255,11 @@ class ProfilePlot(BaseLinePlot):
         obj.x_title = None
         obj.label = sanitize_label(labels, len(obj.profiles))
         if plot_specs is None:
-            plot_specs = [dict() for p in obj.profiles]
+            plot_specs = [{} for p in obj.profiles]
         obj.plot_spec = plot_specs
         obj._xlim = (None, None)
         obj._setup_plots()
+        obj._plot_valid = False  # see https://github.com/yt-project/yt/issues/4489
         return obj
 
     def _get_axrect(self):
@@ -977,6 +978,7 @@ class PhasePlot(ImagePlotContainer):
         obj._ylim = (None, None)
         super(PhasePlot, obj).__init__(data_source, figure_size, fontsize)
         obj._setup_plots()
+        obj._plot_valid = False  # see https://github.com/yt-project/yt/issues/4489
         obj._initfinished = True
         return obj
 
@@ -1053,6 +1055,10 @@ class PhasePlot(ImagePlotContainer):
                     fig = self.plots[f].figure
                     axes = self.plots[f].axes
                     cax = self.plots[f].cax
+                else:
+                    fig = None
+                    axes = None
+                    cax = None
             else:
                 pnh, cbh = self._get_default_handlers(
                     field=f, default_display_units=self.profile[f].units
@@ -1553,6 +1559,6 @@ class PhasePlotMPL(ImagePlotMPL):
             shading=self._shading,
         )
 
-        self._set_axes(norm)
+        self._set_axes()
         self.axes.set_xscale(x_scale)
         self.axes.set_yscale(y_scale)

@@ -349,7 +349,8 @@ class Dataset(abc.ABC):
             "the Dataset.fullpath attribute is now aliased to Dataset.directory, "
             "and all path attributes are now absolute. "
             "Please use the directory attribute instead",
-            since="4.1.0",
+            stacklevel=3,
+            since="4.1",
         )
         return self.directory
 
@@ -1598,7 +1599,7 @@ class Dataset(abc.ABC):
                     "Inconsistent dimensionality in units_override. "
                     f"Received {key} = {uo[key]}"
                 ) from err
-            if 1 / uo[key].value == np.inf:
+            if uo[key].value == 0.0:
                 raise ValueError(
                     f"Invalid 0 normalisation factor in units_override for {key}."
                 )

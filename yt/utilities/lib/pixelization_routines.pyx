@@ -992,7 +992,7 @@ cdef class SPHKernelInterpolationTable:
     @cython.boundscheck(False)
     @cython.wraparound(False)
     @cython.cdivision(True)
-    cdef np.float64_t integrate_q2(self, np.float64_t q2) nogil:
+    cdef np.float64_t integrate_q2(self, np.float64_t q2) noexcept nogil:
         # See equation 30 of the SPLASH paper
         cdef int i
         # Our bounds are -sqrt(R*R - q2) and sqrt(R*R-q2)
@@ -1033,7 +1033,7 @@ cdef class SPHKernelInterpolationTable:
     @cython.boundscheck(False)
     @cython.wraparound(False)
     @cython.cdivision(True)
-    cdef inline np.float64_t interpolate(self, np.float64_t q2) nogil:
+    cdef inline np.float64_t interpolate(self, np.float64_t q2) noexcept nogil:
         cdef int index
         cdef np.float64_t F_interpolate
         index = <int>((q2 - self.q2_vals[0])*(self.iq2_range))
@@ -1781,24 +1781,13 @@ def pixelize_element_mesh_line(np.ndarray[np.float64_t, ndim=2] coords,
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def off_axis_projection_SPH(np.float64_t[:] px,
-                            np.float64_t[:] py,
-                            np.float64_t[:] pz,
-                            np.float64_t[:] particle_masses,
-                            np.float64_t[:] particle_densities,
-                            np.float64_t[:] smoothing_lengths,
-                            bounds,
-                            center,
-                            width,
-                            np.float64_t[:] quantity_to_smooth,
-                            np.float64_t[:, :] projection_array,
-                            normal_vector,
-                            north_vector,
-                            weight_field=None):
-    # Do nothing in event of a 0 normal vector
-    if np.allclose(normal_vector, np.array([0., 0., 0.]), rtol=1e-09):
-        return
-
+def rotate_particle_coord(np.float64_t[:] px,
+                          np.float64_t[:] py,
+                          np.float64_t[:] pz,
+                          center,
+                          width,
+                          normal_vector,
+                          north_vector):
     # We want to do two rotations, one to first rotate our coordinates to have
     # the normal vector be the z-axis (i.e., the viewer's perspective), and then
     # another rotation to make the north-vector be the y-axis (i.e., north).
@@ -1838,6 +1827,34 @@ def off_axis_projection_SPH(np.float64_t[:] px,
             rotation_matrix, coordinate_matrix)
         px_rotated[i] = rotated_coordinates[0]
         py_rotated[i] = rotated_coordinates[1]
+
+    return px_rotated, py_rotated, rot_bounds_x0, rot_bounds_x1, rot_bounds_y0, rot_bounds_y1
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+def off_axis_projection_SPH(np.float64_t[:] px,
+                            np.float64_t[:] py,
+                            np.float64_t[:] pz,
+                            np.float64_t[:] particle_masses,
+                            np.float64_t[:] particle_densities,
+                            np.float64_t[:] smoothing_lengths,
+                            bounds,
+                            center,
+                            width,
+                            np.float64_t[:] quantity_to_smooth,
+                            np.float64_t[:, :] projection_array,
+                            normal_vector,
+                            north_vector,
+                            weight_field=None):
+    # Do nothing in event of a 0 normal vector
+    if np.allclose(normal_vector, 0.):
+        return
+
+    px_rotated, py_rotated, \
+    rot_bounds_x0, rot_bounds_x1, \
+    rot_bounds_y0, rot_bounds_y1 = rotate_particle_coord(px, py, pz,
+                                                         center, width, normal_vector, north_vector)
 
     pixelize_sph_kernel_projection(projection_array,
                                    px_rotated,

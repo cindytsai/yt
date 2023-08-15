@@ -857,15 +857,17 @@ class StreamOctreeHandler(OctreeIndex):
             self.io = io_registry[self.dataset_type](self.ds)
 
     def _initialize_oct_handler(self):
-        header = dict(
-            dims=[1, 1, 1],
-            left_edge=self.ds.domain_left_edge,
-            right_edge=self.ds.domain_right_edge,
-            octree=self.ds.octree_mask,
-            num_zones=self.ds.num_zones,
-            partial_coverage=self.ds.partial_coverage,
-        )
+        header = {
+            "dims": self.ds.domain_dimensions // self.ds.num_zones,
+            "left_edge": self.ds.domain_left_edge,
+            "right_edge": self.ds.domain_right_edge,
+            "octree": self.ds.octree_mask,
+            "num_zones": self.ds.num_zones,
+            "partial_coverage": self.ds.partial_coverage,
+        }
         self.oct_handler = OctreeContainer.load_octree(header)
+        # We do now need to get the maximum level set, as well.
+        self.ds.max_level = self.oct_handler.max_level
 
     def _identify_base_chunk(self, dobj):
         if getattr(dobj, "_chunk_info", None) is None:

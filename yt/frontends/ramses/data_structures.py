@@ -625,7 +625,7 @@ class RAMSESIndex(OctreeIndex):
         desc = {"names": ["numcells", "level"], "formats": ["int64"] * 2}
         max_level = self.dataset.min_level + self.dataset.max_level + 2
         self.level_stats = blankRecordArray(desc, max_level)
-        self.level_stats["level"] = [i for i in range(max_level)]
+        self.level_stats["level"] = list(range(max_level))
         self.level_stats["numcells"] = [0 for i in range(max_level)]
         for level in range(self.dataset.min_level + 1):
             self.level_stats[level + 1]["numcells"] = 2 ** (
@@ -681,7 +681,7 @@ class RAMSESIndex(OctreeIndex):
         except Exception:
             pass
         print(
-            "t = {:0.8e} = {:0.8e} s = {:0.8e} years".format(
+            "t = {:0.8e} = {:0.8e} = {:0.8e}".format(
                 self.ds.current_time.in_units("code_time"),
                 self.ds.current_time.in_units("s"),
                 self.ds.current_time.in_units("yr"),
@@ -689,7 +689,7 @@ class RAMSESIndex(OctreeIndex):
         )
         print("\nSmallest Cell:")
         for item in ("Mpc", "pc", "AU", "cm"):
-            print(f"\tWidth: {dx.in_units(item):0.3e} {item}")
+            print(f"\tWidth: {dx.in_units(item):0.3e}")
 
 
 class RAMSESDataset(Dataset):
